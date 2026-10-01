@@ -118,7 +118,7 @@ public struct GoogleOAuthClient: Sendable {
     let transport: HTTPTransport
     let now: @Sendable () -> Date
 
-    public init(config: GoogleOAuthConfig, transport: HTTPTransport = URLSessionTransport(), now: @escaping @Sendable () -> Date = Date.init) {
+    public init(config: GoogleOAuthConfig, transport: HTTPTransport = URLSessionTransport(), now: @escaping @Sendable () -> Date = { Date() }) {
         self.config = config
         self.transport = transport
         self.now = now
