@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-15
@@ -24,24 +27,51 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
-      - name: Build app
+      - name: Build app (universal)
         run: |
           set -o pipefail
           xcodebuild \
             -project Mailmeg.xcodeproj \
             -scheme Mailmeg \
             -configuration Release \
-            -destination 'platform=macOS' \
+            -destination 'generic/platform=macOS' \
             -derivedDataPath build \
+            ONLY_ACTIVE_ARCH=NO \
             CODE_SIGN_IDENTITY=- \
             build
+          lipo -archs build/Build/Products/Release/Mailmeg.app/Contents/MacOS/Mailmeg
+          codesign --verify --deep --strict --verbose=2 build/Build/Products/Release/Mailmeg.app
 
-      - name: Package app
+      - name: Create DMG
         run: |
-          cd build/Build/Products/Release
-          ditto -c -k --keepParent Mailmeg.app Mailmeg.zip
+          mkdir -p dmg
+          cp -R build/Build/Products/Release/Mailmeg.app dmg/
+          ln -s /Applications dmg/Applications
+          hdiutil create -volname Mailmeg -srcfolder dmg -ov -format UDZO Mailmeg.dmg
+          hdiutil verify Mailmeg.dmg
 
       - uses: actions/upload-artifact@v4
         with:
           name: Mailmeg
-          path: build/Build/Products/Release/Mailmeg.zip
+          path: Mailmeg.dmg
+
+      # Every push to the main or development branch updates the "latest" pre-release
+      # so there is always a stable download link for the newest DMG.
+      - name: Move "latest" tag
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/festive-franklin-hnzinf')
+        run: |
+          git tag -f latest
+          git push -f origin latest
+
+      - name: Publish pre-release
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/festive-franklin-hnzinf')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes="Automatischer Build von ${GITHUB_REF_NAME} (${GITHUB_SHA::7}). Installation und Gatekeeper-Hinweise: siehe README."
+          if gh release view latest >/dev/null 2>&1; then
+            gh release edit latest --prerelease --title "Mailmeg (neuester Build)" --notes "$notes"
+            gh release upload latest Mailmeg.dmg --clobber
+          else
+            gh release create latest Mailmeg.dmg --prerelease --title "Mailmeg (neuester Build)" --notes "$notes"
+          fi

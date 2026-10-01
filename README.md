@@ -18,10 +18,28 @@ und nicht über IMAP und nicht über eine eingebettete gmail.com-Seite.
 - **Neue Mails**: Polling über die History-API, Mitteilungen und Dock-Badge
 - **Tastaturkürzel** wie in Apple Mail: ⌘N, ⌘R, ⇧⌘R, ⇧⌘F, ⌃⌘A, ⌘⌫, ⇧⌘U, ⇧⌘L, ⇧⌘N
 
-## Voraussetzungen
+## Installation (fertige DMG, ohne Xcode)
+
+1. **[Mailmeg.dmg herunterladen](https://github.com/gummipunkt/mailmeg/releases/download/latest/Mailmeg.dmg)**
+   (Universal: Apple Silicon und Intel, macOS 14 oder neuer). Alle Builds findest du unter
+   [Releases](https://github.com/gummipunkt/mailmeg/releases).
+2. DMG öffnen und **Mailmeg** in den Ordner **Programme** ziehen.
+3. **Erster Start:** Die App ist nicht mit einem kostenpflichtigen Apple-Entwicklerzertifikat signiert
+   und nicht notarisiert, deshalb blockiert macOS sie beim ersten Öffnen. So gibst du sie frei:
+   - Mailmeg einmal per Doppelklick öffnen und die Warnung mit *Fertig* schließen.
+   - *Systemeinstellungen → Datenschutz & Sicherheit* öffnen, nach unten scrollen und bei
+     „Mailmeg wurde blockiert“ auf **Dennoch öffnen** klicken.
+
+   Alternativ im Terminal: `xattr -dr com.apple.quarantine /Applications/Mailmeg.app`
+4. Beim ersten Start fragt Mailmeg nach deiner **Google-OAuth-Client-ID**, siehe Abschnitt 1.
+
+Nach einem Update kann macOS einmalig fragen, ob Mailmeg auf den Schlüsselbund-Eintrag zugreifen darf.
+Dann *Immer erlauben* wählen.
+
+## Voraussetzungen zum selbst Bauen
 
 - macOS 14 (Sonoma) oder neuer
-- Xcode 15.3 oder neuer
+- Xcode 15.3 oder neuer (die Command Line Tools reichen nicht)
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen): `brew install xcodegen`
 - Ein eigenes Google-Cloud-Projekt mit OAuth-Client (kostenlos, siehe unten)
 
@@ -47,7 +65,7 @@ Google erlaubt Gmail-Zugriff nur über einen registrierten OAuth-Client. Für di
 > nicht überprüft“, über *Erweitert → Weiter zu Mailmeg* geht es weiter.
 > Mit einem Google-Workspace-Konto kannst du stattdessen den Nutzertyp *Intern* wählen.
 
-## 2. Bauen und starten
+## 2. Selbst bauen (optional)
 
 ```bash
 git clone <dieses Repo> && cd mailmeg
@@ -68,9 +86,9 @@ make test        # Unit-Tests der MailmegKit-Bibliothek
 make build       # Release-Build nach build/Build/Products/Release/Mailmeg.app
 ```
 
-Jeder Push baut die App außerdem per GitHub Actions auf macOS. Das fertige `Mailmeg.zip` liegt als
-Artefakt am jeweiligen Workflow-Lauf. Es ist ad hoc signiert, darum beim ersten Öffnen im Finder
-*Rechtsklick → Öffnen* wählen.
+Jeder Push baut die App außerdem per GitHub Actions auf macOS, führt die Tests aus und erzeugt
+`Mailmeg.dmg`. Pushes auf `main` aktualisieren das Release
+[`latest`](https://github.com/gummipunkt/mailmeg/releases/tag/latest).
 
 ## Architektur
 
