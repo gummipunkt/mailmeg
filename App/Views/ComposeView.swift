@@ -25,10 +25,7 @@ struct ComposeView: View {
     /// The selected sender; switching it also swaps the signature in the body.
     private var senderSelection: Binding<String> {
         Binding(
-            get: {
-                let account = self.account
-                return account?.identity(for: draft.fromAddress).id ?? ""
-            },
+            get: { self.account?.identity(for: draft.fromAddress).id ?? "" },
             set: { newID in
                 guard let identity = model.allIdentities.first(where: { $0.id == newID }) else { return }
                 draft.accountID = identity.accountID

@@ -249,8 +249,8 @@ final class AppModel {
     // MARK: - Compose
 
     func newDraft(to recipient: String = "") -> ComposeDraft {
-        let account = selection.flatMap { account(id: $0.accountID) } ?? accounts.first
-        return DraftComposer.newDraft(account: account, to: recipient)
+        let target = selection.flatMap { self.account(id: $0.accountID) } ?? accounts.first
+        return DraftComposer.newDraft(account: target, to: recipient)
     }
 
     /// All sender identities across accounts, for the "From" menu.

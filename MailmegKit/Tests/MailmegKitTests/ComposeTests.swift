@@ -35,7 +35,7 @@ final class ComposeTests: XCTestCase {
     }
 
     func testQuoteBlock() {
-        let message = GmailMessage(id: "m", threadId: "t", payload: MessagePart(headers: [
+        let message = GmailMessage(id: "m", threadId: "t", internalDate: "0", payload: MessagePart(headers: [
             MessageHeader(name: "From", value: "Bob <bob@example.com>"),
         ]))
         let block = ReplyBuilder.quote(for: message, quotedText: "Hi\nthere", kind: .reply, dateFormatter: { _ in "D" })
