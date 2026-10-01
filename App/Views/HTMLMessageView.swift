@@ -65,7 +65,7 @@ struct HTMLMessageView: NSViewRepresentable {
         }
         return """
         <!DOCTYPE html>
-        <html>
+        <html class="\(html?.isEmpty == false ? "rich" : "plain")">
         <head>
         <meta charset="utf-8">
         <meta http-equiv="Content-Security-Policy" content="\(csp)">
@@ -80,7 +80,11 @@ struct HTMLMessageView: NSViewRepresentable {
         .mailmeg-plain { white-space: pre-wrap; font-family: -apple-system, sans-serif; font-size: 13px; line-height: 1.45; }
         blockquote { margin-left: 0.5em; padding-left: 0.8em; border-left: 2px solid #B1CBFA; }
         .mailmeg-plain a { color: #7971EA; }
-        @media (prefers-color-scheme: dark) { .mailmeg-plain a { color: #B1CBFA; } }
+        html.plain, html.plain body { background: #FFFFFF; }
+        @media (prefers-color-scheme: dark) {
+          html.plain, html.plain body { background: #25263F; color: #E6E7FB; }
+          .mailmeg-plain a { color: #B1CBFA; }
+        }
         </style>
         </head>
         <body><div id="mailmeg-root">\(body)</div></body>

@@ -89,7 +89,9 @@ struct OnboardingView: View {
                 Button("Erst mal ohne Konto ausprobieren →") {
                     Task { await model.startDemo() }
                 }
-                .buttonStyle(.link)
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.accentColor)
+                .font(.system(size: 13, weight: .medium))
                 .accessibilityIdentifier("onboarding.demo")
             }
             .padding(40)
