@@ -40,6 +40,7 @@ jobs:
             CODE_SIGN_IDENTITY=- \
             build
           lipo -archs build/Build/Products/Release/Mailmeg.app/Contents/MacOS/Mailmeg
+          test -f build/Build/Products/Release/Mailmeg.app/Contents/Resources/AppIcon.icns
           codesign --verify --deep --strict --verbose=2 build/Build/Products/Release/Mailmeg.app
 
       - name: Create DMG

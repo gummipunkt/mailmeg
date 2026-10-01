@@ -1,3 +1,4 @@
+import AppKit
 import MailmegKit
 import SwiftUI
 
@@ -9,9 +10,9 @@ struct OnboardingView: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            Image(systemName: "envelope.badge")
-                .font(.system(size: 56))
-                .foregroundStyle(.tint)
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .frame(width: 96, height: 96)
             Text("Welcome to Mailmeg")
                 .font(.largeTitle.weight(.semibold))
             Text("A native Gmail client that talks to the Gmail API directly — no web wrapper.")

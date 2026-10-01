@@ -104,6 +104,7 @@ App/                     SwiftUI-App
   Model/                 AppModel, AccountSession, MailboxModel, ThreadDetailModel (@Observable)
   Views/                 NavigationSplitView mit drei Spalten, WKWebView-Renderer, Compose-Fenster
   Support/               Keychain, Einstellungen, Formatierung
+Design/AppIcon.svg       Quelle des App-Icons (daraus werden die PNGs in App/Assets.xcassets erzeugt)
 project.yml              XcodeGen-Projektdefinition
 ```
 
