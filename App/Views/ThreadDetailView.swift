@@ -188,13 +188,6 @@ struct MessageCardView: View {
                             .font(.system(size: 13.5, weight: .semibold))
                             .lineLimit(1)
                             .layoutPriority(1)
-                        if let address = message.from?.address, message.from?.name != nil {
-                            Text(address)
-                                .font(.system(size: 11.5))
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-                        }
                         Spacer(minLength: 8)
                         Text(Formatting.fullDate(message.date))
                             .font(.system(size: 11.5))
@@ -238,6 +231,9 @@ struct MessageCardView: View {
 
     private var recipientLine: String {
         var parts: [String] = []
+        if let address = message.from?.address, message.from?.name != nil {
+            parts.append(address)
+        }
         if !message.to.isEmpty {
             parts.append("an " + message.to.map { $0.address == detail.account.email ? "mich" : $0.displayName }.joined(separator: ", "))
         }

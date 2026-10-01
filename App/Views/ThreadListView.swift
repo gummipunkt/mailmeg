@@ -218,19 +218,20 @@ struct ThreadRow: View {
     private var quickActions: some View {
         HStack(spacing: 0) {
             if isTrash {
-                IconButton(systemImage: "arrow.uturn.backward", help: "Wiederherstellen") { onAction(.untrash) }
+                IconButton(systemImage: "arrow.uturn.backward", help: "Wiederherstellen", tint: .primary) { onAction(.untrash) }
             } else {
-                IconButton(systemImage: "archivebox", help: "Archivieren") { onAction(.archive) }
-                IconButton(systemImage: "trash", help: "In den Papierkorb") { onAction(.trash) }
+                IconButton(systemImage: "archivebox", help: "Archivieren", tint: .primary) { onAction(.archive) }
+                IconButton(systemImage: "trash", help: "In den Papierkorb", tint: .primary) { onAction(.trash) }
             }
             IconButton(
                 systemImage: thread.isUnread ? "envelope.open" : "envelope.badge",
-                help: thread.isUnread ? "Als gelesen markieren" : "Als ungelesen markieren"
+                help: thread.isUnread ? "Als gelesen markieren" : "Als ungelesen markieren",
+                tint: .primary
             ) { onAction(thread.isUnread ? .markRead : .markUnread) }
             IconButton(
                 systemImage: thread.isStarred ? "star.fill" : "star",
                 help: thread.isStarred ? "Markierung entfernen" : "Markieren",
-                tint: thread.isStarred ? .yellow : .secondary
+                tint: thread.isStarred ? .yellow : .primary
             ) { onAction(thread.isStarred ? .unstar : .star) }
         }
         .padding(.horizontal, 2)
