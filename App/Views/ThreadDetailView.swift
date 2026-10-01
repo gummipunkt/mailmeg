@@ -182,32 +182,39 @@ struct MessageCardView: View {
         if item.isExpanded {
             HStack(alignment: .top, spacing: 12) {
                 AvatarView(name: senderName, size: 38)
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(senderName)
                             .font(.system(size: 13.5, weight: .semibold))
+                            .lineLimit(1)
+                            .layoutPriority(1)
                         if let address = message.from?.address, message.from?.name != nil {
                             Text(address)
                                 .font(.system(size: 11.5))
                                 .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
                         }
+                        Spacer(minLength: 8)
+                        Text(Formatting.fullDate(message.date))
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(.secondary)
+                            .fixedSize()
                     }
                     .textSelection(.enabled)
-                    Text(recipientLine)
-                        .font(.system(size: 11.5))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                        .textSelection(.enabled)
-                }
-                Spacer(minLength: 8)
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text(Formatting.fullDate(message.date))
-                        .font(.system(size: 11.5))
-                        .foregroundStyle(.secondary)
-                    HStack(spacing: 0) {
-                        IconButton(systemImage: "arrowshape.turn.up.left", help: "Antworten") { open(.reply) }
-                        IconButton(systemImage: "arrowshape.turn.up.left.2", help: "Allen antworten") { open(.replyAll) }
-                        IconButton(systemImage: "arrowshape.turn.up.right", help: "Weiterleiten") { open(.forward) }
+                    HStack(alignment: .center, spacing: 8) {
+                        Text(recipientLine)
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                        Spacer(minLength: 8)
+                        HStack(spacing: 0) {
+                            IconButton(systemImage: "arrowshape.turn.up.left", help: "Antworten") { open(.reply) }
+                            IconButton(systemImage: "arrowshape.turn.up.left.2", help: "Allen antworten") { open(.replyAll) }
+                            IconButton(systemImage: "arrowshape.turn.up.right", help: "Weiterleiten") { open(.forward) }
+                        }
+                        .fixedSize()
                     }
                 }
             }

@@ -10,7 +10,7 @@ final class MailmegUITests: XCTestCase {
 
     private func launch(_ arguments: [String]) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = arguments
+        app.launchArguments = arguments + ["-ApplePersistenceIgnoreState", "YES"]
         app.launch()
         app.activate()
         return app
@@ -43,6 +43,7 @@ final class MailmegUITests: XCTestCase {
         print("SIDEBAR-SENT element: \(sent.debugDescription)")
         sent.click()
         sleep(2)
+        XCTAssertEqual(element(app, "mailbox.title").label, "Gesendet", "The mailbox header should switch to „Gesendet“")
         snapshot("1b-nach-klick-gesendet", of: app.windows.firstMatch.screenshot())
         print("MAILBOX-TITLE after click: \(element(app, "mailbox.title").label)")
         print("SIDEBAR-HIERARCHY:\n\(app.outlines.firstMatch.debugDescription)")

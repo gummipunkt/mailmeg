@@ -133,7 +133,7 @@ struct ComposeView: View {
                 Text(title)
                     .font(.system(size: 12.5))
                     .foregroundStyle(.secondary)
-                    .frame(width: 52, alignment: .trailing)
+                    .frame(width: 58, alignment: .trailing)
                 content()
             }
             .font(.system(size: 13))

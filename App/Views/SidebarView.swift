@@ -18,8 +18,8 @@ struct SidebarView: View {
                         }
                         .buttonStyle(.plain)
                     }
-                    ForEach(account.systemItems) { item in
-                        row(item, account: account)
+                    ForEach(entries(account.systemItems, of: account), id: \.selection) { entry in
+                        row(entry)
                     }
                 } header: {
                     AccountHeader(account: account, isDemo: model.isDemo)
@@ -30,11 +30,11 @@ struct SidebarView: View {
                         }
                 }
 
-                let labels = account.userItems
+                let labels = entries(account.userItems, of: account)
                 if !labels.isEmpty {
                     Section("Labels") {
-                        ForEach(labels) { item in
-                            row(item, account: account)
+                        ForEach(labels, id: \.selection) { entry in
+                            row(entry)
                         }
                     }
                 }
@@ -59,8 +59,15 @@ struct SidebarView: View {
         }
     }
 
-    private func row(_ item: SidebarItem, account: AccountSession) -> some View {
-        Label {
+    /// Rows are identified by their full selection value. List matches a row's tag
+    /// against the selection type, so a plain label ID would make rows unselectable.
+    private func entries(_ items: [SidebarItem], of account: AccountSession) -> [SidebarEntry] {
+        items.map { SidebarEntry(selection: MailboxSelection(accountID: account.id, labelID: $0.id), item: $0) }
+    }
+
+    private func row(_ entry: SidebarEntry) -> some View {
+        let item = entry.item
+        return Label {
             Text(item.title)
         } icon: {
             Image(systemName: item.systemImage)
@@ -68,7 +75,7 @@ struct SidebarView: View {
         }
         .padding(.leading, CGFloat(item.indent) * 14)
         .badge(item.unread)
-        .tag(Optional(MailboxSelection(accountID: account.id, labelID: item.id)))
+        .tag(entry.selection)
         .accessibilityIdentifier("sidebar.\(item.id)")
     }
 
@@ -85,6 +92,11 @@ struct SidebarView: View {
         default: return .secondary
         }
     }
+}
+
+private struct SidebarEntry: Hashable {
+    let selection: MailboxSelection
+    let item: SidebarItem
 }
 
 private struct AccountHeader: View {

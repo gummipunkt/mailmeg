@@ -14,7 +14,7 @@ struct ThreadListView: View {
                     isTrash: mailbox.labelID == SystemLabel.trash,
                     onAction: { model.perform($0, threadID: thread.id) }
                 )
-                .tag(Optional(thread.id))
+                .tag(thread.id)
                 .accessibilityIdentifier("thread.\(thread.id)")
                 .onAppear { mailbox.loadMoreIfNeeded(after: thread) }
                 .contextMenu { contextMenu(for: thread) }
@@ -62,6 +62,7 @@ struct ThreadListView: View {
                 Text(subtitle)
                     .font(.system(size: 11.5))
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
             Spacer()
             Picker("Filter", selection: Binding(get: { mailbox.unreadOnly }, set: { mailbox.setUnreadOnly($0) })) {
@@ -70,6 +71,7 @@ struct ThreadListView: View {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
+            .controlSize(.small)
             .fixedSize()
         }
         .padding(.horizontal, 16)
@@ -83,8 +85,9 @@ struct ThreadListView: View {
         if mailbox.isLoading && !mailbox.hasLoaded { return "Wird geladen …" }
         let unread = mailbox.unreadCount
         let count = mailbox.threads.count
-        let conversations = count == 1 ? "1 Konversation" : "\(count)\(mailbox.nextPageToken != nil ? "+" : "") Konversationen"
-        return unread > 0 ? "\(conversations) · \(unread) ungelesen" : conversations
+        let total = "\(count)\(mailbox.nextPageToken != nil ? "+" : "")"
+        if unread > 0 { return "\(unread) ungelesen · \(total) gesamt" }
+        return count == 1 ? "1 Konversation" : "\(total) Konversationen"
     }
 
     @ViewBuilder
