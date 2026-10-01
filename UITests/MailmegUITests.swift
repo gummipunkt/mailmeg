@@ -10,7 +10,7 @@ final class MailmegUITests: XCTestCase {
 
     private func launch(_ arguments: [String]) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = arguments + ["-ApplePersistenceIgnoreState", "YES"]
+        app.launchArguments = arguments
         app.launch()
         app.activate()
         return app
@@ -62,7 +62,7 @@ final class MailmegUITests: XCTestCase {
     }
 
     func testDarkMode() {
-        let app = launch(["--demo", "-AppleInterfaceStyle", "Dark"])
+        let app = launch(["--demo", "--dark"])
         let thread = element(app, "thread.t-kaffee")
         XCTAssertTrue(thread.waitForExistence(timeout: 20))
         thread.click()
@@ -78,6 +78,8 @@ final class MailmegUITests: XCTestCase {
         compose.click()
         sleep(2)
         snapshot("4-neue-email", of: XCUIScreen.main.screenshot())
+        // Close the compose window so it is not restored on the next launch.
+        app.typeKey("w", modifierFlags: .command)
     }
 
     func testOnboardingAndDemo() {

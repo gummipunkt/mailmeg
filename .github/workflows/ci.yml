@@ -132,6 +132,9 @@ jobs:
                       src = os.path.join("screenshots/xcresult", a["exportedFileName"])
                       if src.endswith(".png"):
                           shutil.copy(src, "screenshots/" + name.split("_0_")[0] + ".png")
+                      elif name.startswith("App UI hierarchy") and src.endswith(".txt"):
+                          print("HIERARCHY for", test.get("testIdentifier"))
+                          print("".join(open(src).readlines()[:80]))
           PY
           for f in screenshots/*.png; do
             [ -f "$f" ] || continue

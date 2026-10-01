@@ -287,4 +287,9 @@ enum LaunchOptions {
     static var onboarding: Bool {
         ProcessInfo.processInfo.arguments.contains("--onboarding")
     }
+
+    /// Forces dark appearance (used for screenshots).
+    static var dark: Bool {
+        ProcessInfo.processInfo.arguments.contains("--dark")
+    }
 }

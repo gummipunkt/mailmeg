@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct ContentView: View {
@@ -11,7 +12,12 @@ struct ContentView: View {
                 RootView()
             }
         }
-        .task { await model.start() }
+        .task {
+            if LaunchOptions.dark {
+                NSApp.appearance = NSAppearance(named: .darkAqua)
+            }
+            await model.start()
+        }
         .alert(
             "Da ist etwas schiefgelaufen",
             isPresented: Binding(
