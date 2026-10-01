@@ -104,7 +104,7 @@ final class ThreadDetailModel {
     func data(for attachment: AttachmentInfo) async throws -> Data {
         if let inline = attachment.inlineData { return inline }
         guard let attachmentID = attachment.attachmentID else {
-            throw GmailAPIError(status: 0, message: "Der Anhang enthält keine Daten.", reason: nil)
+            throw GmailAPIError(status: 0, message: tr("Der Anhang enthält keine Daten.", "The attachment contains no data."), reason: nil)
         }
         return try await account.client.attachment(messageID: attachment.messageID, attachmentID: attachmentID)
     }
@@ -169,7 +169,7 @@ final class ThreadDetailModel {
             for: message,
             quotedText: item.content.quotableText,
             kind: kind,
-            strings: .german,
+            strings: L10n.replyStrings,
             dateFormatter: { $0.formatted(date: .abbreviated, time: .shortened) }
         )
         var draft = ComposeDraft(accountID: account.email, kind: kind)

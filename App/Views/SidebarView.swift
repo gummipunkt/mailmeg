@@ -19,7 +19,7 @@ struct SidebarView: View {
                         Button {
                             Task { await model.signIn(loginHint: account.email) }
                         } label: {
-                            Label("Erneut anmelden", systemImage: "exclamationmark.triangle.fill")
+                            Label(tr("Erneut anmelden", "Sign In Again"), systemImage: "exclamationmark.triangle.fill")
                                 .foregroundStyle(Color.accentColor)
                         }
                         .buttonStyle(.plain)
@@ -30,7 +30,7 @@ struct SidebarView: View {
                 } header: {
                     AccountHeader(account: account, isDemo: model.isDemo)
                         .contextMenu {
-                            Button("Konto entfernen …", role: .destructive) {
+                            Button(tr("Konto entfernen …", "Remove Account…"), role: .destructive) {
                                 Task { await model.remove(account) }
                             }
                         }
@@ -52,7 +52,7 @@ struct SidebarView: View {
             Button {
                 openWindow(value: model.newDraft())
             } label: {
-                Label("Neue E-Mail", systemImage: "square.and.pencil")
+                Label(tr("Neue E-Mail", "New Message"), systemImage: "square.and.pencil")
                     .font(.system(size: 13, weight: .semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 3)
@@ -119,7 +119,7 @@ private struct AccountHeader: View {
                 Text(account.displayName ?? account.email)
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.primary)
-                Text(isDemo ? "Demo-Konto" : account.email)
+                Text(isDemo ? tr("Demo-Konto", "Demo account") : account.email)
                     .font(.system(size: 10.5))
                     .foregroundStyle(.secondary)
             }

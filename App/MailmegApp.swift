@@ -17,7 +17,7 @@ struct MailmegApp: App {
             MailCommands(model: model)
         }
 
-        WindowGroup("Neue E-Mail", id: "compose", for: ComposeDraft.self) { $draft in
+        WindowGroup(tr("Neue E-Mail", "New Message"), id: "compose", for: ComposeDraft.self) { $draft in
             ComposeView(draft: draft ?? model.newDraft())
                 .environment(model)
         }

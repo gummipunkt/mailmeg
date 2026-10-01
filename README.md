@@ -22,9 +22,10 @@ und nicht über IMAP und nicht über eine eingebettete gmail.com-Seite.
 
 ## Installation (fertige DMG, ohne Xcode)
 
-1. **[Mailmeg.dmg herunterladen](https://github.com/gummipunkt/mailmeg/releases/download/latest/Mailmeg.dmg)**
-   (Universal: Apple Silicon und Intel, macOS 14 oder neuer). Alle Builds findest du unter
-   [Releases](https://github.com/gummipunkt/mailmeg/releases).
+1. **[Mailmeg.dmg herunterladen](https://github.com/gummipunkt/mailmeg/releases/latest/download/Mailmeg.dmg)**
+   (aktuelle stabile Version, Universal: Apple Silicon und Intel, macOS 14 oder neuer).
+   Alle Versionen stehen unter [Releases](https://github.com/gummipunkt/mailmeg/releases), den neuesten
+   Entwicklungsstand gibt es als [Development-Build](https://github.com/gummipunkt/mailmeg/releases/download/nightly/Mailmeg.dmg).
 2. DMG öffnen und **Mailmeg** in den Ordner **Programme** ziehen.
 3. **Erster Start:** Die App ist nicht mit einem kostenpflichtigen Apple-Entwicklerzertifikat signiert
    und nicht notarisiert, deshalb blockiert macOS sie beim ersten Öffnen. So gibst du sie frei:
@@ -89,9 +90,28 @@ make test        # Unit-Tests der MailmegKit-Bibliothek
 make build       # Release-Build nach build/Build/Products/Release/Mailmeg.app
 ```
 
-Jeder Push baut die App außerdem per GitHub Actions auf macOS, führt die Tests aus und erzeugt
-`Mailmeg.dmg`. Pushes auf `main` aktualisieren das Release
-[`latest`](https://github.com/gummipunkt/mailmeg/releases/tag/latest).
+Jeder Push baut die App außerdem per GitHub Actions auf macOS, führt Unit- und UI-Tests aus und erzeugt
+`Mailmeg.dmg`. Pushes auf `main` aktualisieren den
+[Development-Build](https://github.com/gummipunkt/mailmeg/releases/tag/nightly).
+
+## Versionen und Releases
+
+Die Versionsnummer steht an genau einer Stelle: `MARKETING_VERSION` in `Config/Mailmeg.xcconfig`.
+Die Build-Nummer setzt die CI automatisch (fortlaufende Nummer des Workflow-Laufs). Beides zeigt die App
+unter *Mailmeg → Über Mailmeg* und in den Einstellungen.
+
+Neue Version veröffentlichen:
+
+```bash
+# 1. MARKETING_VERSION in Config/Mailmeg.xcconfig erhöhen, z. B. auf 1.1.0
+# 2. Abschnitt "## [1.1.0] – Datum" in CHANGELOG.md ergänzen
+git commit -am "Release 1.1.0"
+git tag v1.1.0
+git push origin main v1.1.0
+```
+
+Die CI prüft, dass Tag und `MARKETING_VERSION` übereinstimmen, und veröffentlicht ein Release
+„Mailmeg 1.1.0“ mit `Mailmeg.dmg` und `Mailmeg-1.1.0.dmg`. Die Release-Notizen kommen aus dem CHANGELOG.
 
 ## Architektur
 
@@ -121,6 +141,11 @@ project.yml              XcodeGen-Projektdefinition
 - Nachrichten-HTML läuft in einem WKWebView ohne JavaScript, mit Content-Security-Policy und einem
   WebKit-Content-Blocker für externe Ressourcen.
 
+## Sprache
+
+Mailmeg gibt es auf Deutsch und Englisch. Die App folgt der Reihenfolge unter
+*Systemeinstellungen → Allgemein → Sprache & Region*. Steht Deutsch vor Englisch, ist die Oberfläche deutsch.
+
 ## Roadmap
 
 - Entwürfe bearbeiten und automatisch speichern (`drafts`-API)
@@ -129,4 +154,22 @@ project.yml              XcodeGen-Projektdefinition
 - Gmail-Kategorien (Allgemein, Werbung, Soziale Netzwerke …)
 - Signaturen aus den Gmail-Einstellungen und Rich-Text-Editor
 - Klick auf Mitteilung öffnet die Konversation
-- Englische Übersetzung der Oberfläche
+
+## English
+
+Mailmeg is a native Gmail client for macOS (SwiftUI) that talks to the Gmail REST API directly instead of
+wrapping the Gmail website. The interface is available in English and German and follows your macOS language
+order.
+
+1. Download **[Mailmeg.dmg](https://github.com/gummipunkt/mailmeg/releases/latest/download/Mailmeg.dmg)**
+   (universal, macOS 14 or later) and drag Mailmeg into *Applications*.
+2. The app is not notarized: open it once, then choose *System Settings → Privacy & Security → Open Anyway*
+   (or run `xattr -dr com.apple.quarantine /Applications/Mailmeg.app`).
+3. Create your own Google Cloud OAuth client of type **iOS** (bundle ID `de.mailmeg.app`) with the Gmail API
+   enabled, paste the client ID on first launch and sign in. Section 1 above describes every step. Or try the
+   demo mailbox first.
+
+## Impressum
+
+© 2026 Patrick Walter
+Kontakt / Contact: [www.gummipunkt.eu](https://www.gummipunkt.eu) · [mailmeg@gummipunkt.eu](mailto:mailmeg@gummipunkt.eu)

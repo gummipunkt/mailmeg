@@ -132,7 +132,7 @@ final class AppModel {
     func signIn(loginHint: String? = nil) async {
         let config = AppSettings.oauthConfig
         guard config.isValid else {
-            errorMessage = "Bitte gib zuerst eine gültige Google-OAuth-Client-ID ein (sie endet auf .apps.googleusercontent.com)."
+            errorMessage = tr("Bitte gib zuerst eine gültige Google-OAuth-Client-ID ein (sie endet auf .apps.googleusercontent.com).", "Please enter a valid Google OAuth client ID first (it ends with .apps.googleusercontent.com).")
             return
         }
         isSigningIn = true
@@ -279,7 +279,7 @@ final class AppModel {
         }
         if let apiError = error as? GmailAPIError, apiError.isRateLimited {
             account?.noteRateLimit(error)
-            errorMessage = "Google hat kurzzeitig zu viele Anfragen gezählt (Gmail-Kontingent pro Minute). Mailmeg pausiert die automatische Aktualisierung für eine Minute, danach geht es normal weiter."
+            errorMessage = tr("Google hat kurzzeitig zu viele Anfragen gezählt (Gmail-Kontingent pro Minute). Mailmeg pausiert die automatische Aktualisierung für eine Minute, danach geht es normal weiter.", "Google counted too many requests for a moment (Gmail quota per minute). Mailmeg pauses automatic refreshing for a minute, then carries on as usual.")
             return
         }
         errorMessage = error.localizedDescription
@@ -289,6 +289,11 @@ final class AppModel {
 enum LaunchOptions {
     static var demo: Bool {
         ProcessInfo.processInfo.arguments.contains("--demo") || ProcessInfo.processInfo.environment["MAILMEG_DEMO"] == "1"
+    }
+
+    /// `--lang=en` / `--lang=de` overrides the system language (used for screenshots).
+    static var language: String? {
+        ProcessInfo.processInfo.arguments.first { $0.hasPrefix("--lang=") }.map { String($0.dropFirst("--lang=".count)) }
     }
 
     static var onboarding: Bool {

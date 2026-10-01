@@ -7,8 +7,8 @@ enum MailSenderError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .noRecipients: "Bitte gib mindestens einen Empfänger an."
-        case .invalidAddress(let address): "„\(address)“ ist keine gültige E-Mail-Adresse."
+        case .noRecipients: tr("Bitte gib mindestens einen Empfänger an.", "Please add at least one recipient.")
+        case .invalidAddress(let address): tr("„\(address)“ ist keine gültige E-Mail-Adresse.", "“\(address)” is not a valid email address.")
         }
     }
 }

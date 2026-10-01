@@ -40,7 +40,7 @@ final class MailboxModel {
     }
 
     var title: String {
-        activeQuery.isEmpty ? account.title(forLabel: labelID) : "Suche"
+        activeQuery.isEmpty ? account.title(forLabel: labelID) : tr("Suche", "Search")
     }
 
     private var labelIDs: [String] {

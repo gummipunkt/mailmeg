@@ -8,9 +8,9 @@ final class MailmegUITests: XCTestCase {
         continueAfterFailure = false
     }
 
-    private func launch(_ arguments: [String]) -> XCUIApplication {
+    private func launch(_ arguments: [String], language: String = "de") -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = arguments
+        app.launchArguments = arguments + ["--lang=\(language)"]
         app.launch()
         app.activate()
         return app
@@ -89,5 +89,20 @@ final class MailmegUITests: XCTestCase {
         snapshot("5-willkommen", of: app.windows.firstMatch.screenshot())
         demoButton.click()
         XCTAssertTrue(element(app, "thread.t-projektplan").waitForExistence(timeout: 20), "The demo button should open the sample mailbox")
+    }
+
+    func testEnglishInterface() {
+        let app = launch(["--demo"], language: "en")
+        let thread = element(app, "thread.t-projektplan")
+        XCTAssertTrue(thread.waitForExistence(timeout: 20))
+        XCTAssertEqual(element(app, "mailbox.title").value as? String, "Inbox")
+        thread.click()
+        XCTAssertTrue(element(app, "detail.subject").waitForExistence(timeout: 10))
+        sleep(2)
+        snapshot("6-english", of: app.windows.firstMatch.screenshot())
+
+        element(app, "sidebar.SENT").click()
+        XCTAssertTrue(element(app, "thread.t-wohnung").waitForExistence(timeout: 10))
+        XCTAssertEqual(element(app, "mailbox.title").value as? String, "Sent")
     }
 }

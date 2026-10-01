@@ -31,8 +31,8 @@ struct ComposeView: View {
             // Header fields
             VStack(spacing: 0) {
                 if model.accounts.count > 1 {
-                    fieldRow("Von") {
-                        Picker("Von", selection: $draft.accountID) {
+                    fieldRow(tr("Von", "From")) {
+                        Picker(tr("Von", "From"), selection: $draft.accountID) {
                             ForEach(model.accounts) { account in
                                 Text(account.displayName.map { "\($0) <\(account.email)>" } ?? account.email).tag(account.id)
                             }
@@ -42,11 +42,11 @@ struct ComposeView: View {
                         Spacer()
                     }
                 }
-                fieldRow("An") {
-                    TextField("", text: $draft.to, prompt: Text("name@beispiel.de"))
+                fieldRow(tr("An", "To")) {
+                    TextField("", text: $draft.to, prompt: Text(tr("name@beispiel.de", "name@example.com")))
                         .textFieldStyle(.plain)
                         .focused($focusedField, equals: .to)
-                    Button(showsCcBcc ? "Cc/Bcc ausblenden" : "Cc/Bcc") {
+                    Button(showsCcBcc ? tr("Cc/Bcc ausblenden", "Hide Cc/Bcc") : "Cc/Bcc") {
                         withAnimation(.snappy(duration: 0.15)) { showsCcBcc.toggle() }
                     }
                     .buttonStyle(.plain)
@@ -61,8 +61,8 @@ struct ComposeView: View {
                         TextField("", text: $draft.bcc).textFieldStyle(.plain).focused($focusedField, equals: .bcc)
                     }
                 }
-                fieldRow("Betreff", showsDivider: false) {
-                    TextField("", text: $draft.subject, prompt: Text("Worum geht es?"))
+                fieldRow(tr("Betreff", "Subject"), showsDivider: false) {
+                    TextField("", text: $draft.subject, prompt: Text(tr("Worum geht es?", "What’s it about?")))
                         .textFieldStyle(.plain)
                         .font(.system(size: 13, weight: .semibold))
                         .focused($focusedField, equals: .subject)
@@ -92,7 +92,7 @@ struct ComposeView: View {
                 Button {
                     isImporting = true
                 } label: {
-                    Label("Anhängen", systemImage: "paperclip")
+                    Label(tr("Anhängen", "Attach"), systemImage: "paperclip")
                         .font(.system(size: 13, weight: .medium))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 7)
@@ -100,7 +100,7 @@ struct ComposeView: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(Color.accentColor)
-                .help("Dateien anhängen")
+                .help(tr("Dateien anhängen", "Attach files"))
 
                 Spacer()
 
@@ -113,7 +113,7 @@ struct ComposeView: View {
                         } else {
                             Image(systemName: "paperplane.fill")
                         }
-                        Text("Senden")
+                        Text(tr("Senden", "Send"))
                     }
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white)
@@ -129,17 +129,17 @@ struct ComposeView: View {
                 .keyboardShortcut(.return, modifiers: .command)
                 .disabled(isSending || account == nil)
                 .opacity(isSending || account == nil ? 0.6 : 1)
-                .help("Senden (⌘↩)")
+                .help(tr("Senden (⌘↩)", "Send (⌘↩)"))
                 .accessibilityIdentifier("compose.send")
             }
         }
         .padding(14)
         .themedWindowBackground(Theme.canvas)
-        .navigationTitle(draft.subject.isEmpty ? "Neue E-Mail" : draft.subject)
+        .navigationTitle(draft.subject.isEmpty ? tr("Neue E-Mail", "New Message") : draft.subject)
         .fileImporter(isPresented: $isImporting, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
             addAttachments(result)
         }
-        .alert("E-Mail nicht gesendet", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
+        .alert(tr("E-Mail nicht gesendet", "Message Not Sent"), isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
             Button("OK", role: .cancel) {}
         } message: {
             Text(errorMessage ?? "")
@@ -200,7 +200,7 @@ struct ComposeView: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
-            .help("Anhang entfernen")
+            .help(tr("Anhang entfernen", "Remove attachment"))
         }
         .font(.system(size: 12))
         .padding(.horizontal, 10)

@@ -33,7 +33,7 @@ struct ThreadListView: View {
         .background(Theme.listBackground)
         .safeAreaInset(edge: .top, spacing: 0) { header }
         .overlay { emptyState }
-        .searchable(text: $mailbox.searchText, placement: .toolbar, prompt: "Suchen – z. B. from:anna has:attachment")
+        .searchable(text: $mailbox.searchText, placement: .toolbar, prompt: tr("Suchen – z. B. from:anna has:attachment", "Search – e.g. from:anna has:attachment"))
         .onSubmit(of: .search) { mailbox.submitSearch() }
         .onChange(of: mailbox.searchText) { _, newValue in
             if newValue.isEmpty, !mailbox.activeQuery.isEmpty {
@@ -46,9 +46,9 @@ struct ThreadListView: View {
                 Button {
                     Task { await model.refreshAll() }
                 } label: {
-                    Label("Aktualisieren", systemImage: "arrow.clockwise")
+                    Label(tr("Aktualisieren", "Refresh"), systemImage: "arrow.clockwise")
                 }
-                .help("Neue E-Mails abrufen (⇧⌘N)")
+                .help(tr("Neue E-Mails abrufen (⇧⌘N)", "Get New Mail (⇧⌘N)"))
             }
         }
         .themedWindowBackground(Theme.listBackground)
@@ -67,8 +67,8 @@ struct ThreadListView: View {
             }
             Spacer()
             Picker("Filter", selection: Binding(get: { mailbox.unreadOnly }, set: { mailbox.setUnreadOnly($0) })) {
-                Text("Alle").tag(false)
-                Text("Ungelesen").tag(true)
+                Text(tr("Alle", "All")).tag(false)
+                Text(tr("Ungelesen", "Unread")).tag(true)
             }
             .pickerStyle(.segmented)
             .labelsHidden()
@@ -83,12 +83,12 @@ struct ThreadListView: View {
     }
 
     private var subtitle: String {
-        if mailbox.isLoading && !mailbox.hasLoaded { return "Wird geladen …" }
+        if mailbox.isLoading && !mailbox.hasLoaded { return tr("Wird geladen …", "Loading…") }
         let unread = mailbox.unreadCount
         let count = mailbox.threads.count
         let total = "\(count)\(mailbox.nextPageToken != nil ? "+" : "")"
-        if unread > 0 { return "\(unread) ungelesen · \(total) gesamt" }
-        return count == 1 ? "1 Konversation" : "\(total) Konversationen"
+        if unread > 0 { return tr("\(unread) ungelesen · \(total) gesamt", "\(unread) unread · \(total) total") }
+        return count == 1 ? tr("1 Konversation", "1 conversation") : tr("\(total) Konversationen", "\(total) conversations")
     }
 
     @ViewBuilder
@@ -99,34 +99,34 @@ struct ThreadListView: View {
             if !mailbox.activeQuery.isEmpty {
                 ContentUnavailableView.search(text: mailbox.activeQuery)
             } else if mailbox.unreadOnly {
-                ContentUnavailableView("Alles gelesen", systemImage: "checkmark.circle", description: Text("Hier gibt es keine ungelesenen E-Mails."))
+                ContentUnavailableView(tr("Alles gelesen", "All Read"), systemImage: "checkmark.circle", description: Text(tr("Hier gibt es keine ungelesenen E-Mails.", "There’s no unread email here.")))
             } else {
-                ContentUnavailableView("Keine E-Mails", systemImage: "tray", description: Text("Dieser Ordner ist leer."))
+                ContentUnavailableView(tr("Keine E-Mails", "No Email"), systemImage: "tray", description: Text(tr("Dieser Ordner ist leer.", "This folder is empty.")))
             }
         }
     }
 
     @ViewBuilder
     private func contextMenu(for thread: ThreadSummary) -> some View {
-        Button(thread.isUnread ? "Als gelesen markieren" : "Als ungelesen markieren") {
+        Button(thread.isUnread ? tr("Als gelesen markieren", "Mark as Read") : tr("Als ungelesen markieren", "Mark as Unread")) {
             model.perform(thread.isUnread ? .markRead : .markUnread, threadID: thread.id)
         }
-        Button(thread.isStarred ? "Markierung entfernen" : "Markieren") {
+        Button(thread.isStarred ? tr("Markierung entfernen", "Remove Star") : tr("Markieren", "Star")) {
             model.perform(thread.isStarred ? .unstar : .star, threadID: thread.id)
         }
         Divider()
         if mailbox.labelID == SystemLabel.trash {
-            Button("Wiederherstellen") { model.perform(.untrash, threadID: thread.id) }
+            Button(tr("Wiederherstellen", "Restore")) { model.perform(.untrash, threadID: thread.id) }
         } else if mailbox.labelID == SystemLabel.spam {
-            Button("Kein Spam") { model.perform(.notSpam, threadID: thread.id) }
+            Button(tr("Kein Spam", "Not Spam")) { model.perform(.notSpam, threadID: thread.id) }
         } else {
             if thread.labelIDs.contains(SystemLabel.inbox) {
-                Button("Archivieren") { model.perform(.archive, threadID: thread.id) }
+                Button(tr("Archivieren", "Archive")) { model.perform(.archive, threadID: thread.id) }
             } else {
-                Button("In den Posteingang") { model.perform(.moveToInbox, threadID: thread.id) }
+                Button(tr("In den Posteingang", "Move to Inbox")) { model.perform(.moveToInbox, threadID: thread.id) }
             }
-            Button("Als Spam melden") { model.perform(.reportSpam, threadID: thread.id) }
-            Button("In den Papierkorb") { model.perform(.trash, threadID: thread.id) }
+            Button(tr("Als Spam melden", "Report Spam")) { model.perform(.reportSpam, threadID: thread.id) }
+            Button(tr("In den Papierkorb", "Move to Trash")) { model.perform(.trash, threadID: thread.id) }
         }
     }
 }
@@ -173,7 +173,7 @@ struct ThreadRow: View {
                 }
                 .frame(height: 20)
 
-                Text(thread.subject.isEmpty ? "(kein Betreff)" : thread.subject)
+                Text(thread.subject.isEmpty ? tr("(kein Betreff)", "(no subject)") : thread.subject)
                     .font(.system(size: 13, weight: thread.isUnread ? .semibold : .regular))
                     .lineLimit(1)
                 Text(thread.snippet)
@@ -196,9 +196,9 @@ struct ThreadRow: View {
 
     private var senderLine: String {
         if thread.isOnlyOwnMessages {
-            return thread.correspondents.isEmpty ? "(kein Empfänger)" : "An: " + thread.correspondents.joined(separator: ", ")
+            return thread.correspondents.isEmpty ? tr("(kein Empfänger)", "(no recipient)") : tr("An: ", "To: ") + thread.correspondents.joined(separator: ", ")
         }
-        return thread.participants.isEmpty ? "(unbekannt)" : thread.participants.joined(separator: ", ")
+        return thread.participants.isEmpty ? tr("(unbekannt)", "(unknown)") : thread.participants.joined(separator: ", ")
     }
 
     private var trailingInfo: some View {
@@ -222,19 +222,19 @@ struct ThreadRow: View {
     private var quickActions: some View {
         HStack(spacing: 0) {
             if isTrash {
-                IconButton(systemImage: "arrow.uturn.backward", help: "Wiederherstellen", tint: .primary) { onAction(.untrash) }
+                IconButton(systemImage: "arrow.uturn.backward", help: tr("Wiederherstellen", "Restore"), tint: .primary) { onAction(.untrash) }
             } else {
-                IconButton(systemImage: "archivebox", help: "Archivieren", tint: .primary) { onAction(.archive) }
-                IconButton(systemImage: "trash", help: "In den Papierkorb", tint: .primary) { onAction(.trash) }
+                IconButton(systemImage: "archivebox", help: tr("Archivieren", "Archive"), tint: .primary) { onAction(.archive) }
+                IconButton(systemImage: "trash", help: tr("In den Papierkorb", "Move to Trash"), tint: .primary) { onAction(.trash) }
             }
             IconButton(
                 systemImage: thread.isUnread ? "envelope.open" : "envelope.badge",
-                help: thread.isUnread ? "Als gelesen markieren" : "Als ungelesen markieren",
+                help: thread.isUnread ? tr("Als gelesen markieren", "Mark as Read") : tr("Als ungelesen markieren", "Mark as Unread"),
                 tint: .primary
             ) { onAction(thread.isUnread ? .markRead : .markUnread) }
             IconButton(
                 systemImage: thread.isStarred ? "star.fill" : "star",
-                help: thread.isStarred ? "Markierung entfernen" : "Markieren",
+                help: thread.isStarred ? tr("Markierung entfernen", "Remove Star") : tr("Markieren", "Star"),
                 tint: thread.isStarred ? .accentColor : .primary
             ) { onAction(thread.isStarred ? .unstar : .star) }
         }

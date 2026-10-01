@@ -14,7 +14,7 @@ struct RootView: View {
                 if let mailbox = model.mailbox {
                     ThreadListView(mailbox: mailbox)
                 } else {
-                    ContentUnavailableView("Kein Postfach ausgewählt", systemImage: "tray")
+                    ContentUnavailableView(tr("Kein Postfach ausgewählt", "No Mailbox Selected"), systemImage: "tray")
                         .themedWindowBackground(Theme.listBackground)
                 }
             }
@@ -39,9 +39,11 @@ private struct EmptyDetailView: View {
                 .resizable()
                 .frame(width: 84, height: 84)
                 .opacity(0.9)
-            Text(unread > 0 ? "\(unread) ungelesene Konversation\(unread == 1 ? "" : "en")" : "Alles erledigt")
+            Text(unread > 0
+                ? tr("\(unread) ungelesene Konversation\(unread == 1 ? "" : "en")", "\(unread) unread conversation\(unread == 1 ? "" : "s")")
+                : tr("Alles erledigt", "All done"))
                 .font(.system(size: 17, weight: .semibold))
-            Text("Wähle eine E-Mail aus der Liste aus.")
+            Text(tr("Wähle eine E-Mail aus der Liste aus.", "Select an email from the list."))
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
         }

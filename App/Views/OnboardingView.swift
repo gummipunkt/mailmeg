@@ -28,18 +28,18 @@ struct OnboardingView: View {
                     .shadow(color: .black.opacity(0.15), radius: 12, y: 6)
 
                 VStack(spacing: 6) {
-                    Text("Willkommen bei Mailmeg")
+                    Text(tr("Willkommen bei Mailmeg", "Welcome to Mailmeg"))
                         .font(.system(size: 30, weight: .bold))
-                    Text("Gmail als echte Mac-App, direkt über die Gmail-API. Ohne Browser, ohne Umwege.")
+                    Text(tr("Gmail als echte Mac-App, direkt über die Gmail-API. Ohne Browser, ohne Umwege.", "Gmail as a real Mac app, straight through the Gmail API. No browser, no detours."))
                         .font(.system(size: 14))
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 }
 
                 VStack(alignment: .leading, spacing: 14) {
-                    step(1, "Projekt in der Google Cloud Console anlegen und die **Gmail API** aktivieren.")
-                    step(2, "OAuth-Client vom Typ **iOS** erstellen, Bundle-ID `de.mailmeg.app`.")
-                    step(3, "Client-ID hier einfügen und anmelden.")
+                    step(1, tr("Projekt in der Google Cloud Console anlegen und die **Gmail API** aktivieren.", "Create a project in the Google Cloud Console and enable the **Gmail API**."))
+                    step(2, tr("OAuth-Client vom Typ **iOS** erstellen, Bundle-ID `de.mailmeg.app`.", "Create an OAuth client of type **iOS** with bundle ID `de.mailmeg.app`."))
+                    step(3, tr("Client-ID hier einfügen und anmelden.", "Paste the client ID here and sign in."))
 
                     TextField("1234567890-abc.apps.googleusercontent.com", text: $clientID)
                         .textFieldStyle(.plain)
@@ -62,7 +62,7 @@ struct OnboardingView: View {
                             if model.isSigningIn {
                                 ProgressView().controlSize(.small)
                             }
-                            Text("Mit Google anmelden")
+                            Text(tr("Mit Google anmelden", "Sign in with Google"))
                                 .font(.system(size: 14, weight: .semibold))
                         }
                         .frame(maxWidth: .infinity)
@@ -72,7 +72,7 @@ struct OnboardingView: View {
                     .controlSize(.large)
                     .disabled(!isValid || model.isSigningIn)
 
-                    Text("Die genaue Anleitung steht in der README. Deine Daten bleiben zwischen deinem Mac und Google.")
+                    Text(tr("Die genaue Anleitung steht in der README. Deine Daten bleiben zwischen deinem Mac und Google.", "Step-by-step instructions are in the README. Your data stays between your Mac and Google."))
                         .font(.system(size: 11.5))
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -86,26 +86,38 @@ struct OnboardingView: View {
                 )
                 .shadow(color: .black.opacity(0.08), radius: 20, y: 8)
 
-                Button("Erst mal ohne Konto ausprobieren →") {
+                Button(tr("Erst mal ohne Konto ausprobieren →", "Try it without an account first →")) {
                     Task { await model.startDemo() }
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(Color.accentColor)
                 .font(.system(size: 13, weight: .medium))
                 .accessibilityIdentifier("onboarding.demo")
+
+                HStack(spacing: 6) {
+                    Text(AppInfo.copyright)
+                    Text("·")
+                    Link(AppInfo.websiteLabel, destination: AppInfo.website)
+                    Text("·")
+                    Text(AppInfo.versionLine)
+                }
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .tint(.secondary)
+                .padding(.top, 8)
             }
             .padding(40)
         }
     }
 
-    private func step(_ number: Int, _ text: LocalizedStringKey) -> some View {
+    private func step(_ number: Int, _ text: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             Text("\(number)")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
                 .frame(width: 20, height: 20)
                 .background(Color.accentColor, in: Circle())
-            Text(text)
+            Text(LocalizedStringKey(text))
                 .font(.system(size: 13))
                 .fixedSize(horizontal: false, vertical: true)
         }

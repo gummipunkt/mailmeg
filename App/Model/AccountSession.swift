@@ -64,7 +64,7 @@ final class AccountSession: Identifiable {
     }
 
     func title(forLabel id: String) -> String {
-        if id == Self.allMailID { return "Alle Nachrichten" }
+        if id == Self.allMailID { return tr("Alle Nachrichten", "All Mail") }
         if let system = Self.systemLabels.first(where: { $0.id == id }) { return system.title }
         return label(id: id)?.name.components(separatedBy: "/").last ?? id
     }
@@ -145,7 +145,7 @@ final class AccountSession: Identifiable {
         if !stale.isEmpty {
             let threads = try await client.threads(ids: stale.map(\.id), format: .metadata)
             for thread in threads {
-                let summary = ThreadSummary(thread: thread, selfAddresses: [email], selfName: "Ich")
+                let summary = ThreadSummary(thread: thread, selfAddresses: [email], selfName: tr("Ich", "Me"))
                 summaryCache[thread.id] = (thread.historyId, summary)
             }
         }
@@ -200,14 +200,14 @@ final class AccountSession: Identifiable {
     }
 
     private static let systemLabels: [SystemLabelInfo] = [
-        SystemLabelInfo(id: SystemLabel.inbox, title: "Posteingang", systemImage: "tray.fill", showsUnread: true),
-        SystemLabelInfo(id: SystemLabel.starred, title: "Markiert", systemImage: "star.fill", showsUnread: false),
-        SystemLabelInfo(id: SystemLabel.important, title: "Wichtig", systemImage: "bookmark.fill", showsUnread: false),
-        SystemLabelInfo(id: SystemLabel.sent, title: "Gesendet", systemImage: "paperplane.fill", showsUnread: false),
-        SystemLabelInfo(id: SystemLabel.draft, title: "Entwürfe", systemImage: "doc.fill", showsUnread: false),
-        SystemLabelInfo(id: allMailID, title: "Alle Nachrichten", systemImage: "archivebox.fill", showsUnread: false),
+        SystemLabelInfo(id: SystemLabel.inbox, title: tr("Posteingang", "Inbox"), systemImage: "tray.fill", showsUnread: true),
+        SystemLabelInfo(id: SystemLabel.starred, title: tr("Markiert", "Starred"), systemImage: "star.fill", showsUnread: false),
+        SystemLabelInfo(id: SystemLabel.important, title: tr("Wichtig", "Important"), systemImage: "bookmark.fill", showsUnread: false),
+        SystemLabelInfo(id: SystemLabel.sent, title: tr("Gesendet", "Sent"), systemImage: "paperplane.fill", showsUnread: false),
+        SystemLabelInfo(id: SystemLabel.draft, title: tr("Entwürfe", "Drafts"), systemImage: "doc.fill", showsUnread: false),
+        SystemLabelInfo(id: allMailID, title: tr("Alle Nachrichten", "All Mail"), systemImage: "archivebox.fill", showsUnread: false),
         SystemLabelInfo(id: SystemLabel.spam, title: "Spam", systemImage: "exclamationmark.octagon.fill", showsUnread: true),
-        SystemLabelInfo(id: SystemLabel.trash, title: "Papierkorb", systemImage: "trash.fill", showsUnread: false),
+        SystemLabelInfo(id: SystemLabel.trash, title: tr("Papierkorb", "Trash"), systemImage: "trash.fill", showsUnread: false),
     ]
 
     var systemItems: [SidebarItem] {

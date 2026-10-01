@@ -32,11 +32,11 @@ struct ThreadDetailView: View {
                 ProgressView()
             } else if let error = detail.loadError, detail.messages.isEmpty {
                 ContentUnavailableView {
-                    Label("Konversation konnte nicht geladen werden", systemImage: "exclamationmark.triangle")
+                    Label(tr("Konversation konnte nicht geladen werden", "Couldn’t Load Conversation"), systemImage: "exclamationmark.triangle")
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("Erneut versuchen") { Task { await detail.load() } }
+                    Button(tr("Erneut versuchen", "Try Again")) { Task { await detail.load() } }
                 }
             }
         }
@@ -48,7 +48,7 @@ struct ThreadDetailView: View {
     private var header: some View {
         if !detail.subject.isEmpty || !detail.messages.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                Text(detail.subject.isEmpty ? "(kein Betreff)" : detail.subject)
+                Text(detail.subject.isEmpty ? tr("(kein Betreff)", "(no subject)") : detail.subject)
                     .font(.system(size: 22, weight: .bold))
                     .textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
@@ -57,7 +57,7 @@ struct ThreadDetailView: View {
                     let labelIDs = Set(detail.messages.flatMap { $0.message.labelIds ?? [] })
                     ForEach(detail.account.userLabels(in: labelIDs)) { LabelChip(label: $0) }
                     if labelIDs.contains(SystemLabel.important) {
-                        Label("Wichtig", systemImage: "bookmark.fill")
+                        Label(tr("Wichtig", "Important"), systemImage: "bookmark.fill")
                             .font(.system(size: 10.5, weight: .medium))
                             .foregroundStyle(Color.accentColor)
                     }
@@ -72,9 +72,9 @@ struct ThreadDetailView: View {
 
     private var metaLine: String {
         let count = detail.messages.count
-        let messages = count == 1 ? "1 Nachricht" : "\(count) Nachrichten"
+        let messages = count == 1 ? tr("1 Nachricht", "1 message") : tr("\(count) Nachrichten", "\(count) messages")
         let people = detail.participantCount
-        return people > 2 ? "\(messages) · \(people) Beteiligte" : messages
+        return people > 2 ? tr("\(messages) · \(people) Beteiligte", "\(messages) · \(people) people") : messages
     }
 
     @ToolbarContentBuilder
@@ -84,50 +84,50 @@ struct ThreadDetailView: View {
                 Button {
                     if let draft = detail.draft(.reply) { openWindow(value: draft) }
                 } label: {
-                    Label("Antworten", systemImage: "arrowshape.turn.up.left")
+                    Label(tr("Antworten", "Reply"), systemImage: "arrowshape.turn.up.left")
                 }
-                .help("Antworten (⌘R)")
+                .help(tr("Antworten (⌘R)", "Reply (⌘R)"))
                 Button {
                     if let draft = detail.draft(.replyAll) { openWindow(value: draft) }
                 } label: {
-                    Label("Allen antworten", systemImage: "arrowshape.turn.up.left.2")
+                    Label(tr("Allen antworten", "Reply All"), systemImage: "arrowshape.turn.up.left.2")
                 }
-                .help("Allen antworten (⇧⌘R)")
+                .help(tr("Allen antworten (⇧⌘R)", "Reply All (⇧⌘R)"))
                 Button {
                     if let draft = detail.draft(.forward) { openWindow(value: draft) }
                 } label: {
-                    Label("Weiterleiten", systemImage: "arrowshape.turn.up.right")
+                    Label(tr("Weiterleiten", "Forward"), systemImage: "arrowshape.turn.up.right")
                 }
-                .help("Weiterleiten (⇧⌘F)")
+                .help(tr("Weiterleiten (⇧⌘F)", "Forward (⇧⌘F)"))
             }
 
             Button {
                 model.perform(.archive)
             } label: {
-                Label("Archivieren", systemImage: "archivebox")
+                Label(tr("Archivieren", "Archive"), systemImage: "archivebox")
             }
-            .help("Archivieren (⌃⌘A)")
+            .help(tr("Archivieren (⌃⌘A)", "Archive (⌃⌘A)"))
 
             Button {
                 model.perform(.trash)
             } label: {
-                Label("Löschen", systemImage: "trash")
+                Label(tr("Löschen", "Delete"), systemImage: "trash")
             }
-            .help("In den Papierkorb (⌘⌫)")
+            .help(tr("In den Papierkorb (⌘⌫)", "Move to Trash (⌘⌫)"))
 
             Button {
                 model.toggleRead()
             } label: {
-                Label("Gelesen/Ungelesen", systemImage: model.selectedThread?.isUnread == true ? "envelope.open" : "envelope.badge")
+                Label(tr("Gelesen/Ungelesen", "Read/Unread"), systemImage: model.selectedThread?.isUnread == true ? "envelope.open" : "envelope.badge")
             }
-            .help("Als gelesen/ungelesen markieren (⇧⌘U)")
+            .help(tr("Als gelesen/ungelesen markieren (⇧⌘U)", "Mark as Read/Unread (⇧⌘U)"))
 
             Button {
                 model.toggleStar()
             } label: {
-                Label("Markieren", systemImage: model.selectedThread?.isStarred == true ? "star.fill" : "star")
+                Label(tr("Markieren", "Star"), systemImage: model.selectedThread?.isStarred == true ? "star.fill" : "star")
             }
-            .help("Markieren (⇧⌘L)")
+            .help(tr("Markieren (⇧⌘L)", "Star (⇧⌘L)"))
         }
     }
 }
@@ -141,7 +141,7 @@ struct MessageCardView: View {
     @State private var bodyHeight: CGFloat = 60
 
     private var message: GmailMessage { item.message }
-    private var senderName: String { message.from?.displayName ?? "(unbekannt)" }
+    private var senderName: String { message.from?.displayName ?? tr("(unbekannt)", "(unknown)") }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -204,9 +204,9 @@ struct MessageCardView: View {
                             .truncationMode(.tail)
                         Spacer(minLength: 8)
                         HStack(spacing: 0) {
-                            IconButton(systemImage: "arrowshape.turn.up.left", help: "Antworten") { open(.reply) }
-                            IconButton(systemImage: "arrowshape.turn.up.left.2", help: "Allen antworten") { open(.replyAll) }
-                            IconButton(systemImage: "arrowshape.turn.up.right", help: "Weiterleiten") { open(.forward) }
+                            IconButton(systemImage: "arrowshape.turn.up.left", help: tr("Antworten", "Reply")) { open(.reply) }
+                            IconButton(systemImage: "arrowshape.turn.up.left.2", help: tr("Allen antworten", "Reply All")) { open(.replyAll) }
+                            IconButton(systemImage: "arrowshape.turn.up.right", help: tr("Weiterleiten", "Forward")) { open(.forward) }
                         }
                         .fixedSize()
                     }
@@ -236,7 +236,7 @@ struct MessageCardView: View {
             parts.append(address)
         }
         if !message.to.isEmpty {
-            parts.append("an " + message.to.map { $0.address == detail.account.email ? "mich" : $0.displayName }.joined(separator: ", "))
+            parts.append(tr("an ", "to ") + message.to.map { $0.address == detail.account.email ? tr("mich", "me") : $0.displayName }.joined(separator: ", "))
         }
         if !message.cc.isEmpty {
             parts.append("Cc " + message.cc.map(\.displayName).joined(separator: ", "))
@@ -248,10 +248,10 @@ struct MessageCardView: View {
         HStack(spacing: 8) {
             Image(systemName: "eye.slash.fill")
                 .foregroundStyle(.secondary)
-            Text("Externe Inhalte wurden zum Schutz deiner Privatsphäre blockiert.")
+            Text(tr("Externe Inhalte wurden zum Schutz deiner Privatsphäre blockiert.", "Remote content was blocked to protect your privacy."))
                 .font(.system(size: 12))
             Spacer()
-            Button("Laden") { item.allowsRemoteContent = true }
+            Button(tr("Laden", "Load")) { item.allowsRemoteContent = true }
                 .controlSize(.small)
         }
         .padding(.horizontal, 16)
@@ -311,7 +311,7 @@ private struct AttachmentTile: View {
                     .resizable()
                     .frame(width: 30, height: 30)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(attachment.filename.isEmpty ? "Anhang" : attachment.filename)
+                    Text(attachment.filename.isEmpty ? tr("Anhang", "Attachment") : attachment.filename)
                         .font(.system(size: 12, weight: .medium))
                         .lineLimit(1)
                         .truncationMode(.middle)
@@ -321,7 +321,7 @@ private struct AttachmentTile: View {
                 }
                 Spacer(minLength: 0)
                 if isHovering {
-                    IconButton(systemImage: "arrow.down.circle", help: "Sichern unter …") {
+                    IconButton(systemImage: "arrow.down.circle", help: tr("Sichern unter …", "Save As…")) {
                         Task { await detail.save(attachment) }
                     }
                 }
@@ -332,10 +332,10 @@ private struct AttachmentTile: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovering = $0 }
-        .help("\(attachment.filename) öffnen")
+        .help(tr("\(attachment.filename) öffnen", "Open \(attachment.filename)"))
         .contextMenu {
-            Button("Öffnen") { Task { await detail.open(attachment) } }
-            Button("Sichern unter …") { Task { await detail.save(attachment) } }
+            Button(tr("Öffnen", "Open")) { Task { await detail.open(attachment) } }
+            Button(tr("Sichern unter …", "Save As…")) { Task { await detail.save(attachment) } }
         }
     }
 
@@ -373,7 +373,7 @@ private struct QuickReplyBar: View {
                 )
                 .accessibilityIdentifier("quickReply")
 
-            IconButton(systemImage: "arrow.up.left.and.arrow.down.right", help: "Im Fenster bearbeiten") {
+            IconButton(systemImage: "arrow.up.left.and.arrow.down.right", help: tr("Im Fenster bearbeiten", "Edit in Window")) {
                 guard var draft = detail.draft(.reply) else { return }
                 draft.body = text + draft.body
                 text = ""
@@ -395,7 +395,7 @@ private struct QuickReplyBar: View {
             .buttonStyle(.plain)
             .disabled(!canSend)
             .keyboardShortcut(.return, modifiers: .command)
-            .help("Senden (⌘↩)")
+            .help(tr("Senden (⌘↩)", "Send (⌘↩)"))
             .padding(.bottom, 2)
         }
         .padding(.horizontal, 16)
@@ -405,8 +405,8 @@ private struct QuickReplyBar: View {
     }
 
     private var placeholder: String {
-        if let name = detail.replyRecipientName { return "Antwort an \(name) …" }
-        return "Antworten …"
+        if let name = detail.replyRecipientName { return tr("Antwort an \(name) …", "Reply to \(name)…") }
+        return tr("Antworten …", "Reply…")
     }
 
     private var canSend: Bool {

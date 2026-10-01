@@ -19,7 +19,7 @@ struct ContentView: View {
             await model.start()
         }
         .alert(
-            "Da ist etwas schiefgelaufen",
+            tr("Da ist etwas schiefgelaufen", "Something Went Wrong"),
             isPresented: Binding(
                 get: { model.errorMessage != nil },
                 set: { if !$0 { model.errorMessage = nil } }
