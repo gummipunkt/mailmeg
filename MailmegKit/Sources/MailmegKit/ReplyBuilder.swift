@@ -6,6 +6,44 @@ public enum ComposeKind: String, Codable, Sendable {
 
 /// Derives recipients, subject and quoted body for replies and forwards.
 public enum ReplyBuilder {
+    /// Texts used in quoted replies and forwarded messages.
+    public struct Strings: Sendable {
+        public var wrote: @Sendable (_ date: String, _ sender: String) -> String
+        public var forwardedHeader: String
+        public var from: String
+        public var date: String
+        public var subject: String
+        public var to: String
+        public var cc: String
+        public var unknownSender: String
+
+        public init(
+            wrote: @escaping @Sendable (String, String) -> String,
+            forwardedHeader: String, from: String, date: String, subject: String, to: String, cc: String, unknownSender: String
+        ) {
+            self.wrote = wrote
+            self.forwardedHeader = forwardedHeader
+            self.from = from
+            self.date = date
+            self.subject = subject
+            self.to = to
+            self.cc = cc
+            self.unknownSender = unknownSender
+        }
+
+        public static let english = Strings(
+            wrote: { date, sender in "On \(date), \(sender) wrote:" },
+            forwardedHeader: "---------- Forwarded message ---------",
+            from: "From", date: "Date", subject: "Subject", to: "To", cc: "Cc", unknownSender: "unknown sender"
+        )
+
+        public static let german = Strings(
+            wrote: { date, sender in "Am \(date) schrieb \(sender):" },
+            forwardedHeader: "---------- Weitergeleitete Nachricht ---------",
+            from: "Von", date: "Datum", subject: "Betreff", to: "An", cc: "Cc", unknownSender: "unbekannter Absender"
+        )
+    }
+
     public static func subject(for original: String, kind: ComposeKind) -> String {
         let trimmed = original.trimmingCharacters(in: .whitespaces)
         switch kind {
@@ -56,8 +94,8 @@ public enum ReplyBuilder {
         return references
     }
 
-    public static func body(for message: GmailMessage, quotedText: String, kind: ComposeKind, dateFormatter: (Date) -> String) -> String {
-        let sender = message.from?.formatted ?? "unknown sender"
+    public static func body(for message: GmailMessage, quotedText: String, kind: ComposeKind, strings: Strings = .english, dateFormatter: (Date) -> String) -> String {
+        let sender = message.from?.formatted ?? strings.unknownSender
         let date = message.date.map(dateFormatter) ?? ""
         switch kind {
         case .new:
@@ -68,18 +106,18 @@ public enum ReplyBuilder {
                 .split(separator: "\n", omittingEmptySubsequences: false)
                 .map { $0.hasPrefix(">") ? ">\($0)" : "> \($0)" }
                 .joined(separator: "\n")
-            return "\n\nOn \(date), \(sender) wrote:\n\(quoted)\n"
+            return "\n\n\(strings.wrote(date, sender))\n\(quoted)\n"
         case .forward:
             var lines = [
                 "",
                 "",
-                "---------- Forwarded message ---------",
-                "From: \(sender)",
-                "Date: \(date)",
-                "Subject: \(message.subject)",
+                strings.forwardedHeader,
+                "\(strings.from): \(sender)",
+                "\(strings.date): \(date)",
+                "\(strings.subject): \(message.subject)",
             ]
-            if !message.to.isEmpty { lines.append("To: \(message.to.map(\.formatted).joined(separator: ", "))") }
-            if !message.cc.isEmpty { lines.append("Cc: \(message.cc.map(\.formatted).joined(separator: ", "))") }
+            if !message.to.isEmpty { lines.append("\(strings.to): \(message.to.map(\.formatted).joined(separator: ", "))") }
+            if !message.cc.isEmpty { lines.append("\(strings.cc): \(message.cc.map(\.formatted).joined(separator: ", "))") }
             lines += ["", quotedText, ""]
             return lines.joined(separator: "\n")
         }

@@ -6,6 +6,8 @@ und nicht über IMAP und nicht über eine eingebettete gmail.com-Seite.
 
 ## Funktionen
 
+- **Ohne Konto ausprobieren**: Im Willkommensbildschirm öffnet „Erst mal ohne Konto ausprobieren“ ein Demo-Postfach mit Beispiel-E-Mails.
+
 - **Mehrere Gmail-Konten** gleichzeitig, mit Anmeldung per Google OAuth (PKCE) im System-Anmeldefenster
 - **Tokens im macOS-Schlüsselbund**, Passwörter sieht die App nie
 - **Seitenleiste** mit Posteingang, Markiert, Wichtig, Gesendet, Entwürfe, Alle Nachrichten, Spam, Papierkorb und eigenen Labels (verschachtelt), jeweils mit Ungelesen-Zählern
@@ -83,6 +85,7 @@ Weitere Befehle:
 
 ```bash
 make test        # Unit-Tests der MailmegKit-Bibliothek
+# UI-Tests (klicken sich im Demo-Modus durch die App): in Xcode ⌘U
 make build       # Release-Build nach build/Build/Products/Release/Mailmeg.app
 ```
 
@@ -126,4 +129,4 @@ project.yml              XcodeGen-Projektdefinition
 - Gmail-Kategorien (Allgemein, Werbung, Soziale Netzwerke …)
 - Signaturen aus den Gmail-Einstellungen und Rich-Text-Editor
 - Klick auf Mitteilung öffnet die Konversation
-- Lokalisierung (Deutsch)
+- Englische Übersetzung der Oberfläche

@@ -9,17 +9,20 @@ struct MailmegApp: App {
         Window("Mailmeg", id: "main") {
             ContentView()
                 .environment(model)
-                .frame(minWidth: 900, minHeight: 520)
+                .frame(minWidth: 960, minHeight: 560)
         }
+        .defaultSize(width: 1320, height: 820)
+        .windowToolbarStyle(.unified(showsTitle: false))
         .commands {
             MailCommands(model: model)
         }
 
-        WindowGroup("New Message", id: "compose", for: ComposeDraft.self) { $draft in
+        WindowGroup("Neue E-Mail", id: "compose", for: ComposeDraft.self) { $draft in
             ComposeView(draft: draft ?? model.newDraft())
                 .environment(model)
         }
-        .defaultSize(width: 680, height: 560)
+        .defaultSize(width: 700, height: 600)
+        .windowToolbarStyle(.unified(showsTitle: true))
 
         Settings {
             SettingsView()

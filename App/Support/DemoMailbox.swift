@@ -1,0 +1,368 @@
+import Foundation
+import MailmegKit
+
+/// A fake Gmail backend with sample data. It sits behind the real `GmailClient`
+/// (as its HTTP transport), so the demo runs exactly the same code as a real account.
+/// Used for "Demo ansehen" on the welcome screen and for UI tests (`--demo`).
+enum DemoMailbox {
+    static let email = "alex@example.com"
+    static let displayName = "Alex Berger"
+
+    @MainActor
+    static func makeSession() -> AccountSession {
+        let tokens = OAuthTokens(accessToken: "demo", refreshToken: "demo", expiresAt: .distantFuture)
+        let config = GoogleOAuthConfig(clientID: "demo.apps.googleusercontent.com")
+        return AccountSession(email: email, tokens: tokens, config: config, transport: DemoTransport(), persistsTokens: false)
+    }
+}
+
+// MARK: - Sample data
+
+private struct DemoPerson {
+    let name: String
+    let email: String
+
+    var header: String { "\(name) <\(email)>" }
+    static let me = DemoPerson(name: DemoMailbox.displayName, email: DemoMailbox.email)
+}
+
+private struct DemoAttachment {
+    let filename: String
+    let mimeType: String
+    let size: Int
+}
+
+private struct DemoMessage {
+    let from: DemoPerson
+    let to: [DemoPerson]
+    let hoursAgo: Double
+    let text: String
+    var html: String? = nil
+    var attachments: [DemoAttachment] = []
+}
+
+private struct DemoThread {
+    let id: String
+    let subject: String
+    var labels: Set<String>
+    var messages: [DemoMessage]
+}
+
+private enum DemoData {
+    static let anna = DemoPerson(name: "Anna Becker", email: "anna.becker@example.com")
+    static let jonas = DemoPerson(name: "Jonas Weber", email: "jonas@example.org")
+    static let lena = DemoPerson(name: "Lena Hoffmann", email: "lena.hoffmann@example.com")
+    static let mia = DemoPerson(name: "Mia Schulz", email: "mia.schulz@example.net")
+    static let travel = DemoPerson(name: "Reisebüro Sonnenweg", email: "buchung@sonnenweg.example")
+    static let utility = DemoPerson(name: "Stadtwerke Nord", email: "rechnung@stadtwerke-nord.example")
+    static let runClub = DemoPerson(name: "Run Club", email: "hallo@runclub.example")
+    static let itSupport = DemoPerson(name: "IT-Support", email: "it@example.com")
+    static let landlord = DemoPerson(name: "Hausverwaltung Krüger", email: "kontakt@krueger-hv.example")
+    static let events = DemoPerson(name: "Team Events", email: "events@example.com")
+    static let spammer = DemoPerson(name: "Glücksbüro", email: "winner@lucky-prize.example")
+
+    static let labels: [(id: String, name: String, color: String)] = [
+        ("Label_1", "Projekte", "#4a86e8"),
+        ("Label_2", "Projekte/Website", "#16a766"),
+        ("Label_3", "Reisen", "#ffad47"),
+        ("Label_4", "Rechnungen", "#e66550"),
+    ]
+
+    static func threads() -> [DemoThread] {
+        [
+            DemoThread(id: "t-projektplan", subject: "Projektplan Q4", labels: ["INBOX", "UNREAD", "IMPORTANT", "Label_1"], messages: [
+                DemoMessage(from: .me, to: [anna], hoursAgo: 26, text: "Hi Anna,\n\nkannst du mir bis Freitag den aktuellen Stand zum Projektplan schicken?\n\nDanke!\nAlex"),
+                DemoMessage(from: anna, to: [.me], hoursAgo: 0.4, text: "Hallo Alex,\n\nanbei der Projektplan für Q4. Die wichtigsten Meilensteine:\n\n• Kick-off am 7. Oktober\n• Design-Review am 21. Oktober\n• Launch Anfang Dezember\n\nLass uns Donnerstag kurz drüber sprechen.\n\nViele Grüße\nAnna",
+                            html: """
+                            <p>Hallo Alex,</p>
+                            <p>anbei der <b>Projektplan für Q4</b>. Die wichtigsten Meilensteine:</p>
+                            <ul><li>Kick-off am 7. Oktober</li><li>Design-Review am 21. Oktober</li><li>Launch Anfang Dezember</li></ul>
+                            <p>Lass uns Donnerstag kurz drüber sprechen.</p>
+                            <p>Viele Grüße<br>Anna</p>
+                            """,
+                            attachments: [DemoAttachment(filename: "Projektplan-Q4.pdf", mimeType: "application/pdf", size: 482_133)]),
+            ]),
+            DemoThread(id: "t-flug", subject: "Ihre Buchungsbestätigung: Flug nach Lissabon", labels: ["INBOX", "UNREAD", "Label_3"], messages: [
+                DemoMessage(from: travel, to: [.me], hoursAgo: 2.5, text: "Ihre Reise nach Lissabon ist gebucht.",
+                            html: """
+                            <div style="font-family: -apple-system, Helvetica, sans-serif; max-width: 560px; margin: 0 auto;">
+                              <img src="https://example.com/banner.png" width="560" height="120" alt="">
+                              <h2 style="color:#1f3a93; margin-bottom: 4px;">Gute Reise, Alex!</h2>
+                              <p style="color:#555">Ihre Buchung <b>SW-48213</b> ist bestätigt.</p>
+                              <table style="width:100%; border-collapse: collapse; margin-top: 12px;">
+                                <tr style="background:#f3f6ff"><td style="padding:10px">Hinflug</td><td style="padding:10px"><b>Fr, 17. Okt · 07:45</b><br>Hamburg → Lissabon</td></tr>
+                                <tr><td style="padding:10px">Rückflug</td><td style="padding:10px"><b>Mo, 20. Okt · 18:10</b><br>Lissabon → Hamburg</td></tr>
+                                <tr style="background:#f3f6ff"><td style="padding:10px">Gepäck</td><td style="padding:10px">1 × 23 kg</td></tr>
+                              </table>
+                              <p style="margin-top:16px"><a href="https://example.com/buchung" style="background:#1f3a93;color:white;padding:10px 16px;border-radius:6px;text-decoration:none">Buchung ansehen</a></p>
+                            </div>
+                            """),
+            ]),
+            DemoThread(id: "t-kaffee", subject: "Kaffee am Donnerstag?", labels: ["INBOX", "STARRED"], messages: [
+                DemoMessage(from: jonas, to: [.me], hoursAgo: 5, text: "Hey Alex,\n\nhast du Donnerstag Zeit für einen Kaffee? Ich wollte dir von dem neuen Job erzählen.\n\nGruß\nJonas"),
+                DemoMessage(from: .me, to: [jonas], hoursAgo: 4, text: "Klar, 15 Uhr im Café am Park?\n\nAlex"),
+                DemoMessage(from: jonas, to: [.me], hoursAgo: 3.2, text: "Perfekt, bis dann! ☕️"),
+            ]),
+            DemoThread(id: "t-rechnung", subject: "Ihre Rechnung für Oktober", labels: ["INBOX", "Label_4"], messages: [
+                DemoMessage(from: utility, to: [.me], hoursAgo: 20, text: "Sehr geehrter Herr Berger,\n\nim Anhang finden Sie Ihre Rechnung für Oktober. Der Betrag von 84,20 € wird am 15. des Monats abgebucht.\n\nMit freundlichen Grüßen\nIhre Stadtwerke Nord",
+                            attachments: [DemoAttachment(filename: "Rechnung-2026-10.pdf", mimeType: "application/pdf", size: 96_412)]),
+            ]),
+            DemoThread(id: "t-darkmode", subject: "Neues Feature: Dark Mode fürs Dashboard", labels: ["INBOX", "Label_2"], messages: [
+                DemoMessage(from: lena, to: [.me, anna], hoursAgo: 30, text: "Hallo zusammen,\n\nich habe einen ersten Entwurf für den Dark Mode gebaut. Feedback willkommen!\n\nLena"),
+                DemoMessage(from: anna, to: [lena, .me], hoursAgo: 28, text: "Sieht super aus! Die Kontraste in den Diagrammen könnten noch etwas stärker sein."),
+                DemoMessage(from: lena, to: [.me, anna], hoursAgo: 22, text: "Guter Punkt, ist angepasst. Ich deploye das morgen auf Staging."),
+            ]),
+            DemoThread(id: "t-fotos", subject: "Fotos vom Wochenende", labels: ["INBOX", "UNREAD"], messages: [
+                DemoMessage(from: mia, to: [.me], hoursAgo: 8, text: "Hi Alex!\n\nHier die Fotos vom Ausflug an den See. War ein toller Tag!\n\nLiebe Grüße\nMia",
+                            attachments: [
+                                DemoAttachment(filename: "See-1.jpg", mimeType: "image/jpeg", size: 2_310_442),
+                                DemoAttachment(filename: "See-2.jpg", mimeType: "image/jpeg", size: 1_982_017),
+                            ]),
+            ]),
+            DemoThread(id: "t-lauf", subject: "Dein Wochenrückblick: 23,4 km gelaufen", labels: ["INBOX"], messages: [
+                DemoMessage(from: runClub, to: [.me], hoursAgo: 40, text: "Starke Woche! Du bist 23,4 km gelaufen.",
+                            html: """
+                            <div style="font-family:-apple-system,Helvetica,sans-serif;text-align:center;padding:24px;background:#fff7ed;border-radius:12px">
+                              <div style="font-size:42px;font-weight:700;color:#ea580c">23,4 km</div>
+                              <div style="color:#7c2d12">in 4 Läufen · Ø 5:21 min/km</div>
+                              <p style="color:#555">Das sind 12 % mehr als letzte Woche. Weiter so!</p>
+                            </div>
+                            """),
+            ]),
+            DemoThread(id: "t-wartung", subject: "Server-Wartung am Samstag", labels: ["INBOX"], messages: [
+                DemoMessage(from: itSupport, to: [.me], hoursAgo: 52, text: "Hallo zusammen,\n\nam Samstag zwischen 8 und 12 Uhr sind VPN und Intranet wegen Wartungsarbeiten nicht erreichbar.\n\nEuer IT-Support"),
+            ]),
+            DemoThread(id: "t-wohnung", subject: "Wohnungsübergabe", labels: ["SENT"], messages: [
+                DemoMessage(from: .me, to: [landlord], hoursAgo: 70, text: "Sehr geehrte Frau Krüger,\n\npasst Ihnen die Übergabe am 31. um 10 Uhr?\n\nViele Grüße\nAlex Berger"),
+            ]),
+            DemoThread(id: "t-sommerfest", subject: "Einladung: Sommerfest 2026", labels: [], messages: [
+                DemoMessage(from: events, to: [.me], hoursAgo: 900, text: "Liebe Kolleginnen und Kollegen,\n\nwir laden euch herzlich zum Sommerfest ein!"),
+            ]),
+            DemoThread(id: "t-entwurf", subject: "Angebot Website-Relaunch", labels: ["DRAFT"], messages: [
+                DemoMessage(from: .me, to: [anna], hoursAgo: 12, text: "Hallo Anna,\n\nhier mein Entwurf für das Angebot …"),
+            ]),
+            DemoThread(id: "t-spam", subject: "Herzlichen Glückwunsch, Sie haben gewonnen!!!", labels: ["SPAM", "UNREAD"], messages: [
+                DemoMessage(from: spammer, to: [.me], hoursAgo: 6, text: "Klicken Sie hier, um Ihren Preis abzuholen."),
+            ]),
+        ]
+    }
+}
+
+// MARK: - Fake Gmail API
+
+/// Answers Gmail REST requests from in-memory sample data, including label changes.
+private final class DemoTransport: HTTPTransport, @unchecked Sendable {
+    private let lock = NSLock()
+    private var threads = DemoData.threads()
+    private let now = Date()
+
+    func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        try await Task.sleep(nanoseconds: 120_000_000) // feels like a network
+        let (status, body) = lock.withLock { route(request) }
+        let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
+        return (try JSONSerialization.data(withJSONObject: body), response)
+    }
+
+    private func route(_ request: URLRequest) -> (Int, Any) {
+        guard let url = request.url else { return (400, [:]) }
+        let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        let query = components?.queryItems ?? []
+        let path = url.path
+            .replacingOccurrences(of: "/upload/gmail/v1/users/me/", with: "")
+            .replacingOccurrences(of: "/gmail/v1/users/me/", with: "")
+        let parts = path.split(separator: "/").map { $0.removingPercentEncoding ?? String($0) }
+        let method = request.httpMethod ?? "GET"
+
+        switch (method, parts.first ?? "", parts.count) {
+        case ("GET", "profile", _):
+            return (200, ["emailAddress": DemoMailbox.email, "historyId": "1000", "messagesTotal": 20, "threadsTotal": threads.count])
+        case ("GET", "settings", _):
+            return (200, ["sendAs": [["sendAsEmail": DemoMailbox.email, "displayName": DemoMailbox.displayName, "isDefault": true, "isPrimary": true]]])
+        case ("GET", "labels", 1):
+            return (200, ["labels": allLabels().map { labelJSON($0, withCounts: false) }])
+        case ("GET", "labels", 2):
+            guard let label = allLabels().first(where: { $0.id == parts[1] }) else { return notFound() }
+            return (200, labelJSON(label, withCounts: true))
+        case ("GET", "threads", 1):
+            return (200, listThreads(labelIDs: query.filter { $0.name == "labelIds" }.compactMap(\.value), q: query.first { $0.name == "q" }?.value))
+        case ("GET", "threads", 2):
+            guard let thread = threads.first(where: { $0.id == parts[1] }) else { return notFound() }
+            return (200, threadJSON(thread))
+        case ("POST", "threads", 3):
+            guard let index = threads.firstIndex(where: { $0.id == parts[1] }) else { return notFound() }
+            switch parts[2] {
+            case "modify":
+                let body = (request.httpBody.flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: [String]]) ?? [:]
+                threads[index].labels.formUnion(body["addLabelIds"] ?? [])
+                threads[index].labels.subtract(body["removeLabelIds"] ?? [])
+            case "trash":
+                threads[index].labels.insert("TRASH")
+                threads[index].labels.remove("INBOX")
+            case "untrash":
+                threads[index].labels.remove("TRASH")
+                threads[index].labels.insert("INBOX")
+            default:
+                return notFound()
+            }
+            return (200, ["id": threads[index].id])
+        case ("GET", "messages", _) where parts.count == 4:
+            return (200, ["size": 18, "data": Base64URL.encode(Data("Mailmeg Demo-Anhang".utf8))])
+        case ("GET", "messages", 2):
+            for thread in threads {
+                if let json = threadJSON(thread)["messages"] as? [[String: Any]],
+                   let message = json.first(where: { $0["id"] as? String == parts[1] }) {
+                    return (200, message)
+                }
+            }
+            return notFound()
+        case ("POST", "messages", _):
+            return (200, ["id": "demo-sent-\(UUID().uuidString)", "threadId": "t-sent", "labelIds": ["SENT"]])
+        case ("GET", "history", _):
+            return (200, ["historyId": "1000", "history": []])
+        default:
+            return notFound()
+        }
+    }
+
+    private func notFound() -> (Int, Any) {
+        (404, ["error": ["code": 404, "message": "Not found (demo)"]])
+    }
+
+    // MARK: Labels
+
+    private struct Label {
+        let id: String
+        let name: String
+        let type: String
+        let color: String?
+    }
+
+    private func allLabels() -> [Label] {
+        let system = ["INBOX", "STARRED", "IMPORTANT", "SENT", "DRAFT", "SPAM", "TRASH", "UNREAD"]
+            .map { Label(id: $0, name: $0, type: "system", color: nil) }
+        let user = DemoData.labels.map { Label(id: $0.id, name: $0.name, type: "user", color: $0.color) }
+        return system + user
+    }
+
+    private func labelJSON(_ label: Label, withCounts: Bool) -> [String: Any] {
+        var json: [String: Any] = [
+            "id": label.id, "name": label.name, "type": label.type,
+            "labelListVisibility": "labelShow", "messageListVisibility": "show",
+        ]
+        if let color = label.color {
+            json["color"] = ["backgroundColor": color, "textColor": "#ffffff"]
+        }
+        if withCounts {
+            let tagged = threads.filter { $0.labels.contains(label.id) }
+            json["threadsTotal"] = tagged.count
+            json["threadsUnread"] = tagged.filter { $0.labels.contains("UNREAD") }.count
+            json["messagesTotal"] = tagged.reduce(0) { $0 + $1.messages.count }
+            json["messagesUnread"] = json["threadsUnread"]
+        }
+        return json
+    }
+
+    // MARK: Threads
+
+    private func latestDate(_ thread: DemoThread) -> Date {
+        now.addingTimeInterval(-(thread.messages.map(\.hoursAgo).min() ?? 0) * 3600)
+    }
+
+    private func listThreads(labelIDs: [String], q: String?) -> [String: Any] {
+        var terms = (q ?? "").lowercased().split(separator: " ").map(String.init)
+        let unreadOnly = terms.contains("is:unread")
+        terms.removeAll { $0.contains(":") }
+
+        let matching = threads
+            .filter { thread in
+                if labelIDs.isEmpty {
+                    if !thread.labels.isDisjoint(with: ["SPAM", "TRASH"]) { return false }
+                } else if !Set(labelIDs).isSubset(of: thread.labels) {
+                    return false
+                }
+                if unreadOnly, !thread.labels.contains("UNREAD") { return false }
+                guard !terms.isEmpty else { return true }
+                let haystack = ([thread.subject] + thread.messages.flatMap { [$0.text, $0.from.name, $0.from.email] })
+                    .joined(separator: " ").lowercased()
+                return terms.allSatisfy { haystack.contains($0) }
+            }
+            .sorted { latestDate($0) > latestDate($1) }
+        return ["threads": matching.map { ["id": $0.id, "historyId": "1000"] }, "resultSizeEstimate": matching.count]
+    }
+
+    private func threadJSON(_ thread: DemoThread) -> [String: Any] {
+        let messages = thread.messages.enumerated().map { index, message -> [String: Any] in
+            let isLast = index == thread.messages.count - 1
+            var labelIDs = thread.labels.subtracting(["UNREAD", "STARRED"])
+            if isLast {
+                labelIDs.formUnion(thread.labels.intersection(["UNREAD", "STARRED"]))
+            }
+            if message.from.email == DemoMailbox.email {
+                labelIDs.insert("SENT")
+            }
+            let id = "\(thread.id)-\(index)"
+            let date = now.addingTimeInterval(-message.hoursAgo * 3600)
+            return [
+                "id": id,
+                "threadId": thread.id,
+                "labelIds": Array(labelIDs),
+                "snippet": String(message.text.replacingOccurrences(of: "\n", with: " ").prefix(140)),
+                "historyId": "1000",
+                "internalDate": String(Int64(date.timeIntervalSince1970 * 1000)),
+                "payload": payload(for: message, thread: thread, id: id, date: date),
+            ]
+        }
+        return ["id": thread.id, "historyId": "1000", "messages": messages]
+    }
+
+    private func payload(for message: DemoMessage, thread: DemoThread, id: String, date: Date) -> [String: Any] {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss Z"
+        let headers: [[String: String]] = [
+            ["name": "From", "value": message.from.header],
+            ["name": "To", "value": message.to.map(\.header).joined(separator: ", ")],
+            ["name": "Subject", "value": thread.subject],
+            ["name": "Date", "value": formatter.string(from: date)],
+            ["name": "Message-ID", "value": "<\(id)@demo.mailmeg>"],
+        ]
+
+        func textPart(_ text: String, subtype: String, partID: String) -> [String: Any] {
+            let data = Data(text.utf8)
+            return [
+                "partId": partID, "mimeType": "text/\(subtype)", "filename": "",
+                "headers": [["name": "Content-Type", "value": "text/\(subtype); charset=UTF-8"]],
+                "body": ["size": data.count, "data": Base64URL.encode(data)],
+            ]
+        }
+
+        var body: [String: Any]
+        if let html = message.html {
+            body = [
+                "partId": "0", "mimeType": "multipart/alternative", "filename": "",
+                "body": ["size": 0],
+                "parts": [textPart(message.text, subtype: "plain", partID: "0.0"), textPart(html, subtype: "html", partID: "0.1")],
+            ]
+        } else {
+            body = textPart(message.text, subtype: "plain", partID: "0")
+        }
+
+        guard !message.attachments.isEmpty else {
+            body["headers"] = headers + ((body["headers"] as? [[String: String]]) ?? [])
+            return body
+        }
+        let attachmentParts: [[String: Any]] = message.attachments.enumerated().map { index, attachment in
+            [
+                "partId": "\(index + 1)", "mimeType": attachment.mimeType, "filename": attachment.filename,
+                "headers": [["name": "Content-Disposition", "value": "attachment; filename=\"\(attachment.filename)\""]],
+                "body": ["attachmentId": "att-\(index)", "size": attachment.size],
+            ]
+        }
+        return [
+            "partId": "", "mimeType": "multipart/mixed", "filename": "",
+            "headers": headers,
+            "body": ["size": 0],
+            "parts": [body] + attachmentParts,
+        ]
+    }
+}

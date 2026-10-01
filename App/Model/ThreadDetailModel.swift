@@ -104,7 +104,7 @@ final class ThreadDetailModel {
     func data(for attachment: AttachmentInfo) async throws -> Data {
         if let inline = attachment.inlineData { return inline }
         guard let attachmentID = attachment.attachmentID else {
-            throw GmailAPIError(status: 0, message: "The attachment has no data.", reason: nil)
+            throw GmailAPIError(status: 0, message: "Der Anhang enthält keine Daten.", reason: nil)
         }
         return try await account.client.attachment(messageID: attachment.messageID, attachmentID: attachmentID)
     }
@@ -143,6 +143,24 @@ final class ThreadDetailModel {
 
     // MARK: - Compose
 
+    /// Sends a short reply written in the inline reply field below the conversation.
+    func sendQuickReply(_ text: String, replyAll: Bool) async throws {
+        guard var draft = draft(replyAll ? .replyAll : .reply) else { return }
+        draft.body = text + draft.body
+        try await MailSender.send(draft, account: account)
+        await load()
+    }
+
+    var replyRecipientName: String? {
+        guard let message = latestMessage else { return nil }
+        let recipients = ReplyBuilder.recipients(for: message, kind: .reply, selfAddresses: [account.email])
+        return recipients.to.first?.name?.components(separatedBy: " ").first ?? recipients.to.first?.address
+    }
+
+    var participantCount: Int {
+        Set(messages.flatMap { item in ([item.message.from].compactMap { $0 } + item.message.to + item.message.cc).map { $0.address.lowercased() } }).count
+    }
+
     func draft(_ kind: ComposeKind, messageID: String? = nil) -> ComposeDraft? {
         guard let item = messageID.flatMap({ id in messages.first { $0.id == id } }) ?? messages.last else { return nil }
         let message = item.message
@@ -151,6 +169,7 @@ final class ThreadDetailModel {
             for: message,
             quotedText: item.content.quotableText,
             kind: kind,
+            strings: .german,
             dateFormatter: { $0.formatted(date: .abbreviated, time: .shortened) }
         )
         var draft = ComposeDraft(accountID: account.email, kind: kind)

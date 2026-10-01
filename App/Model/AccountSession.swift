@@ -9,6 +9,8 @@ struct SidebarItem: Identifiable, Hashable {
     let systemImage: String
     let unread: Int
     let indent: Int
+    /// Gmail label colour as hex string (user labels only).
+    var colorHex: String? = nil
 }
 
 /// One signed-in Gmail account with its API client and labels.
@@ -27,13 +29,15 @@ final class AccountSession: Identifiable {
     var needsReauth = false
     private var lastHistoryID: String?
 
-    init(email: String, tokens: OAuthTokens, config: GoogleOAuthConfig) {
+    init(email: String, tokens: OAuthTokens, config: GoogleOAuthConfig, transport: HTTPTransport = URLSessionTransport(), persistsTokens: Bool = true) {
         self.email = email
-        let oauth = GoogleOAuthClient(config: config)
+        let oauth = GoogleOAuthClient(config: config, transport: transport)
         tokenManager = TokenManager(tokens: tokens, oauth: oauth) { updated in
-            AccountStore.save(updated, for: email)
+            if persistsTokens {
+                AccountStore.save(updated, for: email)
+            }
         }
-        client = GmailClient(tokens: tokenManager)
+        client = GmailClient(tokens: tokenManager, transport: transport)
     }
 
     var sender: EmailAddress { EmailAddress(name: displayName, address: email) }
@@ -44,8 +48,15 @@ final class AccountSession: Identifiable {
 
     func label(id: String) -> GmailLabel? { labels.first { $0.id == id } }
 
+    /// User labels of a conversation, for the chips in the list and detail view.
+    func userLabels(in ids: Set<String>) -> [GmailLabel] {
+        labels
+            .filter { ids.contains($0.id) && !$0.isSystem && !$0.isHidden }
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+    }
+
     func title(forLabel id: String) -> String {
-        if id == Self.allMailID { return String(localized: "All Mail") }
+        if id == Self.allMailID { return "Alle Nachrichten" }
         if let system = Self.systemLabels.first(where: { $0.id == id }) { return system.title }
         return label(id: id)?.name.components(separatedBy: "/").last ?? id
     }
@@ -116,14 +127,14 @@ final class AccountSession: Identifiable {
     }
 
     private static let systemLabels: [SystemLabelInfo] = [
-        SystemLabelInfo(id: SystemLabel.inbox, title: String(localized: "Inbox"), systemImage: "tray", showsUnread: true),
-        SystemLabelInfo(id: SystemLabel.starred, title: String(localized: "Starred"), systemImage: "star", showsUnread: false),
-        SystemLabelInfo(id: SystemLabel.important, title: String(localized: "Important"), systemImage: "tag", showsUnread: false),
-        SystemLabelInfo(id: SystemLabel.sent, title: String(localized: "Sent"), systemImage: "paperplane", showsUnread: false),
-        SystemLabelInfo(id: SystemLabel.draft, title: String(localized: "Drafts"), systemImage: "doc", showsUnread: false),
-        SystemLabelInfo(id: allMailID, title: String(localized: "All Mail"), systemImage: "archivebox", showsUnread: false),
-        SystemLabelInfo(id: SystemLabel.spam, title: String(localized: "Spam"), systemImage: "xmark.bin", showsUnread: true),
-        SystemLabelInfo(id: SystemLabel.trash, title: String(localized: "Trash"), systemImage: "trash", showsUnread: false),
+        SystemLabelInfo(id: SystemLabel.inbox, title: "Posteingang", systemImage: "tray.fill", showsUnread: true),
+        SystemLabelInfo(id: SystemLabel.starred, title: "Markiert", systemImage: "star.fill", showsUnread: false),
+        SystemLabelInfo(id: SystemLabel.important, title: "Wichtig", systemImage: "bookmark.fill", showsUnread: false),
+        SystemLabelInfo(id: SystemLabel.sent, title: "Gesendet", systemImage: "paperplane.fill", showsUnread: false),
+        SystemLabelInfo(id: SystemLabel.draft, title: "Entwürfe", systemImage: "doc.fill", showsUnread: false),
+        SystemLabelInfo(id: allMailID, title: "Alle Nachrichten", systemImage: "archivebox.fill", showsUnread: false),
+        SystemLabelInfo(id: SystemLabel.spam, title: "Spam", systemImage: "exclamationmark.octagon.fill", showsUnread: true),
+        SystemLabelInfo(id: SystemLabel.trash, title: "Papierkorb", systemImage: "trash.fill", showsUnread: false),
     ]
 
     var systemItems: [SidebarItem] {
@@ -149,7 +160,8 @@ final class AccountSession: Identifiable {
                     title: components.last ?? label.name,
                     systemImage: "tag",
                     unread: label.threadsUnread ?? 0,
-                    indent: components.count - 1
+                    indent: components.count - 1,
+                    colorHex: label.color?.backgroundColor
                 )
             }
     }

@@ -18,6 +18,14 @@ final class MailboxModel {
     var threads: [ThreadSummary] = []
     var searchText = ""
     private(set) var activeQuery = ""
+    /// Shows only unread conversations (adds `is:unread` to the query).
+    private(set) var unreadOnly = false
+
+    func setUnreadOnly(_ value: Bool) {
+        guard value != unreadOnly else { return }
+        unreadOnly = value
+        Task { await reload() }
+    }
     private(set) var nextPageToken: String?
     private(set) var isLoading = false
     private(set) var isLoadingMore = false
@@ -32,7 +40,7 @@ final class MailboxModel {
     }
 
     var title: String {
-        activeQuery.isEmpty ? account.title(forLabel: labelID) : String(localized: "Search")
+        activeQuery.isEmpty ? account.title(forLabel: labelID) : "Suche"
     }
 
     private var labelIDs: [String] {
@@ -106,14 +114,23 @@ final class MailboxModel {
     private func fetchPage(pageToken: String?) async throws -> ([ThreadSummary], String?) {
         let list = try await account.client.listThreads(
             labelIDs: labelIDs,
-            query: activeQuery.isEmpty ? nil : activeQuery,
+            query: effectiveQuery,
             pageToken: pageToken,
             maxResults: Self.pageSize
         )
         let ids = (list.threads ?? []).map(\.id)
         let threads = try await account.client.threads(ids: ids, format: .metadata)
         let own: Set<String> = [account.email]
-        return (threads.map { ThreadSummary(thread: $0, selfAddresses: own) }, list.nextPageToken)
+        return (threads.map { ThreadSummary(thread: $0, selfAddresses: own, selfName: "Ich") }, list.nextPageToken)
+    }
+
+    private var effectiveQuery: String? {
+        let parts = [activeQuery, unreadOnly ? "is:unread" : ""].filter { !$0.isEmpty }
+        return parts.isEmpty ? nil : parts.joined(separator: " ")
+    }
+
+    var unreadCount: Int {
+        account.label(id: labelID)?.threadsUnread ?? threads.filter(\.isUnread).count
     }
 
     // MARK: - Actions

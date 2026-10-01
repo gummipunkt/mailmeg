@@ -4,54 +4,151 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct ThreadDetailView: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.openWindow) private var openWindow
     @Bindable var detail: ThreadDetailModel
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                if !detail.subject.isEmpty {
-                    Text(detail.subject)
-                        .font(.title2.weight(.semibold))
-                        .textSelection(.enabled)
-                        .padding(.bottom, 4)
-                }
+                header
                 ForEach($detail.messages) { $item in
                     MessageCardView(item: $item, detail: detail)
                 }
             }
-            .padding(20)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 28)
+            .padding(.vertical, 22)
+            .frame(maxWidth: 900)
+            .frame(maxWidth: .infinity)
+        }
+        .background(Theme.canvas)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if !detail.messages.isEmpty {
+                QuickReplyBar(detail: detail)
+            }
         }
         .overlay {
             if detail.isLoading && detail.messages.isEmpty {
                 ProgressView()
             } else if let error = detail.loadError, detail.messages.isEmpty {
                 ContentUnavailableView {
-                    Label("Could Not Load Conversation", systemImage: "exclamationmark.triangle")
+                    Label("Konversation konnte nicht geladen werden", systemImage: "exclamationmark.triangle")
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("Try Again") { Task { await detail.load() } }
+                    Button("Erneut versuchen") { Task { await detail.load() } }
                 }
             }
         }
+        .toolbar { toolbar }
+    }
+
+    @ViewBuilder
+    private var header: some View {
+        if !detail.subject.isEmpty || !detail.messages.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(detail.subject.isEmpty ? "(kein Betreff)" : detail.subject)
+                    .font(.system(size: 22, weight: .bold))
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("detail.subject")
+                HStack(spacing: 6) {
+                    let labelIDs = Set(detail.messages.flatMap { $0.message.labelIds ?? [] })
+                    ForEach(detail.account.userLabels(in: labelIDs)) { LabelChip(label: $0) }
+                    if labelIDs.contains(SystemLabel.important) {
+                        Label("Wichtig", systemImage: "bookmark.fill")
+                            .font(.system(size: 10.5, weight: .medium))
+                            .foregroundStyle(.orange)
+                    }
+                    Text(metaLine)
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.bottom, 6)
+        }
+    }
+
+    private var metaLine: String {
+        let count = detail.messages.count
+        let messages = count == 1 ? "1 Nachricht" : "\(count) Nachrichten"
+        let people = detail.participantCount
+        return people > 2 ? "\(messages) · \(people) Beteiligte" : messages
+    }
+
+    @ToolbarContentBuilder
+    private var toolbar: some ToolbarContent {
+        ToolbarItemGroup(placement: .primaryAction) {
+            ControlGroup {
+                Button {
+                    if let draft = detail.draft(.reply) { openWindow(value: draft) }
+                } label: {
+                    Label("Antworten", systemImage: "arrowshape.turn.up.left")
+                }
+                .help("Antworten (⌘R)")
+                Button {
+                    if let draft = detail.draft(.replyAll) { openWindow(value: draft) }
+                } label: {
+                    Label("Allen antworten", systemImage: "arrowshape.turn.up.left.2")
+                }
+                .help("Allen antworten (⇧⌘R)")
+                Button {
+                    if let draft = detail.draft(.forward) { openWindow(value: draft) }
+                } label: {
+                    Label("Weiterleiten", systemImage: "arrowshape.turn.up.right")
+                }
+                .help("Weiterleiten (⇧⌘F)")
+            }
+
+            Button {
+                model.perform(.archive)
+            } label: {
+                Label("Archivieren", systemImage: "archivebox")
+            }
+            .help("Archivieren (⌃⌘A)")
+
+            Button {
+                model.perform(.trash)
+            } label: {
+                Label("Löschen", systemImage: "trash")
+            }
+            .help("In den Papierkorb (⌘⌫)")
+
+            Button {
+                model.toggleRead()
+            } label: {
+                Label("Gelesen/Ungelesen", systemImage: model.selectedThread?.isUnread == true ? "envelope.open" : "envelope.badge")
+            }
+            .help("Als gelesen/ungelesen markieren (⇧⌘U)")
+
+            Button {
+                model.toggleStar()
+            } label: {
+                Label("Markieren", systemImage: model.selectedThread?.isStarred == true ? "star.fill" : "star")
+            }
+            .help("Markieren (⇧⌘L)")
+        }
     }
 }
+
+// MARK: - Message card
 
 struct MessageCardView: View {
     @Binding var item: MessageItem
     let detail: ThreadDetailModel
     @Environment(\.openWindow) private var openWindow
-    @State private var bodyHeight: CGFloat = 40
+    @State private var bodyHeight: CGFloat = 60
 
     private var message: GmailMessage { item.message }
+    private var senderName: String { message.from?.displayName ?? "(unbekannt)" }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
+                .padding(.horizontal, 16)
+                .padding(.vertical, item.isExpanded ? 14 : 11)
                 .contentShape(Rectangle())
-                .onTapGesture { item.isExpanded.toggle() }
-                .padding(12)
+                .onTapGesture { withAnimation(.snappy(duration: 0.2)) { item.isExpanded.toggle() } }
 
             if item.isExpanded {
                 if item.hasRemoteContent && !item.allowsRemoteContent {
@@ -66,64 +163,68 @@ struct MessageCardView: View {
                 )
                 .frame(height: max(bodyHeight, 40))
                 .background(item.content.html != nil ? Color.white : Color.clear)
+                .padding(.horizontal, item.content.html != nil ? 0 : 4)
 
                 let attachments = item.content.visibleAttachments
                 if !attachments.isEmpty {
-                    Divider()
-                    AttachmentStrip(attachments: attachments, detail: detail)
-                        .padding(12)
+                    AttachmentGrid(attachments: attachments, detail: detail)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
                 }
             }
         }
-        .background(.background, in: RoundedRectangle(cornerRadius: 10))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.separator))
+        .card()
+        .opacity(item.isExpanded ? 1 : 0.92)
     }
 
+    @ViewBuilder
     private var header: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Avatar(name: message.from?.displayName ?? "?")
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(message.from?.displayName ?? String(localized: "(unknown)"))
-                        .font(.headline)
-                    if let address = message.from?.address, message.from?.name != nil {
-                        Text(address)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+        if item.isExpanded {
+            HStack(alignment: .top, spacing: 12) {
+                AvatarView(name: senderName, size: 38)
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(senderName)
+                            .font(.system(size: 13.5, weight: .semibold))
+                        if let address = message.from?.address, message.from?.name != nil {
+                            Text(address)
+                                .font(.system(size: 11.5))
+                                .foregroundStyle(.secondary)
+                        }
                     }
-                }
-                .textSelection(.enabled)
-                if item.isExpanded {
+                    .textSelection(.enabled)
                     Text(recipientLine)
-                        .font(.subheadline)
+                        .font(.system(size: 11.5))
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
                         .textSelection(.enabled)
-                } else {
-                    Text(HTMLText.decodeEntities(message.snippet ?? ""))
-                        .font(.subheadline)
+                }
+                Spacer(minLength: 8)
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(Formatting.fullDate(message.date))
+                        .font(.system(size: 11.5))
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                    HStack(spacing: 0) {
+                        IconButton(systemImage: "arrowshape.turn.up.left", help: "Antworten") { open(.reply) }
+                        IconButton(systemImage: "arrowshape.turn.up.left.2", help: "Allen antworten") { open(.replyAll) }
+                        IconButton(systemImage: "arrowshape.turn.up.right", help: "Weiterleiten") { open(.forward) }
+                    }
                 }
             }
-            Spacer()
-            Text(Formatting.fullDate(message.date))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            if item.isExpanded {
-                Menu {
-                    Button("Reply") { open(.reply) }
-                    Button("Reply All") { open(.replyAll) }
-                    Button("Forward") { open(.forward) }
-                } label: {
-                    Image(systemName: "arrowshape.turn.up.left")
-                } primaryAction: {
-                    open(.reply)
-                }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
-                .help("Reply")
+        } else {
+            HStack(spacing: 10) {
+                AvatarView(name: senderName, size: 26)
+                Text(senderName)
+                    .font(.system(size: 13, weight: .semibold))
+                    .lineLimit(1)
+                Text(HTMLText.decodeEntities(message.snippet ?? ""))
+                    .font(.system(size: 12.5))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                Spacer(minLength: 8)
+                Text(Formatting.listDate(message.date))
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -131,26 +232,27 @@ struct MessageCardView: View {
     private var recipientLine: String {
         var parts: [String] = []
         if !message.to.isEmpty {
-            parts.append(String(localized: "To: ") + message.to.map(\.displayName).joined(separator: ", "))
+            parts.append("an " + message.to.map { $0.address == detail.account.email ? "mich" : $0.displayName }.joined(separator: ", "))
         }
         if !message.cc.isEmpty {
-            parts.append(String(localized: "Cc: ") + message.cc.map(\.displayName).joined(separator: ", "))
+            parts.append("Cc " + message.cc.map(\.displayName).joined(separator: ", "))
         }
-        return parts.joined(separator: "  ·  ")
+        return parts.joined(separator: " · ")
     }
 
     private var remoteContentBanner: some View {
-        HStack {
-            Image(systemName: "eye.slash")
-            Text("Remote content was blocked to protect your privacy.")
+        HStack(spacing: 8) {
+            Image(systemName: "eye.slash.fill")
+                .foregroundStyle(.secondary)
+            Text("Externe Inhalte wurden zum Schutz deiner Privatsphäre blockiert.")
+                .font(.system(size: 12))
             Spacer()
-            Button("Load Remote Content") { item.allowsRemoteContent = true }
+            Button("Laden") { item.allowsRemoteContent = true }
                 .controlSize(.small)
         }
-        .font(.callout)
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 16)
         .padding(.vertical, 8)
-        .background(Color.yellow.opacity(0.15))
+        .background(Color.accentColor.opacity(0.08))
     }
 
     private func open(_ kind: ComposeKind) {
@@ -176,66 +278,150 @@ struct MessageCardView: View {
     }
 }
 
-struct Avatar: View {
-    let name: String
+// MARK: - Attachments
 
-    var body: some View {
-        let initial = name.trimmingCharacters(in: CharacterSet(charactersIn: "\"' ")).first.map { String($0).uppercased() } ?? "?"
-        Circle()
-            .fill(color.gradient)
-            .frame(width: 32, height: 32)
-            .overlay(Text(initial).font(.headline).foregroundStyle(.white))
-    }
-
-    private var color: Color {
-        let palette: [Color] = [.blue, .purple, .pink, .orange, .teal, .green, .indigo, .brown]
-        let hash = name.unicodeScalars.reduce(0) { ($0 &* 31 &+ Int($1.value)) & 0x7FFFFFFF }
-        return palette[hash % palette.count]
-    }
-}
-
-struct AttachmentStrip: View {
+struct AttachmentGrid: View {
     let attachments: [AttachmentInfo]
     let detail: ThreadDetailModel
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(attachments) { attachment in
-                    Button {
-                        Task { await detail.open(attachment) }
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(nsImage: icon(for: attachment))
-                                .resizable()
-                                .frame(width: 24, height: 24)
-                            VStack(alignment: .leading, spacing: 0) {
-                                Text(attachment.filename.isEmpty ? String(localized: "Attachment") : attachment.filename)
-                                    .lineLimit(1)
-                                Text(Formatting.byteCount(attachment.size))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 6)
-                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
-                    }
-                    .buttonStyle(.plain)
-                    .help("Open \(attachment.filename)")
-                    .contextMenu {
-                        Button("Open") { Task { await detail.open(attachment) } }
-                        Button("Save As…") { Task { await detail.save(attachment) } }
-                    }
-                }
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 190, maximum: 260), spacing: 8)], alignment: .leading, spacing: 8) {
+            ForEach(attachments) { attachment in
+                AttachmentTile(attachment: attachment, detail: detail)
             }
         }
     }
+}
 
-    private func icon(for attachment: AttachmentInfo) -> NSImage {
+private struct AttachmentTile: View {
+    let attachment: AttachmentInfo
+    let detail: ThreadDetailModel
+    @State private var isHovering = false
+
+    var body: some View {
+        Button {
+            Task { await detail.open(attachment) }
+        } label: {
+            HStack(spacing: 10) {
+                Image(nsImage: icon)
+                    .resizable()
+                    .frame(width: 30, height: 30)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(attachment.filename.isEmpty ? "Anhang" : attachment.filename)
+                        .font(.system(size: 12, weight: .medium))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Text(Formatting.byteCount(attachment.size))
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+                if isHovering {
+                    IconButton(systemImage: "arrow.down.circle", help: "Sichern unter …") {
+                        Task { await detail.save(attachment) }
+                    }
+                }
+            }
+            .padding(8)
+            .background(Color.primary.opacity(isHovering ? 0.07 : 0.04), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovering = $0 }
+        .help("\(attachment.filename) öffnen")
+        .contextMenu {
+            Button("Öffnen") { Task { await detail.open(attachment) } }
+            Button("Sichern unter …") { Task { await detail.save(attachment) } }
+        }
+    }
+
+    private var icon: NSImage {
         let type = UTType(mimeType: attachment.mimeType)
             ?? UTType(filenameExtension: (attachment.filename as NSString).pathExtension)
             ?? .data
         return NSWorkspace.shared.icon(for: type)
+    }
+}
+
+// MARK: - Quick reply
+
+private struct QuickReplyBar: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.openWindow) private var openWindow
+    let detail: ThreadDetailModel
+    @State private var text = ""
+    @State private var isSending = false
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 8) {
+            TextField(placeholder, text: $text, axis: .vertical)
+                .textFieldStyle(.plain)
+                .font(.system(size: 13))
+                .lineLimit(1...8)
+                .focused($isFocused)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 9)
+                .background(Theme.cardFill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(isFocused ? Color.accentColor.opacity(0.6) : Color.primary.opacity(0.1))
+                )
+                .accessibilityIdentifier("quickReply")
+
+            IconButton(systemImage: "arrow.up.left.and.arrow.down.right", help: "Im Fenster bearbeiten") {
+                guard var draft = detail.draft(.reply) else { return }
+                draft.body = text + draft.body
+                text = ""
+                openWindow(value: draft)
+            }
+            .padding(.bottom, 6)
+
+            Button {
+                send()
+            } label: {
+                if isSending {
+                    ProgressView().controlSize(.small).frame(width: 28, height: 28)
+                } else {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.system(size: 26))
+                        .foregroundStyle(canSend ? Color.accentColor : Color.secondary.opacity(0.5))
+                }
+            }
+            .buttonStyle(.plain)
+            .disabled(!canSend)
+            .keyboardShortcut(.return, modifiers: .command)
+            .help("Senden (⌘↩)")
+            .padding(.bottom, 2)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(.bar)
+        .overlay(alignment: .top) { Divider() }
+    }
+
+    private var placeholder: String {
+        if let name = detail.replyRecipientName { return "Antwort an \(name) …" }
+        return "Antworten …"
+    }
+
+    private var canSend: Bool {
+        !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSending
+    }
+
+    private func send() {
+        guard canSend else { return }
+        let message = text
+        isSending = true
+        Task {
+            defer { isSending = false }
+            do {
+                try await detail.sendQuickReply(message, replyAll: false)
+                text = ""
+                model.didSend(from: detail.account)
+            } catch {
+                model.present(error)
+            }
+        }
     }
 }

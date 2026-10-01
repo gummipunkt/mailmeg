@@ -106,4 +106,18 @@ final class MessageParsingTests: XCTestCase {
         let body = ReplyBuilder.body(for: sampleMessage, quotedText: "line1\n> older", kind: .reply, dateFormatter: { _ in "DATE" })
         XCTAssertEqual(body, "\n\nOn DATE, \"Doe, Jane\" <jane@example.com> wrote:\n> line1\n>> older\n")
     }
+
+    func testGermanQuoteHeader() {
+        let body = ReplyBuilder.body(for: sampleMessage, quotedText: "Hallo", kind: .reply, strings: .german, dateFormatter: { _ in "1. Okt." })
+        XCTAssertEqual(body, "\n\nAm 1. Okt. schrieb \"Doe, Jane\" <jane@example.com>:\n> Hallo\n")
+
+        let forward = ReplyBuilder.body(for: sampleMessage, quotedText: "Text", kind: .forward, strings: .german, dateFormatter: { _ in "D" })
+        XCTAssertTrue(forward.contains("---------- Weitergeleitete Nachricht ---------\nVon: \"Doe, Jane\" <jane@example.com>\nDatum: D\nBetreff: Quarterly report"))
+    }
+
+    func testOwnMessagesUseSelfName() {
+        let thread = GmailThread(id: "t1", historyId: nil, snippet: nil, messages: [sampleMessage])
+        let summary = ThreadSummary(thread: thread, selfAddresses: ["jane@example.com"], selfName: "Ich")
+        XCTAssertEqual(summary.participants, ["Ich"])
+    }
 }

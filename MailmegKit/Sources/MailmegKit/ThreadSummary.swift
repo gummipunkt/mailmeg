@@ -13,7 +13,7 @@ public struct ThreadSummary: Identifiable, Hashable, Sendable {
     public var hasAttachments: Bool
     public var labelIDs: Set<String>
 
-    public init(thread: GmailThread, selfAddresses: Set<String> = []) {
+    public init(thread: GmailThread, selfAddresses: Set<String> = [], selfName: String = "me") {
         let messages = thread.messages ?? []
         let ownAddresses = Set(selfAddresses.map { $0.lowercased() })
         id = thread.id
@@ -32,7 +32,7 @@ public struct ThreadSummary: Identifiable, Hashable, Sendable {
             guard let from = message.from else { continue }
             let key = from.address.lowercased()
             guard seen.insert(key).inserted else { continue }
-            names.append(ownAddresses.contains(key) ? "me" : from.displayName)
+            names.append(ownAddresses.contains(key) ? selfName : from.displayName)
         }
         participants = names
     }

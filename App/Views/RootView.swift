@@ -1,87 +1,50 @@
+import AppKit
 import MailmegKit
 import SwiftUI
 
 struct RootView: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         NavigationSplitView {
             SidebarView()
-                .navigationSplitViewColumnWidth(min: 180, ideal: 230, max: 320)
+                .navigationSplitViewColumnWidth(min: 200, ideal: 236, max: 320)
         } content: {
             Group {
                 if let mailbox = model.mailbox {
                     ThreadListView(mailbox: mailbox)
                 } else {
-                    ContentUnavailableView("No Mailbox Selected", systemImage: "tray")
+                    ContentUnavailableView("Kein Postfach ausgewählt", systemImage: "tray")
                 }
             }
-            .navigationSplitViewColumnWidth(min: 280, ideal: 380, max: 560)
+            .navigationSplitViewColumnWidth(min: 300, ideal: 380, max: 560)
         } detail: {
             if let detail = model.threadDetail {
                 ThreadDetailView(detail: detail)
                     .id(detail.threadID)
             } else {
-                ContentUnavailableView("No Conversation Selected", systemImage: "envelope.open")
+                EmptyDetailView(unread: model.mailbox?.unreadCount ?? 0)
             }
         }
-        .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
-                Button {
-                    openWindow(value: model.newDraft())
-                } label: {
-                    Label("New Message", systemImage: "square.and.pencil")
-                }
-                .help("New Message (⌘N)")
+    }
+}
 
-                Button {
-                    if let draft = model.replyDraft(.reply) { openWindow(value: draft) }
-                } label: {
-                    Label("Reply", systemImage: "arrowshape.turn.up.left")
-                }
-                .disabled(model.threadDetail == nil)
-                .help("Reply (⌘R)")
+private struct EmptyDetailView: View {
+    let unread: Int
 
-                Button {
-                    model.perform(.archive)
-                } label: {
-                    Label("Archive", systemImage: "archivebox")
-                }
-                .disabled(model.selectedThreadID == nil)
-                .help("Archive (⌃⌘A)")
-
-                Button {
-                    model.perform(.trash)
-                } label: {
-                    Label("Delete", systemImage: "trash")
-                }
-                .disabled(model.selectedThreadID == nil)
-                .help("Move to Trash (⌘⌫)")
-
-                Button {
-                    model.toggleRead()
-                } label: {
-                    Label("Read/Unread", systemImage: model.selectedThread?.isUnread == true ? "envelope.open" : "envelope.badge")
-                }
-                .disabled(model.selectedThreadID == nil)
-                .help("Mark as Read/Unread (⇧⌘U)")
-
-                Button {
-                    model.toggleStar()
-                } label: {
-                    Label("Star", systemImage: model.selectedThread?.isStarred == true ? "star.fill" : "star")
-                }
-                .disabled(model.selectedThreadID == nil)
-                .help("Star (⇧⌘L)")
-
-                Button {
-                    Task { await model.refreshAll() }
-                } label: {
-                    Label("Get New Mail", systemImage: "arrow.clockwise")
-                }
-                .help("Get New Mail (⇧⌘N)")
-            }
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .frame(width: 84, height: 84)
+                .opacity(0.9)
+            Text(unread > 0 ? "\(unread) ungelesene Konversation\(unread == 1 ? "" : "en")" : "Alles erledigt")
+                .font(.system(size: 17, weight: .semibold))
+            Text("Wähle eine E-Mail aus der Liste aus.")
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Theme.canvas)
     }
 }

@@ -16,28 +16,23 @@ final class AppModel {
     private(set) var accounts: [AccountSession] = []
     private(set) var mailbox: MailboxModel?
     private(set) var threadDetail: ThreadDetailModel?
-    var errorMessage: String?
+    private(set) var selection: MailboxSelection?
+    private(set) var selectedThreadID: String?
     private(set) var isSigningIn = false
-
-    var selection: MailboxSelection? {
-        didSet {
-            guard selection != oldValue else { return }
-            openSelectedMailbox()
-        }
-    }
-
-    var selectedThreadID: String? {
-        didSet {
-            guard selectedThreadID != oldValue else { return }
-            openSelectedThread()
-        }
-    }
+    private(set) var isDemo = false
+    var errorMessage: String?
 
     private let auth = AuthService()
     private var pollTask: Task<Void, Never>?
     private var started = false
 
     init() {
+        if LaunchOptions.demo {
+            isDemo = true
+            accounts = [DemoMailbox.makeSession()]
+            return
+        }
+        guard !LaunchOptions.onboarding else { return }
         let config = AppSettings.oauthConfig
         accounts = AccountStore.emails.compactMap { email in
             guard let tokens = AccountStore.tokens(for: email) else { return nil }
@@ -54,17 +49,25 @@ final class AppModel {
     func start() async {
         guard !started else { return }
         started = true
-        if AppSettings.notificationsEnabled {
+        if AppSettings.notificationsEnabled, !isDemo {
             _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
         }
         if selection == nil, let first = accounts.first {
-            selection = MailboxSelection(accountID: first.id, labelID: SystemLabel.inbox)
+            select(MailboxSelection(accountID: first.id, labelID: SystemLabel.inbox))
         }
         for account in accounts {
             await refreshAccount(account)
         }
         updateDockBadge()
         startPolling()
+    }
+
+    /// Lets people try the app without a Google account.
+    func startDemo() async {
+        isDemo = true
+        accounts = [DemoMailbox.makeSession()]
+        started = false
+        await start()
     }
 
     private func refreshAccount(_ account: AccountSession) async {
@@ -91,7 +94,7 @@ final class AppModel {
     func pollAll() async {
         for account in accounts where !account.needsReauth {
             do {
-                let changed = try await account.poll(notify: AppSettings.notificationsEnabled)
+                let changed = try await account.poll(notify: AppSettings.notificationsEnabled && !isDemo)
                 if changed, let mailbox, mailbox.account === account {
                     await mailbox.refreshFirstPage()
                 }
@@ -128,7 +131,7 @@ final class AppModel {
     func signIn(loginHint: String? = nil) async {
         let config = AppSettings.oauthConfig
         guard config.isValid else {
-            errorMessage = String(localized: "Please enter a valid Google OAuth client ID first (it ends with .apps.googleusercontent.com).")
+            errorMessage = "Bitte gib zuerst eine gültige Google-OAuth-Client-ID ein (sie endet auf .apps.googleusercontent.com)."
             return
         }
         isSigningIn = true
@@ -139,6 +142,10 @@ final class AppModel {
             let email = try await probe.profile().emailAddress
             try AccountStore.add(email, tokens: tokens)
 
+            if isDemo {
+                isDemo = false
+                accounts = []
+            }
             let session = AccountSession(email: email, tokens: tokens, config: config)
             if let index = accounts.firstIndex(where: { $0.id == email }) {
                 accounts[index] = session
@@ -146,12 +153,7 @@ final class AppModel {
                 accounts.append(session)
             }
             await refreshAccount(session)
-            let inbox = MailboxSelection(accountID: email, labelID: SystemLabel.inbox)
-            if selection == inbox {
-                openSelectedMailbox()
-            } else {
-                selection = inbox
-            }
+            select(MailboxSelection(accountID: email, labelID: SystemLabel.inbox), force: true)
             updateDockBadge()
             if pollTask == nil { startPolling() }
         } catch {
@@ -162,34 +164,42 @@ final class AppModel {
     }
 
     func remove(_ account: AccountSession) async {
-        if let tokens = AccountStore.tokens(for: account.email) {
+        if !isDemo, let tokens = AccountStore.tokens(for: account.email) {
             try? await GoogleOAuthClient(config: AppSettings.oauthConfig).revoke(token: tokens.refreshToken)
         }
-        AccountStore.remove(account.email)
+        if !isDemo {
+            AccountStore.remove(account.email)
+        }
         accounts.removeAll { $0.id == account.id }
+        if accounts.isEmpty {
+            isDemo = false
+        }
         if selection?.accountID == account.id {
-            selection = accounts.first.map { MailboxSelection(accountID: $0.id, labelID: SystemLabel.inbox) }
+            select(accounts.first.map { MailboxSelection(accountID: $0.id, labelID: SystemLabel.inbox) })
         }
         updateDockBadge()
     }
 
     // MARK: - Selection
 
-    private func openSelectedMailbox() {
-        threadDetail = nil
-        selectedThreadID = nil
-        guard let selection, let account = account(id: selection.accountID) else {
+    func select(_ newSelection: MailboxSelection?, force: Bool = false) {
+        guard force || newSelection != selection else { return }
+        selection = newSelection
+        selectThread(nil)
+        guard let newSelection, let account = account(id: newSelection.accountID) else {
             mailbox = nil
             return
         }
-        let mailbox = MailboxModel(account: account, labelID: selection.labelID)
+        let mailbox = MailboxModel(account: account, labelID: newSelection.labelID)
         mailbox.onError = { [weak self] error in self?.present(error, account: account) }
         self.mailbox = mailbox
         Task { await mailbox.reload() }
     }
 
-    private func openSelectedThread() {
-        guard let mailbox, let threadID = selectedThreadID else {
+    func selectThread(_ threadID: String?) {
+        guard threadID != selectedThreadID || (threadID != nil && threadDetail == nil) else { return }
+        selectedThreadID = threadID
+        guard let mailbox, let threadID else {
             threadDetail = nil
             return
         }
@@ -206,19 +216,18 @@ final class AppModel {
 
     func perform(_ action: ThreadAction, threadID: String? = nil) {
         guard let mailbox, let id = threadID ?? selectedThreadID else { return }
-        let ids = mailbox.threads.map(\.id)
-        let position = ids.firstIndex(of: id)
+        let position = mailbox.threads.firstIndex { $0.id == id }
         Task {
             let removed = await mailbox.perform(action, on: id)
             if removed, id == selectedThreadID {
                 // Move the selection to the next conversation, like Mail does.
                 let remaining = mailbox.threads
                 if let position, !remaining.isEmpty {
-                    selectedThreadID = remaining[min(position, remaining.count - 1)].id
+                    selectThread(remaining[min(position, remaining.count - 1)].id)
                 } else {
-                    selectedThreadID = nil
+                    selectThread(nil)
                 }
-            } else if id == selectedThreadID, action == .markRead || action == .markUnread || action == .star || action == .unstar {
+            } else if id == selectedThreadID, [.markRead, .markUnread, .star, .unstar].contains(action) {
                 await threadDetail?.load()
             }
             updateDockBadge()
@@ -267,5 +276,15 @@ final class AppModel {
             account?.needsReauth = true
         }
         errorMessage = error.localizedDescription
+    }
+}
+
+enum LaunchOptions {
+    static var demo: Bool {
+        ProcessInfo.processInfo.arguments.contains("--demo") || ProcessInfo.processInfo.environment["MAILMEG_DEMO"] == "1"
+    }
+
+    static var onboarding: Bool {
+        ProcessInfo.processInfo.arguments.contains("--onboarding")
     }
 }

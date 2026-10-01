@@ -8,7 +8,7 @@ enum Formatting {
             return date.formatted(date: .omitted, time: .shortened)
         }
         if calendar.isDateInYesterday(date) {
-            return String(localized: "Yesterday")
+            return "Gestern"
         }
         if let days = calendar.dateComponents([.day], from: date, to: Date()).day, days < 7 {
             return date.formatted(.dateTime.weekday(.wide))

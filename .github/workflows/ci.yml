@@ -76,3 +76,56 @@ jobs:
           else
             gh release create latest Mailmeg.dmg --prerelease --title "Mailmeg (neuester Build)" --notes "$notes"
           fi
+
+  ui-tests:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: UI tests (demo mode)
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project Mailmeg.xcodeproj \
+            -scheme Mailmeg \
+            -destination 'platform=macOS' \
+            -derivedDataPath build \
+            -resultBundlePath UITests.xcresult \
+            CODE_SIGN_IDENTITY=- \
+            | grep -E "error:|warning: .*\.swift|Test Case|Executed|\*\* TEST" || true
+          xcrun xcresulttool get test-results summary --path UITests.xcresult 2>/dev/null | head -50 || true
+          test "$(xcrun xcresulttool get test-results summary --path UITests.xcresult | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"])')" = "Passed"
+
+      - name: Collect screenshots
+        if: always()
+        run: |
+          mkdir -p screenshots
+          cp /tmp/mailmeg-screenshots/*.png screenshots/ 2>/dev/null || true
+          if [ -d UITests.xcresult ]; then
+            xcrun xcresulttool export attachments --path UITests.xcresult --output-path screenshots/xcresult || true
+          fi
+          find screenshots -type f | sort
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Screenshots
+          path: screenshots
+
+      # Small JPEG copies in the log, so the UI can be reviewed without downloading artifacts.
+      - name: Print screenshots
+        if: always()
+        run: |
+          for f in screenshots/*.png; do
+            [ -f "$f" ] || continue
+            sips -s format jpeg -s formatOptions 70 -Z 1400 "$f" --out /tmp/shot.jpg >/dev/null
+            echo "SCREENSHOT-BEGIN $(basename "$f" .png)"
+            base64 -i /tmp/shot.jpg | fold -w 2000
+            echo "SCREENSHOT-END"
+          done

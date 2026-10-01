@@ -24,7 +24,7 @@ final class AuthService: NSObject, ASWebAuthenticationPresentationContextProvidi
             session.prefersEphemeralWebBrowserSession = false
             self.session = session
             if !session.start() {
-                continuation.resume(throwing: OAuthError.authorizationFailed("The sign-in window could not be opened."))
+                continuation.resume(throwing: OAuthError.authorizationFailed("Das Anmeldefenster konnte nicht geöffnet werden."))
             }
         }
         session = nil

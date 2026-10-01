@@ -9,45 +9,99 @@ struct OnboardingView: View {
     private var isValid: Bool { GoogleOAuthConfig(clientID: clientID).isValid }
 
     var body: some View {
-        VStack(spacing: 20) {
-            Image(nsImage: NSApp.applicationIconImage)
-                .resizable()
-                .frame(width: 96, height: 96)
-            Text("Welcome to Mailmeg")
-                .font(.largeTitle.weight(.semibold))
-            Text("A native Gmail client that talks to the Gmail API directly — no web wrapper.")
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+        ZStack {
+            LinearGradient(
+                colors: [Color(hex: "#5B8CFF").opacity(0.35), Color(hex: "#2639C9").opacity(0.15), Theme.canvas],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Google OAuth client ID")
-                    .font(.headline)
-                TextField("1234567890-abc.apps.googleusercontent.com", text: $clientID)
-                    .textFieldStyle(.roundedBorder)
-                    .onChange(of: clientID) { _, newValue in
-                        AppSettings.clientID = newValue
-                    }
-                Text("Create an OAuth client of type “iOS” in the Google Cloud Console with the Gmail API enabled. The README explains every step.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: 460)
+            VStack(spacing: 22) {
+                Image(nsImage: NSApp.applicationIconImage)
+                    .resizable()
+                    .frame(width: 104, height: 104)
+                    .shadow(color: .black.opacity(0.15), radius: 12, y: 6)
 
-            Button {
-                Task { await model.signIn() }
-            } label: {
-                if model.isSigningIn {
-                    ProgressView().controlSize(.small)
-                } else {
-                    Text("Sign in with Google")
+                VStack(spacing: 6) {
+                    Text("Willkommen bei Mailmeg")
+                        .font(.system(size: 30, weight: .bold))
+                    Text("Gmail als echte Mac-App, direkt über die Gmail-API. Ohne Browser, ohne Umwege.")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
                 }
+
+                VStack(alignment: .leading, spacing: 14) {
+                    step(1, "Projekt in der Google Cloud Console anlegen und die **Gmail API** aktivieren.")
+                    step(2, "OAuth-Client vom Typ **iOS** erstellen, Bundle-ID `de.mailmeg.app`.")
+                    step(3, "Client-ID hier einfügen und anmelden.")
+
+                    TextField("1234567890-abc.apps.googleusercontent.com", text: $clientID)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 13, design: .monospaced))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 9)
+                        .background(Theme.cardFill, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                .strokeBorder(isValid ? Color.green.opacity(0.6) : Color.primary.opacity(0.12))
+                        )
+                        .onChange(of: clientID) { _, newValue in
+                            AppSettings.clientID = newValue
+                        }
+
+                    Button {
+                        Task { await model.signIn() }
+                    } label: {
+                        HStack {
+                            if model.isSigningIn {
+                                ProgressView().controlSize(.small)
+                            }
+                            Text("Mit Google anmelden")
+                                .font(.system(size: 14, weight: .semibold))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 4)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .disabled(!isValid || model.isSigningIn)
+
+                    Text("Die genaue Anleitung steht in der README. Deine Daten bleiben zwischen deinem Mac und Google.")
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(24)
+                .frame(width: 460)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.08))
+                )
+                .shadow(color: .black.opacity(0.08), radius: 20, y: 8)
+
+                Button("Erst mal ohne Konto ausprobieren →") {
+                    Task { await model.startDemo() }
+                }
+                .buttonStyle(.link)
+                .accessibilityIdentifier("onboarding.demo")
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .disabled(!isValid || model.isSigningIn)
+            .padding(40)
         }
-        .padding(40)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func step(_ number: Int, _ text: LocalizedStringKey) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text("\(number)")
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+                .frame(width: 20, height: 20)
+                .background(Color.accentColor, in: Circle())
+            Text(text)
+                .font(.system(size: 13))
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 }

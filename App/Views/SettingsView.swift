@@ -5,12 +5,11 @@ struct SettingsView: View {
     var body: some View {
         TabView {
             GeneralSettingsView()
-                .tabItem { Label("General", systemImage: "gearshape") }
+                .tabItem { Label("Allgemein", systemImage: "gearshape") }
             AccountsSettingsView()
-                .tabItem { Label("Accounts", systemImage: "person.crop.circle") }
+                .tabItem { Label("Konten", systemImage: "person.crop.circle") }
         }
-        .frame(width: 520)
-        .padding()
+        .frame(width: 540)
     }
 }
 
@@ -22,18 +21,23 @@ private struct GeneralSettingsView: View {
 
     var body: some View {
         Form {
-            Toggle("Load remote content in messages automatically", isOn: $loadRemoteContent)
-            Text("Remote images can be used to track when and where you read an email.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Toggle("Show notifications for new mail", isOn: $notificationsEnabled)
-            Picker("Check for new mail", selection: $refreshInterval) {
-                Text("Every 30 seconds").tag(30.0)
-                Text("Every minute").tag(60.0)
-                Text("Every 5 minutes").tag(300.0)
-                Text("Every 15 minutes").tag(900.0)
+            Section {
+                Toggle("Externe Inhalte automatisch laden", isOn: $loadRemoteContent)
+            } footer: {
+                Text("Externe Bilder können verraten, wann und wo du eine E-Mail liest.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-            .onChange(of: refreshInterval) { model.startPolling() }
+            Section {
+                Toggle("Mitteilungen bei neuen E-Mails", isOn: $notificationsEnabled)
+                Picker("Nach neuen E-Mails suchen", selection: $refreshInterval) {
+                    Text("Alle 30 Sekunden").tag(30.0)
+                    Text("Jede Minute").tag(60.0)
+                    Text("Alle 5 Minuten").tag(300.0)
+                    Text("Alle 15 Minuten").tag(900.0)
+                }
+                .onChange(of: refreshInterval) { model.startPolling() }
+            }
         }
         .formStyle(.grouped)
     }
@@ -46,9 +50,10 @@ private struct AccountsSettingsView: View {
 
     var body: some View {
         Form {
-            Section("Accounts") {
+            Section("Konten") {
                 ForEach(model.accounts) { account in
-                    HStack {
+                    HStack(spacing: 10) {
+                        AvatarView(name: account.displayName ?? account.email, size: 28)
                         VStack(alignment: .leading) {
                             Text(account.displayName ?? account.email)
                             if account.displayName != nil {
@@ -57,38 +62,37 @@ private struct AccountsSettingsView: View {
                         }
                         Spacer()
                         if account.needsReauth {
-                            Button("Sign In Again") { Task { await model.signIn(loginHint: account.email) } }
+                            Button("Erneut anmelden") { Task { await model.signIn(loginHint: account.email) } }
                         }
-                        Button("Remove", role: .destructive) { accountToRemove = account }
+                        Button("Entfernen", role: .destructive) { accountToRemove = account }
                     }
                 }
-                Button("Add Account…") { Task { await model.signIn() } }
+                Button("Konto hinzufügen …") { Task { await model.signIn() } }
                     .disabled(model.isSigningIn)
             }
             Section {
-                TextField("Client ID", text: $clientID)
-                    .onSubmit { AppSettings.clientID = clientID }
+                TextField("Client-ID", text: $clientID)
                     .onChange(of: clientID) { _, newValue in AppSettings.clientID = newValue }
             } header: {
-                Text("Google OAuth Client")
+                Text("Google-OAuth-Client")
             } footer: {
-                Text("Changing the client ID only affects accounts you add afterwards.")
+                Text("Eine neue Client-ID gilt nur für Konten, die du danach hinzufügst.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
         .confirmationDialog(
-            "Remove \(accountToRemove?.email ?? "")?",
+            "\(accountToRemove?.email ?? "") entfernen?",
             isPresented: Binding(get: { accountToRemove != nil }, set: { if !$0 { accountToRemove = nil } })
         ) {
-            Button("Remove Account", role: .destructive) {
+            Button("Konto entfernen", role: .destructive) {
                 if let account = accountToRemove {
                     Task { await model.remove(account) }
                 }
             }
         } message: {
-            Text("Mailmeg will forget the account and revoke its access. Your mail stays in Gmail.")
+            Text("Mailmeg vergisst das Konto und widerruft den Zugriff. Deine E-Mails bleiben in Gmail.")
         }
     }
 }

@@ -4,6 +4,7 @@ options:
   deploymentTarget:
     macOS: "14.0"
   createIntermediateGroups: true
+  developmentLanguage: de
 configFiles:
   Debug: Config/Mailmeg.xcconfig
   Release: Config/Mailmeg.xcconfig
@@ -22,6 +23,8 @@ targets:
       path: App/Info.plist
       properties:
         CFBundleDisplayName: Mailmeg
+        CFBundleDevelopmentRegion: de
+        CFBundleLocalizations: [de]
         CFBundleShortVersionString: "0.1.0"
         CFBundleVersion: "1"
         LSApplicationCategoryType: public.app-category.productivity
@@ -39,6 +42,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: de.mailmeg.app
         PRODUCT_NAME: Mailmeg
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         SWIFT_VERSION: "5.0"
         MACOSX_DEPLOYMENT_TARGET: "14.0"
         ENABLE_HARDENED_RUNTIME: YES
@@ -46,14 +50,34 @@ targets:
         CODE_SIGN_IDENTITY: "-"
         DEVELOPMENT_TEAM: ""
         COMBINE_HIDPI_IMAGES: YES
+  MailmegUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - path: UITests
+    dependencies:
+      - target: Mailmeg
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: de.mailmeg.uitests
+        SWIFT_VERSION: "5.0"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Mailmeg
 schemes:
   Mailmeg:
     build:
       targets:
         Mailmeg: all
+        MailmegUITests: [test]
     run:
       config: Debug
     test:
       config: Debug
+      targets:
+        - MailmegUITests
     archive:
       config: Release

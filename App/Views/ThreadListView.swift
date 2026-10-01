@@ -3,17 +3,21 @@ import SwiftUI
 
 struct ThreadListView: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.openWindow) private var openWindow
     @Bindable var mailbox: MailboxModel
 
     var body: some View {
-        @Bindable var model = model
-        List(selection: $model.selectedThreadID) {
+        List(selection: Binding(get: { model.selectedThreadID }, set: { model.selectThread($0) })) {
             ForEach(mailbox.threads) { thread in
-                ThreadRow(thread: thread)
-                    .tag(Optional(thread.id))
-                    .onAppear { mailbox.loadMoreIfNeeded(after: thread) }
-                    .contextMenu { contextMenu(for: thread) }
+                ThreadRow(
+                    thread: thread,
+                    labels: mailbox.account.userLabels(in: thread.labelIDs).filter { $0.id != mailbox.labelID },
+                    isTrash: mailbox.labelID == SystemLabel.trash,
+                    onAction: { model.perform($0, threadID: thread.id) }
+                )
+                .tag(Optional(thread.id))
+                .accessibilityIdentifier("thread.\(thread.id)")
+                .onAppear { mailbox.loadMoreIfNeeded(after: thread) }
+                .contextMenu { contextMenu(for: thread) }
             }
             if mailbox.isLoadingMore {
                 HStack {
@@ -21,21 +25,15 @@ struct ThreadListView: View {
                     ProgressView().controlSize(.small)
                     Spacer()
                 }
+                .listRowSeparator(.hidden)
             }
         }
         .listStyle(.inset)
-        .overlay {
-            if mailbox.isLoading && mailbox.threads.isEmpty {
-                ProgressView()
-            } else if mailbox.hasLoaded && mailbox.threads.isEmpty {
-                if mailbox.activeQuery.isEmpty {
-                    ContentUnavailableView("No Conversations", systemImage: "tray")
-                } else {
-                    ContentUnavailableView.search(text: mailbox.activeQuery)
-                }
-            }
-        }
-        .searchable(text: $mailbox.searchText, placement: .toolbar, prompt: "Search (Gmail syntax)")
+        .scrollContentBackground(.hidden)
+        .background(Theme.cardFill)
+        .safeAreaInset(edge: .top, spacing: 0) { header }
+        .overlay { emptyState }
+        .searchable(text: $mailbox.searchText, placement: .toolbar, prompt: "Suchen – z. B. from:anna has:attachment")
         .onSubmit(of: .search) { mailbox.submitSearch() }
         .onChange(of: mailbox.searchText) { _, newValue in
             if newValue.isEmpty, !mailbox.activeQuery.isEmpty {
@@ -43,84 +41,196 @@ struct ThreadListView: View {
             }
         }
         .navigationTitle(mailbox.title)
-        .navigationSubtitle(mailbox.account.email)
+        .toolbar {
+            ToolbarItem {
+                Button {
+                    Task { await model.refreshAll() }
+                } label: {
+                    Label("Aktualisieren", systemImage: "arrow.clockwise")
+                }
+                .help("Neue E-Mails abrufen (⇧⌘N)")
+            }
+        }
+    }
+
+    private var header: some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(mailbox.title)
+                    .font(.system(size: 20, weight: .bold))
+                    .accessibilityIdentifier("mailbox.title")
+                Text(subtitle)
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Picker("Filter", selection: Binding(get: { mailbox.unreadOnly }, set: { mailbox.setUnreadOnly($0) })) {
+                Text("Alle").tag(false)
+                Text("Ungelesen").tag(true)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 10)
+        .padding(.bottom, 8)
+        .background(.bar)
+        .overlay(alignment: .bottom) { Divider() }
+    }
+
+    private var subtitle: String {
+        if mailbox.isLoading && !mailbox.hasLoaded { return "Wird geladen …" }
+        let unread = mailbox.unreadCount
+        let count = mailbox.threads.count
+        let conversations = count == 1 ? "1 Konversation" : "\(count)\(mailbox.nextPageToken != nil ? "+" : "") Konversationen"
+        return unread > 0 ? "\(conversations) · \(unread) ungelesen" : conversations
+    }
+
+    @ViewBuilder
+    private var emptyState: some View {
+        if mailbox.isLoading && mailbox.threads.isEmpty {
+            ProgressView()
+        } else if mailbox.hasLoaded && mailbox.threads.isEmpty {
+            if !mailbox.activeQuery.isEmpty {
+                ContentUnavailableView.search(text: mailbox.activeQuery)
+            } else if mailbox.unreadOnly {
+                ContentUnavailableView("Alles gelesen", systemImage: "checkmark.circle", description: Text("Hier gibt es keine ungelesenen E-Mails."))
+            } else {
+                ContentUnavailableView("Keine E-Mails", systemImage: "tray", description: Text("Dieser Ordner ist leer."))
+            }
+        }
     }
 
     @ViewBuilder
     private func contextMenu(for thread: ThreadSummary) -> some View {
-        Button(thread.isUnread ? "Mark as Read" : "Mark as Unread") {
+        Button(thread.isUnread ? "Als gelesen markieren" : "Als ungelesen markieren") {
             model.perform(thread.isUnread ? .markRead : .markUnread, threadID: thread.id)
         }
-        Button(thread.isStarred ? "Remove Star" : "Add Star") {
+        Button(thread.isStarred ? "Markierung entfernen" : "Markieren") {
             model.perform(thread.isStarred ? .unstar : .star, threadID: thread.id)
         }
         Divider()
         if mailbox.labelID == SystemLabel.trash {
-            Button("Restore") { model.perform(.untrash, threadID: thread.id) }
+            Button("Wiederherstellen") { model.perform(.untrash, threadID: thread.id) }
         } else if mailbox.labelID == SystemLabel.spam {
-            Button("Not Spam") { model.perform(.notSpam, threadID: thread.id) }
+            Button("Kein Spam") { model.perform(.notSpam, threadID: thread.id) }
         } else {
             if thread.labelIDs.contains(SystemLabel.inbox) {
-                Button("Archive") { model.perform(.archive, threadID: thread.id) }
+                Button("Archivieren") { model.perform(.archive, threadID: thread.id) }
             } else {
-                Button("Move to Inbox") { model.perform(.moveToInbox, threadID: thread.id) }
+                Button("In den Posteingang") { model.perform(.moveToInbox, threadID: thread.id) }
             }
-            Button("Report Spam") { model.perform(.reportSpam, threadID: thread.id) }
-            Button("Move to Trash") { model.perform(.trash, threadID: thread.id) }
+            Button("Als Spam melden") { model.perform(.reportSpam, threadID: thread.id) }
+            Button("In den Papierkorb") { model.perform(.trash, threadID: thread.id) }
         }
     }
 }
 
 struct ThreadRow: View {
     let thread: ThreadSummary
+    let labels: [GmailLabel]
+    let isTrash: Bool
+    let onAction: (ThreadAction) -> Void
+    @State private var isHovering = false
 
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            Circle()
-                .fill(thread.isUnread ? Color.accentColor : .clear)
-                .frame(width: 8, height: 8)
-                .padding(.top, 5)
+        HStack(alignment: .top, spacing: 11) {
+            AvatarView(name: thread.participants.first ?? "?", size: 36)
+                .overlay(alignment: .topLeading) {
+                    if thread.isUnread {
+                        Circle()
+                            .fill(Color.accentColor)
+                            .frame(width: 11, height: 11)
+                            .overlay(Circle().strokeBorder(Theme.cardFill, lineWidth: 2))
+                            .offset(x: -3, y: -3)
+                    }
+                }
 
             VStack(alignment: .leading, spacing: 2) {
-                HStack(alignment: .firstTextBaseline) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(senderLine)
-                        .font(.headline)
-                        .fontWeight(thread.isUnread ? .bold : .regular)
+                        .font(.system(size: 13, weight: thread.isUnread ? .bold : .medium))
                         .lineLimit(1)
                     if thread.messageCount > 1 {
                         Text("\(thread.messageCount)")
-                            .font(.caption)
+                            .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(.secondary)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1)
+                            .background(Color.primary.opacity(0.07), in: Capsule())
                     }
-                    Spacer(minLength: 4)
-                    if thread.hasAttachments {
-                        Image(systemName: "paperclip")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    Spacer(minLength: 6)
+                    if isHovering {
+                        quickActions
+                    } else {
+                        trailingInfo
                     }
-                    if thread.isStarred {
-                        Image(systemName: "star.fill")
-                            .font(.caption)
-                            .foregroundStyle(.yellow)
-                    }
-                    Text(Formatting.listDate(thread.date))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                 }
-                Text(thread.subject.isEmpty ? String(localized: "(no subject)") : thread.subject)
-                    .font(.subheadline)
-                    .fontWeight(thread.isUnread ? .semibold : .regular)
+                .frame(height: 20)
+
+                Text(thread.subject.isEmpty ? "(kein Betreff)" : thread.subject)
+                    .font(.system(size: 13, weight: thread.isUnread ? .semibold : .regular))
                     .lineLimit(1)
                 Text(thread.snippet)
-                    .font(.subheadline)
+                    .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
+                if !labels.isEmpty {
+                    HStack(spacing: 4) {
+                        ForEach(labels.prefix(3)) { LabelChip(label: $0) }
+                    }
+                    .padding(.top, 3)
+                }
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 2)
+        .contentShape(Rectangle())
+        .onHover { isHovering = $0 }
     }
 
     private var senderLine: String {
-        thread.participants.isEmpty ? String(localized: "(unknown)") : thread.participants.joined(separator: ", ")
+        thread.participants.isEmpty ? "(unbekannt)" : thread.participants.joined(separator: ", ")
+    }
+
+    private var trailingInfo: some View {
+        HStack(spacing: 5) {
+            if thread.hasAttachments {
+                Image(systemName: "paperclip")
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(.secondary)
+            }
+            if thread.isStarred {
+                Image(systemName: "star.fill")
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(.yellow)
+            }
+            Text(Formatting.listDate(thread.date))
+                .font(.system(size: 11.5, weight: thread.isUnread ? .semibold : .regular))
+                .foregroundStyle(thread.isUnread ? Color.accentColor : .secondary)
+        }
+    }
+
+    private var quickActions: some View {
+        HStack(spacing: 0) {
+            if isTrash {
+                IconButton(systemImage: "arrow.uturn.backward", help: "Wiederherstellen") { onAction(.untrash) }
+            } else {
+                IconButton(systemImage: "archivebox", help: "Archivieren") { onAction(.archive) }
+                IconButton(systemImage: "trash", help: "In den Papierkorb") { onAction(.trash) }
+            }
+            IconButton(
+                systemImage: thread.isUnread ? "envelope.open" : "envelope.badge",
+                help: thread.isUnread ? "Als gelesen markieren" : "Als ungelesen markieren"
+            ) { onAction(thread.isUnread ? .markRead : .markUnread) }
+            IconButton(
+                systemImage: thread.isStarred ? "star.fill" : "star",
+                help: thread.isStarred ? "Markierung entfernen" : "Markieren",
+                tint: thread.isStarred ? .yellow : .secondary
+            ) { onAction(thread.isStarred ? .unstar : .star) }
+        }
+        .padding(.horizontal, 2)
+        .background(.regularMaterial, in: Capsule())
     }
 }

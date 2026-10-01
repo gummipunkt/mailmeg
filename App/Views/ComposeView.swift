@@ -15,7 +15,7 @@ struct ComposeView: View {
     @State private var errorMessage: String?
     @FocusState private var focusedField: Field?
 
-    private enum Field { case to, subject, body }
+    private enum Field { case to, cc, bcc, subject, body }
 
     init(draft: ComposeDraft) {
         _draft = State(initialValue: draft)
@@ -28,36 +28,51 @@ struct ComposeView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Form {
+            VStack(spacing: 0) {
                 if model.accounts.count > 1 {
-                    Picker("From:", selection: $draft.accountID) {
-                        ForEach(model.accounts) { account in
-                            Text(account.email).tag(account.id)
+                    fieldRow("Von") {
+                        Picker("Von", selection: $draft.accountID) {
+                            ForEach(model.accounts) { account in
+                                Text(account.displayName.map { "\($0) <\(account.email)>" } ?? account.email).tag(account.id)
+                            }
                         }
+                        .labelsHidden()
+                        .fixedSize()
+                        Spacer()
                     }
                 }
-                HStack {
-                    TextField("To:", text: $draft.to, prompt: Text("name@example.com"))
+                fieldRow("An") {
+                    TextField("", text: $draft.to, prompt: Text("name@beispiel.de"))
+                        .textFieldStyle(.plain)
                         .focused($focusedField, equals: .to)
-                    Button(showsCcBcc ? "Hide Cc/Bcc" : "Cc/Bcc") { showsCcBcc.toggle() }
-                        .buttonStyle(.link)
+                    Button(showsCcBcc ? "Cc/Bcc ausblenden" : "Cc/Bcc") {
+                        withAnimation(.snappy(duration: 0.15)) { showsCcBcc.toggle() }
+                    }
+                    .buttonStyle(.borderless)
+                    .font(.system(size: 11.5))
                 }
                 if showsCcBcc {
-                    TextField("Cc:", text: $draft.cc)
-                    TextField("Bcc:", text: $draft.bcc)
+                    fieldRow("Cc") {
+                        TextField("", text: $draft.cc).textFieldStyle(.plain).focused($focusedField, equals: .cc)
+                    }
+                    fieldRow("Bcc") {
+                        TextField("", text: $draft.bcc).textFieldStyle(.plain).focused($focusedField, equals: .bcc)
+                    }
                 }
-                TextField("Subject:", text: $draft.subject)
-                    .focused($focusedField, equals: .subject)
+                fieldRow("Betreff") {
+                    TextField("", text: $draft.subject)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 13, weight: .semibold))
+                        .focused($focusedField, equals: .subject)
+                }
             }
-            .formStyle(.columns)
-            .padding()
-
-            Divider()
 
             TextEditor(text: $draft.body)
-                .font(.body)
+                .font(.system(size: 13.5))
+                .lineSpacing(3)
                 .scrollContentBackground(.hidden)
-                .padding(8)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
                 .focused($focusedField, equals: .body)
 
             if !attachments.isEmpty || !draft.forwardedAttachments.isEmpty {
@@ -65,34 +80,40 @@ struct ComposeView: View {
                 attachmentList
             }
         }
-        .navigationTitle(draft.subject.isEmpty ? String(localized: "New Message") : draft.subject)
+        .background(Theme.cardFill)
+        .navigationTitle(draft.subject.isEmpty ? "Neue E-Mail" : draft.subject)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 Button {
                     isImporting = true
                 } label: {
-                    Label("Attach", systemImage: "paperclip")
+                    Label("Anhängen", systemImage: "paperclip")
                 }
-                .help("Attach Files")
+                .help("Dateien anhängen")
 
                 Button {
                     Task { await send() }
                 } label: {
-                    if isSending {
-                        ProgressView().controlSize(.small)
-                    } else {
-                        Label("Send", systemImage: "paperplane.fill")
+                    HStack(spacing: 6) {
+                        if isSending {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Image(systemName: "paperplane.fill")
+                        }
+                        Text("Senden")
                     }
+                    .padding(.horizontal, 4)
                 }
+                .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.return, modifiers: .command)
                 .disabled(isSending || account == nil)
-                .help("Send (⌘↩)")
+                .help("Senden (⌘↩)")
             }
         }
         .fileImporter(isPresented: $isImporting, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
             addAttachments(result)
         }
-        .alert("Message Not Sent", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
+        .alert("E-Mail nicht gesendet", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
             Button("OK", role: .cancel) {}
         } message: {
             Text(errorMessage ?? "")
@@ -103,12 +124,28 @@ struct ComposeView: View {
             }
             focusedField = draft.to.isEmpty ? .to : .body
         }
-        .frame(minWidth: 480, minHeight: 360)
+        .frame(minWidth: 520, minHeight: 400)
+    }
+
+    private func fieldRow<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                Text(title)
+                    .font(.system(size: 12.5))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 52, alignment: .trailing)
+                content()
+            }
+            .font(.system(size: 13))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 9)
+            Divider().padding(.leading, 16)
+        }
     }
 
     private var attachmentList: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack {
+            HStack(spacing: 8) {
                 ForEach(Array(attachments.enumerated()), id: \.offset) { index, attachment in
                     chip(name: attachment.filename, size: attachment.data.count) {
                         attachments.remove(at: index)
@@ -120,13 +157,14 @@ struct ComposeView: View {
                     }
                 }
             }
-            .padding(10)
+            .padding(12)
         }
     }
 
     private func chip(name: String, size: Int, remove: @escaping () -> Void) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: "doc")
+        HStack(spacing: 6) {
+            Image(systemName: "doc.fill")
+                .foregroundStyle(Color.accentColor)
             Text(name).lineLimit(1)
             Text(Formatting.byteCount(size)).foregroundStyle(.secondary)
             Button(action: remove) {
@@ -134,11 +172,12 @@ struct ComposeView: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
+            .help("Anhang entfernen")
         }
-        .font(.callout)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(.quaternary, in: Capsule())
+        .font(.system(size: 12))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Color.primary.opacity(0.05), in: Capsule())
     }
 
     private func addAttachments(_ result: Result<[URL], Error>) {
@@ -162,47 +201,10 @@ struct ComposeView: View {
 
     private func send() async {
         guard let account else { return }
-        let to = EmailAddress.parseList(draft.to)
-        let cc = EmailAddress.parseList(draft.cc)
-        let bcc = EmailAddress.parseList(draft.bcc)
-        guard !(to + cc + bcc).isEmpty else {
-            errorMessage = String(localized: "Please add at least one recipient.")
-            return
-        }
-        if let invalid = (to + cc + bcc).first(where: { !$0.address.contains("@") }) {
-            errorMessage = String(localized: "“\(invalid.address)” is not a valid email address.")
-            return
-        }
-
         isSending = true
         defer { isSending = false }
         do {
-            var allAttachments = attachments
-            for forwarded in draft.forwardedAttachments {
-                let data: Data
-                if let inline = forwarded.inlineData {
-                    data = inline
-                } else if let attachmentID = forwarded.attachmentID {
-                    data = try await account.client.attachment(messageID: forwarded.messageID, attachmentID: attachmentID)
-                } else {
-                    continue
-                }
-                allAttachments.append(OutgoingAttachment(filename: forwarded.filename, mimeType: forwarded.mimeType, data: data))
-            }
-
-            let message = OutgoingMessage(
-                from: account.sender,
-                to: to,
-                cc: cc,
-                bcc: bcc,
-                subject: draft.subject,
-                textBody: draft.body,
-                inReplyTo: draft.inReplyTo,
-                references: draft.references,
-                attachments: allAttachments
-            )
-            let raw = MIMEBuilder().build(message)
-            try await account.client.send(rfc822: raw, threadID: draft.threadID)
+            try await MailSender.send(draft, attachments: attachments, account: account)
             model.didSend(from: account)
             dismiss()
         } catch {

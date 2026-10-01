@@ -13,7 +13,7 @@ struct ContentView: View {
         }
         .task { await model.start() }
         .alert(
-            "Something went wrong",
+            "Da ist etwas schiefgelaufen",
             isPresented: Binding(
                 get: { model.errorMessage != nil },
                 set: { if !$0 { model.errorMessage = nil } }

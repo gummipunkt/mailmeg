@@ -7,43 +7,43 @@ struct MailCommands: Commands {
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
-            Button("New Message") { openWindow(value: model.newDraft()) }
+            Button("Neue E-Mail") { openWindow(value: model.newDraft()) }
                 .keyboardShortcut("n")
                 .disabled(model.accounts.isEmpty)
         }
 
-        CommandMenu("Mailbox") {
-            Button("Get New Mail") { Task { await model.refreshAll() } }
+        CommandMenu("Postfach") {
+            Button("Neue E-Mails abrufen") { Task { await model.refreshAll() } }
                 .keyboardShortcut("n", modifiers: [.command, .shift])
             Divider()
-            Button("Add Account…") { Task { await model.signIn() } }
+            Button("Konto hinzufügen …") { Task { await model.signIn() } }
         }
 
-        CommandMenu("Message") {
-            Button("Reply") { compose(.reply) }
+        CommandMenu("E-Mail") {
+            Button("Antworten") { compose(.reply) }
                 .keyboardShortcut("r")
                 .disabled(model.threadDetail == nil)
-            Button("Reply All") { compose(.replyAll) }
+            Button("Allen antworten") { compose(.replyAll) }
                 .keyboardShortcut("r", modifiers: [.command, .shift])
                 .disabled(model.threadDetail == nil)
-            Button("Forward") { compose(.forward) }
+            Button("Weiterleiten") { compose(.forward) }
                 .keyboardShortcut("f", modifiers: [.command, .shift])
                 .disabled(model.threadDetail == nil)
             Divider()
-            Button("Archive") { model.perform(.archive) }
+            Button("Archivieren") { model.perform(.archive) }
                 .keyboardShortcut("a", modifiers: [.command, .control])
                 .disabled(model.selectedThreadID == nil)
-            Button("Move to Trash") { model.perform(.trash) }
+            Button("In den Papierkorb") { model.perform(.trash) }
                 .keyboardShortcut(.delete, modifiers: .command)
                 .disabled(model.selectedThreadID == nil)
-            Button("Report Spam") { model.perform(.reportSpam) }
+            Button("Als Spam melden") { model.perform(.reportSpam) }
                 .keyboardShortcut("j", modifiers: [.command, .shift])
                 .disabled(model.selectedThreadID == nil)
             Divider()
-            Button(model.selectedThread?.isUnread == true ? "Mark as Read" : "Mark as Unread") { model.toggleRead() }
+            Button(model.selectedThread?.isUnread == true ? "Als gelesen markieren" : "Als ungelesen markieren") { model.toggleRead() }
                 .keyboardShortcut("u", modifiers: [.command, .shift])
                 .disabled(model.selectedThreadID == nil)
-            Button(model.selectedThread?.isStarred == true ? "Remove Star" : "Add Star") { model.toggleStar() }
+            Button(model.selectedThread?.isStarred == true ? "Markierung entfernen" : "Markieren") { model.toggleStar() }
                 .keyboardShortcut("l", modifiers: [.command, .shift])
                 .disabled(model.selectedThreadID == nil)
         }
