@@ -43,7 +43,7 @@ private struct DemoMessage {
 
 private struct DemoThread {
     let id: String
-    let subject: String
+    var subject: String
     var labels: Set<String>
     var messages: [DemoMessage]
 }
@@ -200,6 +200,7 @@ private enum DemoData {
 private final class DemoTransport: HTTPTransport, @unchecked Sendable {
     private let lock = NSLock()
     private var threads = DemoData.threads()
+    private var draftCounter = 0
     private let now = Date()
 
     func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
@@ -275,11 +276,74 @@ private final class DemoTransport: HTTPTransport, @unchecked Sendable {
             return notFound()
         case ("POST", "messages", _):
             return (200, ["id": "demo-sent-\(UUID().uuidString)", "threadId": "t-sent", "labelIds": ["SENT"]])
+        case ("GET", "drafts", 1):
+            let drafts = threads.filter { $0.labels.contains("DRAFT") }.map { thread -> [String: Any] in
+                ["id": "d-\(thread.id)", "message": ["id": "\(thread.id)-\(thread.messages.count - 1)", "threadId": thread.id]]
+            }
+            return (200, ["drafts": drafts])
+        case ("POST", "drafts", 2) where parts[1] == "send":
+            let body = (request.httpBody.flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: String]) ?? [:]
+            let threadID = String((body["id"] ?? "").dropFirst(2))
+            threads.removeAll { $0.id == threadID }
+            return (200, ["id": "demo-sent-\(UUID().uuidString)", "threadId": threadID, "labelIds": ["SENT"]])
+        case ("POST", "drafts", 1):
+            guard let draft = parseDraftUpload(request.httpBody) else { return (400, ["error": ["code": 400, "message": "Bad draft"]]) }
+            draftCounter += 1
+            let threadID = "t-draft-\(draftCounter)"
+            threads.append(DemoThread(id: threadID, subject: draft.subject, labels: ["DRAFT"], messages: [draft.message]))
+            return (200, ["id": "d-\(threadID)", "message": ["id": "\(threadID)-0", "threadId": threadID]])
+        case ("PUT", "drafts", 2):
+            let threadID = String(parts[1].dropFirst(2))
+            guard let index = threads.firstIndex(where: { $0.id == threadID }),
+                  let draft = parseDraftUpload(request.httpBody) else { return notFound() }
+            threads[index].subject = draft.subject
+            threads[index].messages[threads[index].messages.count - 1] = draft.message
+            return (200, ["id": parts[1], "message": ["id": "\(threadID)-\(threads[index].messages.count - 1)", "threadId": threadID]])
+        case ("DELETE", "drafts", 2):
+            let threadID = String(parts[1].dropFirst(2))
+            guard threads.contains(where: { $0.id == threadID }) else { return notFound() }
+            threads.removeAll { $0.id == threadID }
+            return (204, [:] as [String: Any])
         case ("GET", "history", _):
             return (200, ["historyId": "1000", "history": []])
         default:
             return notFound()
         }
+    }
+
+    /// Tiny MIME reader for the demo: subject, recipients and the text/plain part.
+    private func parseDraftUpload(_ body: Data?) -> (subject: String, message: DemoMessage)? {
+        guard let body, let text = String(data: body, encoding: .utf8),
+              let rawStart = text.range(of: "Content-Type: message/rfc822\r\n\r\n") else { return nil }
+        var raw = String(text[rawStart.upperBound...])
+        if let end = raw.range(of: "\r\n--mailmeg-upload-", options: .backwards) { raw = String(raw[..<end.lowerBound]) }
+        let headerEnd = raw.range(of: "\r\n\r\n")?.lowerBound ?? raw.endIndex
+        let headerText = raw[..<headerEnd].replacingOccurrences(of: "\r\n ", with: " ")
+        var headers: [String: String] = [:]
+        for line in headerText.components(separatedBy: "\r\n") {
+            guard let colon = line.firstIndex(of: ":") else { continue }
+            headers[line[..<colon].lowercased()] = line[line.index(after: colon)...].trimmingCharacters(in: .whitespaces)
+        }
+        func decodeWords(_ value: String) -> String {
+            guard value.contains("=?UTF-8?B?") else { return value }
+            return value.components(separatedBy: " ").map { word -> String in
+                guard word.hasPrefix("=?UTF-8?B?"), word.hasSuffix("?=") else { return word }
+                let encoded = word.dropFirst(10).dropLast(2)
+                return Data(base64Encoded: String(encoded)).flatMap { String(data: $0, encoding: .utf8) } ?? word
+            }.joined()
+        }
+        var bodyText = ""
+        if let plain = raw.range(of: "Content-Type: text/plain"),
+           let start = raw.range(of: "\r\n\r\n", range: plain.upperBound..<raw.endIndex) {
+            var encoded = String(raw[start.upperBound...])
+            if let end = encoded.range(of: "\r\n--") { encoded = String(encoded[..<end.lowerBound]) }
+            bodyText = Data(base64Encoded: encoded, options: .ignoreUnknownCharacters).flatMap { String(data: $0, encoding: .utf8) } ?? ""
+            bodyText = bodyText.replacingOccurrences(of: "\r\n", with: "\n")
+        }
+        let recipients = EmailAddress.parseList(decodeWords(headers["to"] ?? ""))
+            .map { DemoPerson(name: $0.name ?? $0.address, email: $0.address) }
+        let message = DemoMessage(from: .me, to: recipients, hoursAgo: 0, text: bodyText)
+        return (decodeWords(headers["subject"] ?? ""), message)
     }
 
     private func notFound() -> (Int, Any) {

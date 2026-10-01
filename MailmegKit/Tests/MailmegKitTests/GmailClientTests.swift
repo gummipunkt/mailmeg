@@ -104,4 +104,34 @@ final class GmailClientTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(GmailClient.retryDelay(attempt: 3, error: error, response: plain), 8_000_000_000)
         XCTAssertFalse(GmailAPIError(status: 403, message: "Forbidden", reason: "insufficientPermissions").isRateLimited)
     }
+
+    func testDraftLifecycleRequests() async throws {
+        let api = MockTransport([
+            { request in
+                XCTAssertEqual(request.httpMethod, "POST")
+                XCTAssertEqual(request.url?.absoluteString, "https://gmail.googleapis.com/upload/gmail/v1/users/me/drafts?uploadType=multipart")
+                let payload = body(of: request)
+                XCTAssertTrue(payload.contains(#"{"message":{"threadId":"t1"}}"#))
+                return (200, Data(#"{"id":"d1","message":{"id":"m1","threadId":"t1"}}"#.utf8))
+            },
+            { request in
+                XCTAssertEqual(request.httpMethod, "PUT")
+                XCTAssertEqual(request.url?.absoluteString, "https://gmail.googleapis.com/upload/gmail/v1/users/me/drafts/d1?uploadType=multipart")
+                XCTAssertTrue(body(of: request).contains(#""id":"d1""#))
+                return (200, Data(#"{"id":"d1","message":{"id":"m2","threadId":"t1"}}"#.utf8))
+            },
+            { request in
+                XCTAssertEqual(request.httpMethod, "DELETE")
+                XCTAssertEqual(request.url?.path, "/gmail/v1/users/me/drafts/d1")
+                return (204, Data())
+            },
+        ])
+        let client = makeClient(api: api)
+        let created = try await client.createDraft(rfc822: Data("Subject: x\r\n\r\ny".utf8), threadID: "t1")
+        XCTAssertEqual(created.id, "d1")
+        let updated = try await client.updateDraft(id: "d1", rfc822: Data("Subject: x\r\n\r\nz".utf8), threadID: "t1")
+        XCTAssertEqual(updated.message?.id, "m2")
+        try await client.deleteDraft(id: "d1")
+        XCTAssertEqual(api.requestCount, 3)
+    }
 }

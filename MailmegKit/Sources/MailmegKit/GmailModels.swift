@@ -152,6 +152,16 @@ public struct MessagePartBody: Decodable, Sendable, Hashable {
     public var decodedData: Data? { data.flatMap(Base64URL.decode) }
 }
 
+public struct GmailDraft: Decodable, Sendable {
+    public let id: String
+    public let message: GmailMessage?
+}
+
+public struct GmailDraftList: Decodable, Sendable {
+    public let drafts: [GmailDraft]?
+    public let nextPageToken: String?
+}
+
 public struct GmailHistoryList: Decodable, Sendable {
     public struct Record: Decodable, Sendable {
         public struct MessageAdded: Decodable, Sendable {
@@ -176,6 +186,11 @@ public enum SystemLabel {
     public static let draft = "DRAFT"
     public static let spam = "SPAM"
     public static let trash = "TRASH"
+}
+
+extension GmailMessage {
+    public var isDraft: Bool { labelIds?.contains(SystemLabel.draft) ?? false }
+    public var bcc: [EmailAddress] { header("Bcc").map(EmailAddress.parseList) ?? [] }
 }
 
 // MARK: - Convenience accessors

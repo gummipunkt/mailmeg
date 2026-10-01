@@ -112,4 +112,43 @@ final class MailmegUITests: XCTestCase {
         XCTAssertTrue(element(app, "thread.t-wohnung").waitForExistence(timeout: 10))
         XCTAssertEqual(element(app, "mailbox.title").value as? String, "Sent")
     }
+
+    func testDraftsAutosaveAndEdit() {
+        let app = launch(["--demo"])
+        XCTAssertTrue(element(app, "thread.t-projektplan").waitForExistence(timeout: 20))
+        sleep(1)
+
+        // A new message is saved as a Gmail draft automatically.
+        element(app, "compose").click()
+        let subject = element(app, "compose.subject")
+        XCTAssertTrue(subject.waitForExistence(timeout: 10))
+        subject.click()
+        subject.typeText("Testentwurf")
+        let status = element(app, "compose.status")
+        let saved = NSPredicate(format: "label CONTAINS[c] 'gesichert'")
+        expectation(for: saved, evaluatedWith: status)
+        waitForExpectations(timeout: 15)
+        snapshot("7-entwurf-gesichert", of: XCUIScreen.main.screenshot())
+        app.typeKey("w", modifierFlags: .command)
+
+        // It shows up in Drafts and opens again on double-click.
+        element(app, "sidebar.DRAFT").click()
+        let savedDraft = element(app, "thread.t-draft-1")
+        XCTAssertTrue(savedDraft.waitForExistence(timeout: 10), "The saved draft should be listed in Drafts")
+        savedDraft.doubleClick()
+        let body = element(app, "compose.body")
+        XCTAssertTrue(body.waitForExistence(timeout: 10), "Double-clicking a draft should open it for editing")
+        XCTAssertEqual(element(app, "compose.subject").value as? String, "Testentwurf")
+        app.typeKey("w", modifierFlags: .command)
+
+        // Drafts can also be edited from the conversation view.
+        let existing = element(app, "thread.t-entwurf")
+        XCTAssertTrue(existing.waitForExistence(timeout: 10))
+        existing.click()
+        let edit = element(app, "draft.edit")
+        XCTAssertTrue(edit.waitForExistence(timeout: 10))
+        edit.click()
+        XCTAssertTrue(element(app, "compose.body").waitForExistence(timeout: 10))
+        XCTAssertTrue((element(app, "compose.body").value as? String ?? "").contains("Angebot"))
+    }
 }

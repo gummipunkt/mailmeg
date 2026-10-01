@@ -101,6 +101,35 @@ final class AccountSession: Identifiable {
         return aliases
     }
 
+    // MARK: - Drafts
+
+    /// Gmail draft IDs by message ID (needed to update or delete a draft opened from a list).
+    private var draftIDsByMessage: [String: String] = [:]
+
+    func draftID(forMessageID messageID: String) async throws -> String? {
+        if let known = draftIDsByMessage[messageID] { return known }
+        var map: [String: String] = [:]
+        var pageToken: String?
+        repeat {
+            let page = try await client.listDrafts(pageToken: pageToken)
+            for draft in page.drafts ?? [] {
+                if let message = draft.message { map[message.id] = draft.id }
+            }
+            pageToken = page.nextPageToken
+        } while pageToken != nil
+        draftIDsByMessage = map
+        return map[messageID]
+    }
+
+    func rememberDraft(id: String, messageID: String) {
+        draftIDsByMessage = draftIDsByMessage.filter { $0.value != id }
+        draftIDsByMessage[messageID] = id
+    }
+
+    func forgetDraft(id: String) {
+        draftIDsByMessage = draftIDsByMessage.filter { $0.value != id }
+    }
+
     /// The account address plus all aliases, lowercased.
     var ownAddresses: [String] {
         Array(Set([email.lowercased()] + identities.map { $0.address.lowercased() })).sorted()

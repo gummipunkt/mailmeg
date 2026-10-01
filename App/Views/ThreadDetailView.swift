@@ -151,6 +151,9 @@ struct MessageCardView: View {
                 .contentShape(Rectangle())
                 .onTapGesture { withAnimation(.snappy(duration: 0.2)) { item.isExpanded.toggle() } }
 
+            if item.message.isDraft {
+                draftBanner
+            }
             if item.isExpanded {
                 if item.hasRemoteContent && !item.allowsRemoteContent {
                     remoteContentBanner
@@ -242,6 +245,33 @@ struct MessageCardView: View {
             parts.append("Cc " + message.cc.map(\.displayName).joined(separator: ", "))
         }
         return parts.joined(separator: " · ")
+    }
+
+    private var draftBanner: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "pencil.circle.fill")
+                .foregroundStyle(Color.accentColor)
+            Text(tr("Entwurf – noch nicht gesendet", "Draft – not sent yet"))
+                .font(.system(size: 12, weight: .medium))
+            Spacer()
+            Button(tr("Verwerfen", "Discard"), role: .destructive) {
+                Task { await detail.discardDraft(messageID: message.id) }
+            }
+            .controlSize(.small)
+            Button(tr("Bearbeiten", "Edit")) {
+                Task {
+                    if let draft = await detail.editDraft(messageID: message.id) {
+                        openWindow(value: draft)
+                    }
+                }
+            }
+            .controlSize(.small)
+            .buttonStyle(.borderedProminent)
+            .accessibilityIdentifier("draft.edit")
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(Theme.tint)
     }
 
     private var remoteContentBanner: some View {

@@ -13,12 +13,15 @@ struct ComposeView: View {
     @State private var isSending = false
     @State private var isImporting = false
     @State private var errorMessage: String?
+    @State private var autosaver: DraftAutosaver
+    @State private var confirmsDiscard = false
     @FocusState private var focusedField: Field?
 
     private enum Field { case to, cc, bcc, subject, body }
 
     init(draft: ComposeDraft) {
         _draft = State(initialValue: draft)
+        _autosaver = State(initialValue: DraftAutosaver(draft: draft))
         _showsCcBcc = State(initialValue: !draft.cc.isEmpty || !draft.bcc.isEmpty)
     }
 
@@ -84,6 +87,7 @@ struct ComposeView: View {
                         .textFieldStyle(.plain)
                         .font(.system(size: 13, weight: .semibold))
                         .focused($focusedField, equals: .subject)
+                        .accessibilityIdentifier("compose.subject")
                 }
             }
             .card()
@@ -118,6 +122,23 @@ struct ComposeView: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(Color.accentColor)
                 .help(tr("Dateien anhängen", "Attach files"))
+
+                IconButton(systemImage: "trash", help: tr("Entwurf verwerfen", "Discard draft")) {
+                    confirmsDiscard = true
+                }
+                .accessibilityIdentifier("compose.discard")
+
+                Button {
+                    Task { await saveDraft() }
+                } label: {
+                    Text(statusText)
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(autosaver.status == .failed ? Color.red : Color.secondary)
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut("s")
+                .help(tr("Entwurf sichern (⌘S)", "Save draft (⌘S)"))
+                .accessibilityIdentifier("compose.status")
 
                 Spacer()
 
@@ -160,6 +181,34 @@ struct ComposeView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(errorMessage ?? "")
+        }
+        .onChange(of: draft) { _, newValue in
+            autosaver.schedule(newValue, attachments: attachments, account: account)
+        }
+        .onChange(of: attachments) { _, newValue in
+            autosaver.schedule(draft, attachments: newValue, account: account)
+        }
+        .onChange(of: autosaver.status) { _, status in
+            if case .saved = status, let account { model.draftsChanged(account) }
+        }
+        .onDisappear {
+            // Closing the window keeps the message as a Gmail draft, like Gmail does.
+            let snapshot = draft, files = attachments, owner = self.account
+            Task { await autosaver.save(snapshot, attachments: files, account: owner) }
+        }
+        .confirmationDialog(
+            tr("Entwurf verwerfen?", "Discard this draft?"),
+            isPresented: $confirmsDiscard
+        ) {
+            Button(tr("Verwerfen", "Discard"), role: .destructive) {
+                Task {
+                    await autosaver.discard(account: account)
+                    if let account { model.draftsChanged(account) }
+                    dismiss()
+                }
+            }
+        } message: {
+            Text(tr("Die E-Mail wird nicht gesendet und auch in Gmail gelöscht.", "The message won’t be sent and is also removed from Gmail."))
         }
         .onAppear {
             if draft.accountID.isEmpty, let first = model.accounts.first {
@@ -249,15 +298,37 @@ struct ComposeView: View {
         }
     }
 
+    private var statusText: String {
+        switch autosaver.status {
+        case .idle:
+            return autosaver.draftID == nil ? "" : tr("Entwurf", "Draft")
+        case .saving:
+            return tr("Wird gesichert …", "Saving…")
+        case .saved(let date):
+            return tr("Entwurf gesichert · \(date.formatted(date: .omitted, time: .shortened))", "Draft saved · \(date.formatted(date: .omitted, time: .shortened))")
+        case .failed:
+            return tr("Entwurf nicht gesichert", "Draft not saved")
+        }
+    }
+
+    private func saveDraft() async {
+        await autosaver.save(draft, attachments: attachments, account: account)
+    }
+
     private func send() async {
         guard let account else { return }
         isSending = true
         defer { isSending = false }
+        await autosaver.finish()
+        var final = draft
+        final.gmailDraftID = autosaver.draftID
         do {
-            try await MailSender.send(draft, attachments: attachments, account: account)
+            try await MailSender.send(final, attachments: attachments, account: account)
             model.didSend(from: account)
+            model.draftsChanged(account)
             dismiss()
         } catch {
+            autosaver.resume()
             errorMessage = error.localizedDescription
         }
     }

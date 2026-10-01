@@ -35,6 +35,7 @@ final class ThreadDetailModel {
 
     var onMarkedRead: ((String) -> Void)?
     var onError: ((Error) -> Void)?
+    var onDraftsChanged: (() -> Void)?
 
     init(account: AccountSession, threadID: String) {
         self.account = account
@@ -139,6 +140,25 @@ final class ThreadDetailModel {
     static func safeFilename(_ name: String) -> String {
         let cleaned = name.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "-")
         return cleaned.isEmpty ? "attachment" : cleaned
+    }
+
+    // MARK: - Drafts
+
+    func editDraft(messageID: String) async -> ComposeDraft? {
+        guard let item = messages.first(where: { $0.id == messageID }) else { return nil }
+        return await DraftComposer.editableDraft(from: item.message, in: messages.map(\.message), account: account)
+    }
+
+    func discardDraft(messageID: String) async {
+        do {
+            guard let draftID = try await account.draftID(forMessageID: messageID) else { return }
+            try await account.client.deleteDraft(id: draftID)
+            account.forgetDraft(id: draftID)
+            messages.removeAll { $0.id == messageID }
+            onDraftsChanged?()
+        } catch {
+            onError?(error)
+        }
     }
 
     // MARK: - Compose

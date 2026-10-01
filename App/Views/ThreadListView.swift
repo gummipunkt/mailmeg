@@ -3,6 +3,7 @@ import SwiftUI
 
 struct ThreadListView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.openWindow) private var openWindow
     @Bindable var mailbox: MailboxModel
 
     var body: some View {
@@ -18,6 +19,10 @@ struct ThreadListView: View {
                 .accessibilityIdentifier("thread.\(thread.id)")
                 .onAppear { mailbox.loadMoreIfNeeded(after: thread) }
                 .contextMenu { contextMenu(for: thread) }
+                // Double-click a draft to keep writing it.
+                .simultaneousGesture(TapGesture(count: 2).onEnded {
+                    if thread.labelIDs.contains(SystemLabel.draft) { openDraft(thread) }
+                })
             }
             if mailbox.isLoadingMore {
                 HStack {
@@ -52,6 +57,14 @@ struct ThreadListView: View {
             }
         }
         .themedWindowBackground(Theme.listBackground)
+    }
+
+    private func openDraft(_ thread: ThreadSummary) {
+        Task {
+            if let draft = await model.openDraft(threadID: thread.id) {
+                openWindow(value: draft)
+            }
+        }
     }
 
     private var header: some View {
@@ -108,6 +121,10 @@ struct ThreadListView: View {
 
     @ViewBuilder
     private func contextMenu(for thread: ThreadSummary) -> some View {
+        if thread.labelIDs.contains(SystemLabel.draft) {
+            Button(tr("Entwurf bearbeiten", "Edit Draft")) { openDraft(thread) }
+            Divider()
+        }
         Button(thread.isUnread ? tr("Als gelesen markieren", "Mark as Read") : tr("Als ungelesen markieren", "Mark as Unread")) {
             model.perform(thread.isUnread ? .markRead : .markUnread, threadID: thread.id)
         }
@@ -173,9 +190,16 @@ struct ThreadRow: View {
                 }
                 .frame(height: 20)
 
-                Text(thread.subject.isEmpty ? tr("(kein Betreff)", "(no subject)") : thread.subject)
-                    .font(.system(size: 13, weight: thread.isUnread ? .semibold : .regular))
-                    .lineLimit(1)
+                HStack(spacing: 5) {
+                    if thread.labelIDs.contains(SystemLabel.draft) {
+                        Text(tr("Entwurf", "Draft"))
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Color.accentColor)
+                    }
+                    Text(thread.subject.isEmpty ? tr("(kein Betreff)", "(no subject)") : thread.subject)
+                        .font(.system(size: 13, weight: thread.isUnread ? .semibold : .regular))
+                        .lineLimit(1)
+                }
                 Text(thread.snippet)
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)

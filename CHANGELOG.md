@@ -3,6 +3,15 @@
 Alle nennenswerten Änderungen an Mailmeg. Versionen folgen [Semantic Versioning](https://semver.org/lang/de/).
 All notable changes to Mailmeg. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.2.0] – 2026-10-01
+
+- Entwürfe: Mailmeg sichert E-Mails beim Schreiben automatisch als Gmail-Entwurf (auch beim Schließen des Fensters, ⌘S sofort), synchron mit Gmail im Web und auf dem Handy
+  · Drafts: Mailmeg saves messages as Gmail drafts while you write (also when closing the window, ⌘S to save now), in sync with Gmail on the web and on your phone
+- Entwürfe bearbeiten per Doppelklick im Ordner „Entwürfe“ oder über „Bearbeiten“ in der Konversation; „Verwerfen“ löscht den Entwurf auch in Gmail
+  · Edit drafts by double-clicking them in Drafts or via “Edit” in the conversation; “Discard” also deletes the draft in Gmail
+- Beim Senden wird der gespeicherte Entwurf entfernt; Entwürfe sind in der Liste markiert
+  · Sending removes the saved draft; drafts are marked in the message list
+
 ## [1.1.0] – 2026-10-01
 
 - Absender wählbar: alle in Gmail unter „Senden als“ hinterlegten Adressen, Standard-Absender pro Konto in den Einstellungen; Antworten gehen automatisch von der Adresse raus, an die die Mail ging

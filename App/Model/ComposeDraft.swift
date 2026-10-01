@@ -22,6 +22,8 @@ struct ComposeDraft: Codable, Hashable, Identifiable {
     var signatureBlock = ""
     /// Where the cursor goes when the window opens (UTF-16 offset into `body`).
     var cursorOffset = 0
+    /// ID of the saved Gmail draft, once the message has been saved.
+    var gmailDraftID: String?
 }
 
 /// One address a message can be sent from.
@@ -108,5 +110,145 @@ enum DraftComposer {
             draft.body += "\n\n" + newBlock
         }
         draft.signatureBlock = newBlock
+    }
+}
+
+extension DraftComposer {
+    /// Turns a Gmail draft message back into an editable draft.
+    static func editableDraft(from message: GmailMessage, in thread: [GmailMessage], account: AccountSession) async -> ComposeDraft {
+        let content = MessageContent(message: message)
+        let isReply = thread.contains { !$0.isDraft && $0.id != message.id }
+        var draft = ComposeDraft(accountID: account.id, kind: isReply ? .reply : .new)
+        draft.to = message.to.map(\.formatted).joined(separator: ", ")
+        draft.cc = message.cc.map(\.formatted).joined(separator: ", ")
+        draft.bcc = message.bcc.map(\.formatted).joined(separator: ", ")
+        draft.subject = message.subject
+        draft.body = content.quotableText
+        let identity = account.identity(for: message.from?.address)
+        draft.fromAddress = identity.address
+        let block = signatureBlock(for: identity, kind: draft.kind)
+        draft.signatureBlock = (!block.isEmpty && draft.body.contains(block)) ? block : ""
+        if isReply {
+            draft.threadID = message.threadId
+            draft.inReplyTo = message.header("In-Reply-To")
+            draft.references = message.references
+        }
+        draft.forwardedAttachments = content.visibleAttachments
+        draft.gmailDraftID = try? await account.draftID(forMessageID: message.id)
+        return draft
+    }
+}
+
+/// Saves the compose window's content as a Gmail draft a few seconds after the last
+/// change, and once more when the window closes.
+@MainActor
+@Observable
+final class DraftAutosaver {
+    enum Status: Equatable {
+        case idle, saving, saved(Date), failed
+    }
+
+    private(set) var status: Status = .idle
+    private(set) var draftID: String?
+    private let initialFingerprint: Int
+    private var lastSavedFingerprint: Int?
+    private var pending: Task<Void, Never>?
+    private var inFlight: Task<Void, Never>?
+    private var attachmentCache: [String: Data] = [:]
+    private var finished = false
+
+    init(draft: ComposeDraft) {
+        draftID = draft.gmailDraftID
+        initialFingerprint = Self.fingerprint(draft, attachments: [])
+    }
+
+    /// Call after every change; saves after a short pause.
+    func schedule(_ draft: ComposeDraft, attachments: [OutgoingAttachment], account: AccountSession?) {
+        guard !finished, let account else { return }
+        pending?.cancel()
+        pending = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(3))
+            guard !Task.isCancelled else { return }
+            await self?.save(draft, attachments: attachments, account: account)
+        }
+    }
+
+    /// Saves now (⌘S, window closing). Unchanged drafts are not saved.
+    func save(_ draft: ComposeDraft, attachments: [OutgoingAttachment], account: AccountSession?) async {
+        guard !finished, let account else { return }
+        pending?.cancel()
+        let previous = inFlight
+        let job = Task { [weak self] in
+            await previous?.value
+            await self?.performSave(draft, attachments: attachments, account: account)
+        }
+        inFlight = job
+        await job.value
+    }
+
+    private func performSave(_ draft: ComposeDraft, attachments: [OutgoingAttachment], account: AccountSession) async {
+        let fingerprint = Self.fingerprint(draft, attachments: attachments)
+        guard !finished, fingerprint != lastSavedFingerprint else { return }
+        // Opening a window and closing it again without typing does not create a draft.
+        guard draftID != nil || fingerprint != initialFingerprint else { return }
+
+        status = .saving
+        do {
+            var cache = attachmentCache
+            let raw = try await MailSender.rfc822(for: draft, attachments: attachments, account: account, cache: &cache)
+            attachmentCache = cache
+            let saved: GmailDraft
+            if let draftID {
+                saved = try await account.client.updateDraft(id: draftID, rfc822: raw, threadID: draft.threadID)
+            } else {
+                saved = try await account.client.createDraft(rfc822: raw, threadID: draft.threadID)
+            }
+            draftID = saved.id
+            if let messageID = saved.message?.id {
+                account.rememberDraft(id: saved.id, messageID: messageID)
+            }
+            lastSavedFingerprint = fingerprint
+            status = .saved(Date())
+        } catch {
+            account.noteRateLimit(error)
+            status = .failed
+        }
+    }
+
+    /// Stops autosaving (before sending or discarding) and waits for a running save.
+    func finish() async {
+        finished = true
+        pending?.cancel()
+        await inFlight?.value
+    }
+
+    /// Resumes autosaving, e.g. after sending failed.
+    func resume() {
+        finished = false
+    }
+
+    /// Deletes the saved Gmail draft.
+    func discard(account: AccountSession?) async {
+        await finish()
+        guard let draftID, let account else { return }
+        try? await account.client.deleteDraft(id: draftID)
+        account.forgetDraft(id: draftID)
+        self.draftID = nil
+    }
+
+    private static func fingerprint(_ draft: ComposeDraft, attachments: [OutgoingAttachment]) -> Int {
+        var hasher = Hasher()
+        hasher.combine(draft.to)
+        hasher.combine(draft.cc)
+        hasher.combine(draft.bcc)
+        hasher.combine(draft.subject)
+        hasher.combine(draft.body)
+        hasher.combine(draft.fromAddress)
+        hasher.combine(draft.forwardedAttachments.map(\.id))
+        for attachment in attachments {
+            hasher.combine(attachment.filename)
+            hasher.combine(attachment.data.count)
+        }
+        return hasher.finalize()
     }
 }

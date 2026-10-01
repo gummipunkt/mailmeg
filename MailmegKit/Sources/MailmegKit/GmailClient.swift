@@ -148,18 +148,60 @@ public final class GmailClient: Sendable {
     @discardableResult
     public func send(rfc822 message: Data, threadID: String? = nil) async throws -> GmailMessage {
         struct Metadata: Encodable { let threadId: String? }
+        return try await upload(path: "messages/send", method: "POST", metadata: Metadata(threadId: threadID), rfc822: message)
+    }
+
+    // MARK: - Drafts
+
+    private struct DraftMetadata: Encodable {
+        struct Message: Encodable { let threadId: String? }
+        let id: String?
+        let message: Message
+    }
+
+    /// Creates a draft in Gmail (visible in Gmail's Drafts on all devices).
+    public func createDraft(rfc822 message: Data, threadID: String? = nil) async throws -> GmailDraft {
+        try await upload(path: "drafts", method: "POST", metadata: DraftMetadata(id: nil, message: .init(threadId: threadID)), rfc822: message)
+    }
+
+    /// Replaces the content of an existing draft.
+    public func updateDraft(id: String, rfc822 message: Data, threadID: String? = nil) async throws -> GmailDraft {
+        try await upload(path: "drafts/\(escapePath(id))", method: "PUT", metadata: DraftMetadata(id: id, message: .init(threadId: threadID)), rfc822: message)
+    }
+
+    public func deleteDraft(id: String) async throws {
+        var request = URLRequest(url: url("drafts/\(escapePath(id))", query: []))
+        request.httpMethod = "DELETE"
+        _ = try await performRaw(request)
+    }
+
+    /// Sends a saved draft; Gmail removes it from Drafts.
+    @discardableResult
+    public func sendDraft(id: String) async throws -> GmailMessage {
+        struct Body: Encodable { let id: String }
+        return try await post("drafts/send", json: Body(id: id))
+    }
+
+    public func listDrafts(pageToken: String? = nil, maxResults: Int = 500) async throws -> GmailDraftList {
+        var items = [URLQueryItem(name: "maxResults", value: String(maxResults))]
+        if let pageToken { items.append(URLQueryItem(name: "pageToken", value: pageToken)) }
+        return try await get("drafts", query: items)
+    }
+
+    /// Multipart upload of an RFC 822 message with JSON metadata (send, create/update draft).
+    private func upload<T: Decodable, Metadata: Encodable>(path: String, method: String, metadata: Metadata, rfc822 message: Data) async throws -> T {
         let boundary = "mailmeg-upload-\(UUID().uuidString)"
         var body = Data()
         body.append(Data("--\(boundary)\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n".utf8))
-        body.append(try JSONEncoder().encode(Metadata(threadId: threadID)))
+        body.append(try JSONEncoder().encode(metadata))
         body.append(Data("\r\n--\(boundary)\r\nContent-Type: message/rfc822\r\n\r\n".utf8))
         body.append(message)
         body.append(Data("\r\n--\(boundary)--\r\n".utf8))
 
-        var components = URLComponents(url: uploadBase.appendingPathComponent("messages/send"), resolvingAgainstBaseURL: false)!
+        var components = URLComponents(url: uploadBase.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
         components.queryItems = [URLQueryItem(name: "uploadType", value: "multipart")]
         var request = URLRequest(url: components.url!)
-        request.httpMethod = "POST"
+        request.httpMethod = method
         request.setValue("multipart/related; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         request.httpBody = body
         return try await perform(request)
@@ -239,7 +281,12 @@ public final class GmailClient: Sendable {
         let error: Body
     }
 
-    func perform<T: Decodable>(_ baseRequest: URLRequest) async throws -> T {
+    func perform<T: Decodable>(_ request: URLRequest) async throws -> T {
+        try JSONDecoder().decode(T.self, from: try await performRaw(request))
+    }
+
+    /// Sends a request with auth, token refresh and retries; returns the body of a 2xx response.
+    func performRaw(_ baseRequest: URLRequest) async throws -> Data {
         var attempt = 0
         var forceRefresh = false
         while true {
@@ -251,7 +298,7 @@ public final class GmailClient: Sendable {
 
             let (data, response) = try await transport.data(for: request)
             if (200..<300).contains(response.statusCode) {
-                return try JSONDecoder().decode(T.self, from: data)
+                return data
             }
 
             let envelope = try? JSONDecoder().decode(ErrorEnvelope.self, from: data)

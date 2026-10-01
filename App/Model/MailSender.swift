@@ -17,35 +17,48 @@ enum MailSenderError: LocalizedError {
 @MainActor
 enum MailSender {
     static func send(_ draft: ComposeDraft, attachments: [OutgoingAttachment] = [], account: AccountSession) async throws {
-        let to = EmailAddress.parseList(draft.to)
-        let cc = EmailAddress.parseList(draft.cc)
-        let bcc = EmailAddress.parseList(draft.bcc)
-        let everyone = to + cc + bcc
+        let everyone = EmailAddress.parseList(draft.to) + EmailAddress.parseList(draft.cc) + EmailAddress.parseList(draft.bcc)
         guard !everyone.isEmpty else { throw MailSenderError.noRecipients }
         if let invalid = everyone.first(where: { !$0.address.contains("@") }) {
             throw MailSenderError.invalidAddress(invalid.address)
         }
 
+        var cache: [String: Data] = [:]
+        let raw = try await rfc822(for: draft, attachments: attachments, account: account, cache: &cache)
+        try await account.client.send(rfc822: raw, threadID: draft.threadID)
+        // The message is out; the saved Gmail draft is no longer needed.
+        if let draftID = draft.gmailDraftID {
+            try? await account.client.deleteDraft(id: draftID)
+            account.forgetDraft(id: draftID)
+        }
+    }
+
+    /// Builds the RFC 822 message for sending or for saving as a Gmail draft.
+    /// Attachments carried over from another message are downloaded once and kept in `cache`.
+    static func rfc822(for draft: ComposeDraft, attachments: [OutgoingAttachment], account: AccountSession, cache: inout [String: Data]) async throws -> Data {
         var allAttachments = attachments
-        for forwarded in draft.forwardedAttachments {
+        for carried in draft.forwardedAttachments {
             let data: Data
-            if let inline = forwarded.inlineData {
+            if let cached = cache[carried.id] {
+                data = cached
+            } else if let inline = carried.inlineData {
                 data = inline
-            } else if let attachmentID = forwarded.attachmentID {
-                data = try await account.client.attachment(messageID: forwarded.messageID, attachmentID: attachmentID)
+            } else if let attachmentID = carried.attachmentID {
+                data = try await account.client.attachment(messageID: carried.messageID, attachmentID: attachmentID)
+                cache[carried.id] = data
             } else {
                 continue
             }
-            allAttachments.append(OutgoingAttachment(filename: forwarded.filename, mimeType: forwarded.mimeType, data: data))
+            allAttachments.append(OutgoingAttachment(filename: carried.filename, mimeType: carried.mimeType, data: data))
         }
 
         let identity = account.identity(for: draft.fromAddress)
         let message = OutgoingMessage(
             from: EmailAddress(name: identity.name ?? account.displayName, address: identity.address),
             replyTo: identity.replyTo.map { EmailAddress.parseList($0) } ?? [],
-            to: to,
-            cc: cc,
-            bcc: bcc,
+            to: EmailAddress.parseList(draft.to),
+            cc: EmailAddress.parseList(draft.cc),
+            bcc: EmailAddress.parseList(draft.bcc),
             subject: draft.subject,
             textBody: draft.body,
             htmlBody: ComposeHTML.render(text: draft.body, signatureText: draft.signatureBlock, signatureHTML: identity.signatureHTML),
@@ -53,6 +66,6 @@ enum MailSender {
             references: draft.references,
             attachments: allAttachments
         )
-        try await account.client.send(rfc822: MIMEBuilder().build(message), threadID: draft.threadID)
+        return MIMEBuilder().build(message)
     }
 }

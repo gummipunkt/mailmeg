@@ -208,6 +208,17 @@ final class AppModel {
         let detail = ThreadDetailModel(account: mailbox.account, threadID: threadID)
         detail.onMarkedRead = { [weak mailbox] id in mailbox?.markLocallyRead(id) }
         detail.onError = { [weak self] error in self?.present(error, account: mailbox.account) }
+        detail.onDraftsChanged = { [weak self, weak mailbox] in
+            guard let self, let mailbox else { return }
+            Task {
+                await mailbox.refreshFirstPage()
+                if mailbox.thread(id: threadID) == nil {
+                    self.selectThread(nil)
+                } else {
+                    await self.threadDetail?.load()
+                }
+            }
+        }
         threadDetail = detail
         Task { await detail.load() }
     }
@@ -251,6 +262,30 @@ final class AppModel {
     func newDraft(to recipient: String = "") -> ComposeDraft {
         let target = selection.flatMap { self.account(id: $0.accountID) } ?? accounts.first
         return DraftComposer.newDraft(account: target, to: recipient)
+    }
+
+    /// Refreshes the Drafts list after a draft was saved, sent or discarded.
+    func draftsChanged(_ account: AccountSession) {
+        guard let mailbox, mailbox.account === account, mailbox.labelID == SystemLabel.draft else { return }
+        Task {
+            await mailbox.refreshFirstPage()
+            if let id = selectedThreadID, mailbox.thread(id: id) == nil {
+                selectThread(nil)
+            }
+        }
+    }
+
+    /// Loads the draft of a conversation for editing (double-click in the Drafts folder).
+    func openDraft(threadID: String) async -> ComposeDraft? {
+        guard let account = mailbox?.account else { return nil }
+        do {
+            let messages = try await account.client.thread(id: threadID, format: .full).messages ?? []
+            guard let draftMessage = messages.last(where: \.isDraft) else { return nil }
+            return await DraftComposer.editableDraft(from: draftMessage, in: messages, account: account)
+        } catch {
+            present(error, account: account)
+            return nil
+        }
     }
 
     /// All sender identities across accounts, for the "From" menu.
