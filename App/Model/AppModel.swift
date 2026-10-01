@@ -183,6 +183,7 @@ final class AppModel {
     // MARK: - Selection
 
     func select(_ newSelection: MailboxSelection?, force: Bool = false) {
+        DebugLog.log("select(\(newSelection?.labelID ?? "nil")) current=\(selection?.labelID ?? "nil")")
         guard force || newSelection != selection else { return }
         selection = newSelection
         selectThread(nil)

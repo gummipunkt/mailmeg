@@ -6,7 +6,13 @@ struct SidebarView: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        List(selection: Binding(get: { model.selection }, set: { model.select($0) })) {
+        List(selection: Binding(
+            get: { model.selection },
+            set: { newValue in
+                DebugLog.log("sidebar selection binding set: \(newValue?.labelID ?? "nil")")
+                model.select(newValue)
+            }
+        )) {
             ForEach(model.accounts) { account in
                 Section {
                     if account.needsReauth {
@@ -74,6 +80,13 @@ struct SidebarView: View {
                 .foregroundStyle(tint(for: item))
         }
         .padding(.leading, CGFloat(item.indent) * 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        // The whole row reacts to clicks, independent of List's own selection handling.
+        .simultaneousGesture(TapGesture().onEnded {
+            DebugLog.log("sidebar row tapped: \(item.id)")
+            model.select(entry.selection)
+        })
         .badge(item.unread)
         .tag(entry.selection)
         .accessibilityIdentifier("sidebar.\(item.id)")

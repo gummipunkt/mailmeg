@@ -43,10 +43,9 @@ final class MailmegUITests: XCTestCase {
         print("SIDEBAR-SENT element: \(sent.debugDescription)")
         sent.click()
         sleep(2)
-        XCTAssertEqual(element(app, "mailbox.title").label, "Gesendet", "The mailbox header should switch to „Gesendet“")
+        XCTAssertEqual(element(app, "mailbox.title").value as? String, "Gesendet", "The mailbox header should switch to „Gesendet“")
         snapshot("1b-nach-klick-gesendet", of: app.windows.firstMatch.screenshot())
-        print("MAILBOX-TITLE after click: \(element(app, "mailbox.title").label)")
-        print("SIDEBAR-HIERARCHY:\n\(app.outlines.firstMatch.debugDescription)")
+        print("MAILBOX-TITLE after click: \(String(describing: element(app, "mailbox.title").value))")
         XCTAssertTrue(element(app, "thread.t-wohnung").waitForExistence(timeout: 10), "Clicking „Gesendet“ must show sent mail")
         XCTAssertFalse(element(app, "thread.t-projektplan").exists, "Inbox conversations must disappear after switching")
 

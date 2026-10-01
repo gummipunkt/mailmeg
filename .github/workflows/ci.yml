@@ -102,6 +102,10 @@ jobs:
           xcrun xcresulttool get test-results summary --path UITests.xcresult 2>/dev/null | head -50 || true
           test "$(xcrun xcresulttool get test-results summary --path UITests.xcresult | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"])')" = "Passed"
 
+      - name: App log
+        if: always()
+        run: log show --last 15m --style compact --predicate 'subsystem == "de.mailmeg.app"' | tail -80 || true
+
       - name: Collect screenshots
         if: always()
         run: |
