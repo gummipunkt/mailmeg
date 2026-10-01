@@ -39,7 +39,13 @@ final class MailmegUITests: XCTestCase {
         sleep(2)
         snapshot("1-posteingang", of: app.windows.firstMatch.screenshot())
 
-        element(app, "sidebar.SENT").click()
+        let sent = element(app, "sidebar.SENT")
+        print("SIDEBAR-SENT element: \(sent.debugDescription)")
+        sent.click()
+        sleep(2)
+        snapshot("1b-nach-klick-gesendet", of: app.windows.firstMatch.screenshot())
+        print("MAILBOX-TITLE after click: \(element(app, "mailbox.title").label)")
+        print("SIDEBAR-HIERARCHY:\n\(app.outlines.firstMatch.debugDescription)")
         XCTAssertTrue(element(app, "thread.t-wohnung").waitForExistence(timeout: 10), "Clicking „Gesendet“ must show sent mail")
         XCTAssertFalse(element(app, "thread.t-projektplan").exists, "Inbox conversations must disappear after switching")
 
@@ -56,7 +62,7 @@ final class MailmegUITests: XCTestCase {
 
     func testDarkMode() {
         let app = launch(["--demo", "-AppleInterfaceStyle", "Dark"])
-        let thread = element(app, "thread.t-darkmode")
+        let thread = element(app, "thread.t-kaffee")
         XCTAssertTrue(thread.waitForExistence(timeout: 20))
         thread.click()
         XCTAssertTrue(element(app, "detail.subject").waitForExistence(timeout: 10))

@@ -98,7 +98,7 @@ jobs:
             -derivedDataPath build \
             -resultBundlePath UITests.xcresult \
             CODE_SIGN_IDENTITY=- \
-            | grep -E "error:|warning: .*\.swift|Test Case|Executed|\*\* TEST" || true
+            | grep -E "error:|warning: .*\.swift|Test Case|Executed|\*\* TEST|SIDEBAR-|MAILBOX-|^ *(Outline|Row|Cell|StaticText|Button|Image|Group|Other|OutlineRow)|→" || true
           xcrun xcresulttool get test-results summary --path UITests.xcresult 2>/dev/null | head -50 || true
           test "$(xcrun xcresulttool get test-results summary --path UITests.xcresult | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"])')" = "Passed"
 
@@ -122,6 +122,17 @@ jobs:
       - name: Print screenshots
         if: always()
         run: |
+          python3 - <<'PY'
+          import json, os, shutil
+          manifest = "screenshots/xcresult/manifest.json"
+          if os.path.exists(manifest):
+              for test in json.load(open(manifest)):
+                  for a in test.get("attachments", []):
+                      name = a.get("suggestedHumanReadableName", "")
+                      src = os.path.join("screenshots/xcresult", a["exportedFileName"])
+                      if src.endswith(".png"):
+                          shutil.copy(src, "screenshots/" + name.split("_0_")[0] + ".png")
+          PY
           for f in screenshots/*.png; do
             [ -f "$f" ] || continue
             sips -s format jpeg -s formatOptions 70 -Z 1400 "$f" --out /tmp/shot.jpg >/dev/null
