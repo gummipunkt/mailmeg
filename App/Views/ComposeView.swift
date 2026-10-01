@@ -177,7 +177,7 @@ struct ComposeView: View {
         .font(.system(size: 12))
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .background(Color.primary.opacity(0.05), in: Capsule())
+        .background(Theme.tint, in: Capsule())
     }
 
     private func addAttachments(_ result: Result<[URL], Error>) {

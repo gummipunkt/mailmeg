@@ -115,6 +115,17 @@ final class MessageParsingTests: XCTestCase {
         XCTAssertTrue(forward.contains("---------- Weitergeleitete Nachricht ---------\nVon: \"Doe, Jane\" <jane@example.com>\nDatum: D\nBetreff: Quarterly report"))
     }
 
+    func testSentConversationUsesRecipientsAsCorrespondents() {
+        let thread = GmailThread(id: "t1", historyId: nil, snippet: nil, messages: [sampleMessage])
+        let sent = ThreadSummary(thread: thread, selfAddresses: ["jane@example.com"], selfName: "Ich")
+        XCTAssertTrue(sent.isOnlyOwnMessages)
+        XCTAssertEqual(sent.correspondents, ["me@example.com", "Bob", "carol@example.com"])
+
+        let received = ThreadSummary(thread: thread, selfAddresses: ["me@example.com"])
+        XCTAssertFalse(received.isOnlyOwnMessages)
+        XCTAssertEqual(received.correspondents, ["Doe, Jane"])
+    }
+
     func testOwnMessagesUseSelfName() {
         let thread = GmailThread(id: "t1", historyId: nil, snippet: nil, messages: [sampleMessage])
         let summary = ThreadSummary(thread: thread, selfAddresses: ["jane@example.com"], selfName: "Ich")

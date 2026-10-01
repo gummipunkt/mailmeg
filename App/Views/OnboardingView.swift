@@ -11,7 +11,11 @@ struct OnboardingView: View {
     var body: some View {
         ZStack {
             LinearGradient(
-                colors: [Color(hex: "#5B8CFF").opacity(0.35), Color(hex: "#2639C9").opacity(0.15), Theme.canvas],
+                colors: [
+                    Color(light: "#B1CBFA", dark: "#2B2D5C"),
+                    Color(light: "#DFE2FE", dark: "#17182C"),
+                    Color(light: "#8E98F5", dark: "#3A3586"),
+                ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -45,7 +49,7 @@ struct OnboardingView: View {
                         .background(Theme.cardFill, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                .strokeBorder(isValid ? Color.green.opacity(0.6) : Color.primary.opacity(0.12))
+                                .strokeBorder(isValid ? Color.accentColor : Theme.hairline)
                         )
                         .onChange(of: clientID) { _, newValue in
                             AppSettings.clientID = newValue
@@ -78,7 +82,7 @@ struct OnboardingView: View {
                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .strokeBorder(Color.primary.opacity(0.08))
+                        .strokeBorder(Theme.hairline.opacity(0.6))
                 )
                 .shadow(color: .black.opacity(0.08), radius: 20, y: 8)
 

@@ -58,7 +58,7 @@ struct ThreadDetailView: View {
                     if labelIDs.contains(SystemLabel.important) {
                         Label("Wichtig", systemImage: "bookmark.fill")
                             .font(.system(size: 10.5, weight: .medium))
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(Color.accentColor)
                     }
                     Text(metaLine)
                         .font(.system(size: 11.5))
@@ -255,7 +255,7 @@ struct MessageCardView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
-        .background(Color.accentColor.opacity(0.08))
+        .background(Theme.tint)
     }
 
     private func open(_ kind: ComposeKind) {
@@ -326,7 +326,7 @@ private struct AttachmentTile: View {
                 }
             }
             .padding(8)
-            .background(Color.primary.opacity(isHovering ? 0.07 : 0.04), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .background(Theme.tint.opacity(isHovering ? 1 : 0.6), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -368,7 +368,7 @@ private struct QuickReplyBar: View {
                 .background(Theme.cardFill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(isFocused ? Color.accentColor.opacity(0.6) : Color.primary.opacity(0.1))
+                        .strokeBorder(isFocused ? Color.accentColor.opacity(0.7) : Theme.hairline.opacity(0.6))
                 )
                 .accessibilityIdentifier("quickReply")
 
@@ -399,7 +399,7 @@ private struct QuickReplyBar: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background(.bar)
+        .background(Theme.canvas)
         .overlay(alignment: .top) { Divider() }
     }
 

@@ -20,7 +20,7 @@ struct SidebarView: View {
                             Task { await model.signIn(loginHint: account.email) }
                         } label: {
                             Label("Erneut anmelden", systemImage: "exclamationmark.triangle.fill")
-                                .foregroundStyle(.orange)
+                                .foregroundStyle(Color.accentColor)
                         }
                         .buttonStyle(.plain)
                     }
@@ -47,6 +47,8 @@ struct SidebarView: View {
             }
         }
         .listStyle(.sidebar)
+        .scrollContentBackground(.hidden)
+        .background(Theme.sidebar)
         .safeAreaInset(edge: .top, spacing: 0) {
             Button {
                 openWindow(value: model.newDraft())
@@ -95,14 +97,8 @@ struct SidebarView: View {
     private func tint(for item: SidebarItem) -> Color {
         if let hex = item.colorHex { return Color(hex: hex) }
         switch item.id {
-        case SystemLabel.inbox: return .accentColor
-        case SystemLabel.starred: return .yellow
-        case SystemLabel.important: return .orange
-        case SystemLabel.sent: return .teal
-        case SystemLabel.draft: return .gray
-        case AccountSession.allMailID: return .indigo
-        case SystemLabel.spam: return .red
-        default: return .secondary
+        case SystemLabel.inbox, SystemLabel.starred, SystemLabel.important: return .accentColor
+        default: return Palette.periwinkle
         }
     }
 }

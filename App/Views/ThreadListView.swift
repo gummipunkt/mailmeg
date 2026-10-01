@@ -30,7 +30,7 @@ struct ThreadListView: View {
         }
         .listStyle(.inset)
         .scrollContentBackground(.hidden)
-        .background(Theme.cardFill)
+        .background(Theme.listBackground)
         .safeAreaInset(edge: .top, spacing: 0) { header }
         .overlay { emptyState }
         .searchable(text: $mailbox.searchText, placement: .toolbar, prompt: "Suchen – z. B. from:anna has:attachment")
@@ -77,7 +77,7 @@ struct ThreadListView: View {
         .padding(.horizontal, 16)
         .padding(.top, 10)
         .padding(.bottom, 8)
-        .background(.bar)
+        .background(Theme.listBackground)
         .overlay(alignment: .bottom) { Divider() }
     }
 
@@ -139,13 +139,13 @@ struct ThreadRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 11) {
-            AvatarView(name: thread.participants.first ?? "?", size: 36)
+            AvatarView(name: thread.correspondents.first ?? thread.participants.first ?? "?", size: 36)
                 .overlay(alignment: .topLeading) {
                     if thread.isUnread {
                         Circle()
                             .fill(Color.accentColor)
                             .frame(width: 11, height: 11)
-                            .overlay(Circle().strokeBorder(Theme.cardFill, lineWidth: 2))
+                            .overlay(Circle().strokeBorder(Theme.listBackground, lineWidth: 2))
                             .offset(x: -3, y: -3)
                     }
                 }
@@ -161,7 +161,7 @@ struct ThreadRow: View {
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 1)
-                            .background(Color.primary.opacity(0.07), in: Capsule())
+                            .background(Theme.tint, in: Capsule())
                     }
                     Spacer(minLength: 6)
                     if isHovering {
@@ -194,7 +194,10 @@ struct ThreadRow: View {
     }
 
     private var senderLine: String {
-        thread.participants.isEmpty ? "(unbekannt)" : thread.participants.joined(separator: ", ")
+        if thread.isOnlyOwnMessages {
+            return thread.correspondents.isEmpty ? "(kein Empfänger)" : "An: " + thread.correspondents.joined(separator: ", ")
+        }
+        return thread.participants.isEmpty ? "(unbekannt)" : thread.participants.joined(separator: ", ")
     }
 
     private var trailingInfo: some View {
@@ -207,7 +210,7 @@ struct ThreadRow: View {
             if thread.isStarred {
                 Image(systemName: "star.fill")
                     .font(.system(size: 10.5))
-                    .foregroundStyle(.yellow)
+                    .foregroundStyle(Color.accentColor)
             }
             Text(Formatting.listDate(thread.date))
                 .font(.system(size: 11.5, weight: thread.isUnread ? .semibold : .regular))
@@ -231,7 +234,7 @@ struct ThreadRow: View {
             IconButton(
                 systemImage: thread.isStarred ? "star.fill" : "star",
                 help: thread.isStarred ? "Markierung entfernen" : "Markieren",
-                tint: thread.isStarred ? .yellow : .primary
+                tint: thread.isStarred ? .accentColor : .primary
             ) { onAction(thread.isStarred ? .unstar : .star) }
         }
         .padding(.horizontal, 2)

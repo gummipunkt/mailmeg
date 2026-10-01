@@ -2,24 +2,51 @@ import AppKit
 import MailmegKit
 import SwiftUI
 
+/// The app's colour palette: https://colorkit.co/palette/dfe2fe-b1cbfa-8e98f5-7971ea/
+enum Palette {
+    static let mist = Color(hex: "#DFE2FE")
+    static let sky = Color(hex: "#B1CBFA")
+    static let periwinkle = Color(hex: "#8E98F5")
+    static let violet = Color(hex: "#7971EA")
+}
+
 enum Theme {
     static let cardRadius: CGFloat = 12
-    static let cardFill = Color(nsColor: .controlBackgroundColor)
-    static let canvas = Color(nsColor: .windowBackgroundColor)
 
-    static let avatarPalette: [(Color, Color)] = [
-        (Color(hex: "#5B8CFF"), Color(hex: "#3550E0")),
-        (Color(hex: "#B07CFF"), Color(hex: "#7A45E0")),
-        (Color(hex: "#FF8FB1"), Color(hex: "#E0457B")),
-        (Color(hex: "#FFB86B"), Color(hex: "#F07A2A")),
-        (Color(hex: "#4FD1C5"), Color(hex: "#1A9E95")),
-        (Color(hex: "#7BD88F"), Color(hex: "#2FA44F")),
-        (Color(hex: "#8E9BFF"), Color(hex: "#5560D6")),
-        (Color(hex: "#F6C453"), Color(hex: "#D69A12")),
+    /// Sidebar background: the lightest palette tone.
+    static let sidebar = Color(light: "#E3E6FE", dark: "#1A1B2F")
+    /// Message list background.
+    static let listBackground = Color(light: "#FAFAFF", dark: "#1D1E34")
+    /// Background behind conversation cards.
+    static let canvas = Color(light: "#EEF0FE", dark: "#15162A")
+    /// Cards, text fields.
+    static let cardFill = Color(light: "#FFFFFF", dark: "#25263F")
+    /// Subtle fills: chips, counters, banners.
+    static let tint = Color(light: "#DFE2FE", dark: "#2F3058")
+    /// Lines and outlines.
+    static let hairline = Color(light: "#B1CBFA", dark: "#3A3C6B")
+
+    /// Avatar styles built from the palette: gradient top, bottom and text colour.
+    static let avatarStyles: [(Color, Color, Color)] = [
+        (Palette.periwinkle, Palette.violet, .white),
+        (Palette.sky, Palette.periwinkle, Color(hex: "#2E2A7A")),
+        (Palette.violet, Color(hex: "#5A51D6"), .white),
+        (Palette.mist, Palette.sky, Color(hex: "#4A44B8")),
+        (Color(hex: "#A3B4F8"), Palette.violet, .white),
+        (Palette.sky, Palette.violet, .white),
     ]
 }
 
 extension Color {
+    /// A colour that adapts to light and dark appearance.
+    init(light: String, dark: String) {
+        let lightColor = NSColor(Color(hex: light))
+        let darkColor = NSColor(Color(hex: dark))
+        self.init(nsColor: NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? darkColor : lightColor
+        })
+    }
+
     init(hex: String) {
         var value: UInt64 = 0
         Scanner(string: hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))).scanHexInt64(&value)
@@ -38,14 +65,14 @@ struct AvatarView: View {
     var size: CGFloat = 32
 
     var body: some View {
-        let colors = Theme.avatarPalette[Self.hash(name) % Theme.avatarPalette.count]
+        let style = Theme.avatarStyles[Self.hash(name) % Theme.avatarStyles.count]
         Circle()
-            .fill(LinearGradient(colors: [colors.0, colors.1], startPoint: .top, endPoint: .bottom))
+            .fill(LinearGradient(colors: [style.0, style.1], startPoint: .top, endPoint: .bottom))
             .frame(width: size, height: size)
             .overlay {
                 Text(initials)
                     .font(.system(size: size * 0.38, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(style.2)
             }
             .accessibilityHidden(true)
     }
@@ -69,7 +96,7 @@ struct LabelChip: View {
     let label: GmailLabel
 
     var body: some View {
-        let color = label.color?.backgroundColor.map(Color.init(hex:)) ?? .secondary
+        let color = label.color?.backgroundColor.map(Color.init(hex:)) ?? Palette.violet
         Text(label.name.components(separatedBy: "/").last ?? label.name)
             .font(.system(size: 10.5, weight: .medium))
             .padding(.horizontal, 7)
@@ -86,9 +113,9 @@ struct CardModifier: ViewModifier {
             .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous)
-                    .strokeBorder(Color.primary.opacity(0.07))
+                    .strokeBorder(Theme.hairline.opacity(0.45))
             )
-            .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
+            .shadow(color: Palette.violet.opacity(0.10), radius: 10, y: 3)
     }
 }
 
