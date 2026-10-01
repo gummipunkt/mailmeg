@@ -6,6 +6,30 @@ enum AppSettings {
     static let loadRemoteContentKey = "loadRemoteContent"
     static let notificationsKey = "notificationsEnabled"
     static let refreshIntervalKey = "refreshInterval"
+    static let replyPositionKey = "replyPosition"
+    static let signatureEnabledKey = "signatureEnabled"
+    static let signatureInRepliesKey = "signatureInReplies"
+
+    enum ReplyPosition: String, CaseIterable {
+        /// Write above the quoted message (Gmail's default).
+        case above
+        /// Write below the quoted message (classic "bottom posting").
+        case below
+    }
+
+    static var replyPosition: ReplyPosition {
+        ReplyPosition(rawValue: UserDefaults.standard.string(forKey: replyPositionKey) ?? "") ?? .above
+    }
+
+    static var signatureEnabled: Bool {
+        UserDefaults.standard.object(forKey: signatureEnabledKey) as? Bool ?? true
+    }
+
+    static var signatureInReplies: Bool {
+        UserDefaults.standard.object(forKey: signatureInRepliesKey) as? Bool ?? true
+    }
+
+    static func defaultSenderKey(for accountID: String) -> String { "defaultSender.\(accountID)" }
 
     /// The OAuth client ID entered in the app, falling back to the one baked into Info.plist.
     static var clientID: String {

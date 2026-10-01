@@ -3,6 +3,17 @@
 Alle nennenswerten Änderungen an Mailmeg. Versionen folgen [Semantic Versioning](https://semver.org/lang/de/).
 All notable changes to Mailmeg. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] – 2026-10-01
+
+- Absender wählbar: alle in Gmail unter „Senden als“ hinterlegten Adressen, Standard-Absender pro Konto in den Einstellungen; Antworten gehen automatisch von der Adresse raus, an die die Mail ging
+  · Choose the sender: all Gmail “Send mail as” addresses, default sender per account in Settings; replies automatically use the address the message was sent to
+- Signaturen aus Gmail werden eingefügt (auf Wunsch auch bei Antworten) und beim Absenderwechsel getauscht; im Versand bleiben Links und Formatierung der Signatur erhalten
+  · Gmail signatures are inserted (optionally in replies too) and swapped when changing the sender; links and formatting are kept when sending
+- Einstellung, ob Antworten über oder unter dem Zitat geschrieben werden – der Cursor steht direkt an der richtigen Stelle
+  · Setting to write replies above or below the quoted message – the cursor starts in the right place
+- Antwort-Adresse („Reply-To“) des Absenders wird übernommen; E-Mails werden zusätzlich als HTML verschickt
+  · The sender's reply-to address is used; messages are also sent as HTML
+
 ## [1.0.0] – 2026-10-01
 
 Erste Version · First release

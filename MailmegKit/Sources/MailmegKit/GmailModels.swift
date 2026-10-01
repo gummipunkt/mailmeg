@@ -7,11 +7,35 @@ public struct GmailProfile: Decodable, Sendable {
     public let historyId: String
 }
 
-public struct GmailSendAs: Decodable, Sendable {
+/// A "Send mail as" address configured in Gmail (Settings → Accounts), including its signature.
+public struct GmailSendAs: Codable, Sendable, Hashable {
     public let sendAsEmail: String
     public let displayName: String?
+    public let replyToAddress: String?
+    /// HTML signature as configured in Gmail.
+    public let signature: String?
     public let isDefault: Bool?
     public let isPrimary: Bool?
+    public let verificationStatus: String?
+
+    public init(sendAsEmail: String, displayName: String? = nil, replyToAddress: String? = nil, signature: String? = nil, isDefault: Bool? = nil, isPrimary: Bool? = nil, verificationStatus: String? = nil) {
+        self.sendAsEmail = sendAsEmail
+        self.displayName = displayName
+        self.replyToAddress = replyToAddress
+        self.signature = signature
+        self.isDefault = isDefault
+        self.isPrimary = isPrimary
+        self.verificationStatus = verificationStatus
+    }
+
+    /// Aliases still waiting for verification cannot be used to send mail.
+    public var isUsable: Bool { verificationStatus == nil || verificationStatus == "accepted" }
+
+    /// The signature as plain text (empty if none).
+    public var plainSignature: String {
+        guard let signature, !signature.isEmpty else { return "" }
+        return HTMLText.plainText(fromHTML: signature)
+    }
 }
 
 public struct GmailLabel: Codable, Identifiable, Hashable, Sendable {

@@ -1,0 +1,60 @@
+import XCTest
+@testable import MailmegKit
+
+final class ComposeTests: XCTestCase {
+    func testSendAsDecodingAndSignature() throws {
+        let json = #"{"sendAs":[{"sendAsEmail":"me@example.com","displayName":"Me","signature":"<div>Best,<br><b>Me</b></div>","isDefault":true,"isPrimary":true},{"sendAsEmail":"alias@example.com","verificationStatus":"pending"}]}"#
+        struct Response: Decodable { let sendAs: [GmailSendAs] }
+        let aliases = try JSONDecoder().decode(Response.self, from: Data(json.utf8)).sendAs
+        XCTAssertEqual(aliases.count, 2)
+        XCTAssertEqual(aliases[0].plainSignature, "Best,\nMe")
+        XCTAssertTrue(aliases[0].isUsable)
+        XCTAssertFalse(aliases[1].isUsable)
+        XCTAssertEqual(aliases[1].plainSignature, "")
+    }
+
+    func testReplyToHeader() {
+        let message = OutgoingMessage(
+            from: EmailAddress(name: "Me", address: "alias@example.com"),
+            replyTo: [EmailAddress(address: "replies@example.com")],
+            to: [EmailAddress(address: "you@example.com")],
+            subject: "x",
+            textBody: "y"
+        )
+        let raw = String(decoding: MIMEBuilder().build(message), as: UTF8.self)
+        XCTAssertTrue(raw.contains("From: Me <alias@example.com>\r\nReply-To: replies@example.com\r\n"))
+    }
+
+    func testPreferredSenderUsesAddressedAlias() {
+        let message = GmailMessage(id: "m", threadId: "t", payload: MessagePart(headers: [
+            MessageHeader(name: "From", value: "Bob <bob@example.com>"),
+            MessageHeader(name: "To", value: "Work <ALIAS@example.com>"),
+        ]))
+        XCTAssertEqual(ReplyBuilder.preferredSender(for: message, ownAddresses: ["me@example.com", "alias@example.com"]), "alias@example.com")
+        XCTAssertNil(ReplyBuilder.preferredSender(for: message, ownAddresses: ["me@example.com"]))
+    }
+
+    func testQuoteBlock() {
+        let message = GmailMessage(id: "m", threadId: "t", payload: MessagePart(headers: [
+            MessageHeader(name: "From", value: "Bob <bob@example.com>"),
+        ]))
+        let block = ReplyBuilder.quote(for: message, quotedText: "Hi\nthere", kind: .reply, dateFormatter: { _ in "D" })
+        XCTAssertEqual(block, "On D, Bob <bob@example.com> wrote:\n> Hi\n> there")
+        XCTAssertEqual(ReplyBuilder.quote(for: message, quotedText: "x", kind: .new, dateFormatter: { _ in "" }), "")
+    }
+
+    func testHTMLRendersQuoteLinksAndSignature() {
+        let text = "Thanks!\n\n-- \nBest,\nMe\n\nOn D, Bob wrote:\n> see https://example.com\n> ok"
+        let html = ComposeHTML.render(text: text, signatureText: "-- \nBest,\nMe", signatureHTML: "<div>Best,<br><b>Me</b></div>")
+        XCTAssertTrue(html.contains("Thanks!<br><br>"))
+        XCTAssertTrue(html.contains("<div class=\"gmail_signature\"><div>Best,<br><b>Me</b></div></div>"))
+        XCTAssertFalse(html.contains("-- "))
+        XCTAssertTrue(html.contains("<blockquote"))
+        XCTAssertTrue(html.contains("<a href=\"https://example.com\">https://example.com</a><br>ok</blockquote>"))
+    }
+
+    func testHTMLWithoutSignatureEscapes() {
+        let html = ComposeHTML.render(text: "a < b & c")
+        XCTAssertTrue(html.contains("a &lt; b &amp; c"))
+    }
+}

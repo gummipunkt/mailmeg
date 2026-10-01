@@ -39,13 +39,16 @@ enum MailSender {
             allAttachments.append(OutgoingAttachment(filename: forwarded.filename, mimeType: forwarded.mimeType, data: data))
         }
 
+        let identity = account.identity(for: draft.fromAddress)
         let message = OutgoingMessage(
-            from: account.sender,
+            from: EmailAddress(name: identity.name ?? account.displayName, address: identity.address),
+            replyTo: identity.replyTo.map { EmailAddress.parseList($0) } ?? [],
             to: to,
             cc: cc,
             bcc: bcc,
             subject: draft.subject,
             textBody: draft.body,
+            htmlBody: ComposeHTML.render(text: draft.body, signatureText: draft.signatureBlock, signatureHTML: identity.signatureHTML),
             inReplyTo: draft.inReplyTo,
             references: draft.references,
             attachments: allAttachments

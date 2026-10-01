@@ -26,6 +26,8 @@ final class AccountSession: Identifiable {
     private let tokenManager: TokenManager
 
     var labels: [GmailLabel] = []
+    /// Gmail "Send mail as" addresses with their signatures.
+    var sendAs: [GmailSendAs] = []
     var needsReauth = false
     private var lastHistoryID: String?
 
@@ -72,11 +74,52 @@ final class AccountSession: Identifiable {
     // MARK: - Loading
 
     func loadProfile() async {
-        if let aliases = try? await client.sendAsAliases(),
-           let primary = aliases.first(where: { $0.isDefault == true }) ?? aliases.first(where: { $0.isPrimary == true }),
+        guard let aliases = try? await client.sendAsAliases() else { return }
+        sendAs = aliases.filter(\.isUsable)
+        if let primary = aliases.first(where: { $0.isPrimary == true }) ?? aliases.first(where: { $0.isDefault == true }),
            let name = primary.displayName, !name.isEmpty {
             displayName = name
         }
+    }
+
+    // MARK: - Sender identities
+
+    /// All addresses this account can send from (at least the account address itself).
+    var identities: [SenderIdentity] {
+        let aliases = sendAs.map {
+            SenderIdentity(
+                accountID: id,
+                address: $0.sendAsEmail,
+                name: ($0.displayName?.isEmpty == false) ? $0.displayName : displayName,
+                replyTo: ($0.replyToAddress?.isEmpty == false) ? $0.replyToAddress : nil,
+                signatureHTML: $0.signature
+            )
+        }
+        if aliases.isEmpty {
+            return [SenderIdentity(accountID: id, address: email, name: displayName, replyTo: nil, signatureHTML: nil)]
+        }
+        return aliases
+    }
+
+    /// The account address plus all aliases, lowercased.
+    var ownAddresses: [String] {
+        Array(Set([email.lowercased()] + identities.map { $0.address.lowercased() })).sorted()
+    }
+
+    /// The sender chosen in Settings, otherwise Gmail's default "Send mail as" address.
+    var defaultIdentity: SenderIdentity {
+        let all = identities
+        if let chosen = UserDefaults.standard.string(forKey: AppSettings.defaultSenderKey(for: id)),
+           let identity = all.first(where: { $0.address.caseInsensitiveCompare(chosen) == .orderedSame }) {
+            return identity
+        }
+        let defaultAddress = sendAs.first(where: { $0.isDefault == true })?.sendAsEmail ?? email
+        return all.first { $0.address.caseInsensitiveCompare(defaultAddress) == .orderedSame } ?? all[0]
+    }
+
+    func identity(for address: String?) -> SenderIdentity {
+        guard let address else { return defaultIdentity }
+        return identities.first { $0.address.caseInsensitiveCompare(address) == .orderedSame } ?? defaultIdentity
     }
 
     /// Loads all labels and their counters (one request per counted label, so this is
@@ -145,7 +188,7 @@ final class AccountSession: Identifiable {
         if !stale.isEmpty {
             let threads = try await client.threads(ids: stale.map(\.id), format: .metadata)
             for thread in threads {
-                let summary = ThreadSummary(thread: thread, selfAddresses: [email], selfName: tr("Ich", "Me"))
+                let summary = ThreadSummary(thread: thread, selfAddresses: Set(ownAddresses), selfName: tr("Ich", "Me"))
                 summaryCache[thread.id] = (thread.historyId, summary)
             }
         }

@@ -22,6 +22,22 @@ struct ComposeView: View {
         _showsCcBcc = State(initialValue: !draft.cc.isEmpty || !draft.bcc.isEmpty)
     }
 
+    /// The selected sender; switching it also swaps the signature in the body.
+    private var senderSelection: Binding<String> {
+        Binding(
+            get: {
+                let account = self.account
+                return account?.identity(for: draft.fromAddress).id ?? ""
+            },
+            set: { newID in
+                guard let identity = model.allIdentities.first(where: { $0.id == newID }) else { return }
+                draft.accountID = identity.accountID
+                draft.fromAddress = identity.address
+                DraftComposer.swapSignature(in: &draft, to: identity)
+            }
+        )
+    }
+
     private var account: AccountSession? {
         model.account(id: draft.accountID) ?? model.accounts.first
     }
@@ -30,15 +46,20 @@ struct ComposeView: View {
         VStack(spacing: 12) {
             // Header fields
             VStack(spacing: 0) {
-                if model.accounts.count > 1 {
+                if model.allIdentities.count > 1 {
                     fieldRow(tr("Von", "From")) {
-                        Picker(tr("Von", "From"), selection: $draft.accountID) {
+                        Picker(tr("Von", "From"), selection: senderSelection) {
                             ForEach(model.accounts) { account in
-                                Text(account.displayName.map { "\($0) <\(account.email)>" } ?? account.email).tag(account.id)
+                                Section(account.email) {
+                                    ForEach(account.identities) { identity in
+                                        Text(identity.label).tag(identity.id)
+                                    }
+                                }
                             }
                         }
                         .labelsHidden()
                         .fixedSize()
+                        .accessibilityIdentifier("compose.from")
                         Spacer()
                     }
                 }
@@ -72,13 +93,12 @@ struct ComposeView: View {
 
             // Body and attachments
             VStack(spacing: 0) {
-                TextEditor(text: $draft.body)
-                    .font(.system(size: 13.5))
-                    .lineSpacing(3)
-                    .scrollContentBackground(.hidden)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 12)
-                    .focused($focusedField, equals: .body)
+                MailBodyEditor(
+                    text: $draft.body,
+                    initialCursor: draft.cursorOffset,
+                    focusOnAppear: !draft.to.isEmpty
+                )
+                .padding(.horizontal, 2)
 
                 if !attachments.isEmpty || !draft.forwardedAttachments.isEmpty {
                     Divider().overlay(Theme.hairline.opacity(0.5))
@@ -148,7 +168,12 @@ struct ComposeView: View {
             if draft.accountID.isEmpty, let first = model.accounts.first {
                 draft.accountID = first.id
             }
-            focusedField = draft.to.isEmpty ? .to : .body
+            if draft.fromAddress == nil, let account {
+                draft.fromAddress = account.defaultIdentity.address
+            }
+            if draft.to.isEmpty {
+                focusedField = .to
+            }
         }
         .frame(minWidth: 520, minHeight: 400)
     }

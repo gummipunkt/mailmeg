@@ -267,12 +267,12 @@ struct MessageCardView: View {
 
     private func openMailto(_ url: URL) {
         let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
-        var draft = ComposeDraft(accountID: detail.account.email)
+        var draft = DraftComposer.newDraft(account: detail.account)
         draft.to = components?.path.removingPercentEncoding ?? ""
         for item in components?.queryItems ?? [] {
             switch item.name.lowercased() {
             case "subject": draft.subject = item.value ?? ""
-            case "body": draft.body = item.value ?? ""
+            case "body": draft.body = (item.value ?? "") + draft.body
             case "cc": draft.cc = item.value ?? ""
             case "bcc": draft.bcc = item.value ?? ""
             default: break
@@ -375,7 +375,8 @@ private struct QuickReplyBar: View {
 
             IconButton(systemImage: "arrow.up.left.and.arrow.down.right", help: tr("Im Fenster bearbeiten", "Edit in Window")) {
                 guard var draft = detail.draft(.reply) else { return }
-                draft.body = text + draft.body
+                draft.body = DraftComposer.insert(text, into: draft)
+                draft.cursorOffset += text.utf16.count
                 text = ""
                 openWindow(value: draft)
             }

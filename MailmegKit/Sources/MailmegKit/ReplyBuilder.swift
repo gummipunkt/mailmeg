@@ -94,7 +94,9 @@ public enum ReplyBuilder {
         return references
     }
 
-    public static func body(for message: GmailMessage, quotedText: String, kind: ComposeKind, strings: Strings = .english, dateFormatter: (Date) -> String) -> String {
+    /// The quoted part of a reply ("On …, … wrote:" + quoted lines) or the forwarded-message
+    /// block, without surrounding blank lines. Empty for new messages.
+    public static func quote(for message: GmailMessage, quotedText: String, kind: ComposeKind, strings: Strings = .english, dateFormatter: (Date) -> String) -> String {
         let sender = message.from?.formatted ?? strings.unknownSender
         let date = message.date.map(dateFormatter) ?? ""
         switch kind {
@@ -106,11 +108,9 @@ public enum ReplyBuilder {
                 .split(separator: "\n", omittingEmptySubsequences: false)
                 .map { $0.hasPrefix(">") ? ">\($0)" : "> \($0)" }
                 .joined(separator: "\n")
-            return "\n\n\(strings.wrote(date, sender))\n\(quoted)\n"
+            return "\(strings.wrote(date, sender))\n\(quoted)"
         case .forward:
             var lines = [
-                "",
-                "",
                 strings.forwardedHeader,
                 "\(strings.from): \(sender)",
                 "\(strings.date): \(date)",
@@ -118,8 +118,22 @@ public enum ReplyBuilder {
             ]
             if !message.to.isEmpty { lines.append("\(strings.to): \(message.to.map(\.formatted).joined(separator: ", "))") }
             if !message.cc.isEmpty { lines.append("\(strings.cc): \(message.cc.map(\.formatted).joined(separator: ", "))") }
-            lines += ["", quotedText, ""]
+            lines += ["", quotedText]
             return lines.joined(separator: "\n")
         }
+    }
+
+    /// Reply body with the cursor area above the quote (the classic Gmail layout).
+    public static func body(for message: GmailMessage, quotedText: String, kind: ComposeKind, strings: Strings = .english, dateFormatter: (Date) -> String) -> String {
+        let block = quote(for: message, quotedText: quotedText, kind: kind, strings: strings, dateFormatter: dateFormatter)
+        return block.isEmpty ? "" : "\n\n\(block)\n"
+    }
+
+    /// The alias a reply should be sent from: the first of one's own addresses the original
+    /// message was sent to, so replies keep using the address the sender wrote to.
+    public static func preferredSender(for message: GmailMessage, ownAddresses: [String]) -> String? {
+        let addressed = (message.to + message.cc + (message.header("Delivered-To").map(EmailAddress.parseList) ?? []))
+            .map { $0.address.lowercased() }
+        return ownAddresses.first { addressed.contains($0.lowercased()) }
     }
 }

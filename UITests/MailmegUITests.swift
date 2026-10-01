@@ -74,8 +74,15 @@ final class MailmegUITests: XCTestCase {
         let app = launch(["--demo"])
         let compose = element(app, "compose")
         XCTAssertTrue(compose.waitForExistence(timeout: 20))
+        // Wait until the account (incl. its Gmail aliases and signatures) has loaded.
+        XCTAssertTrue(element(app, "thread.t-projektplan").waitForExistence(timeout: 20))
+        sleep(1)
         compose.click()
-        sleep(2)
+        XCTAssertTrue(element(app, "compose.from").waitForExistence(timeout: 10), "The sender picker should list the Gmail aliases")
+        let body = element(app, "compose.body")
+        XCTAssertTrue(body.waitForExistence(timeout: 5))
+        XCTAssertTrue((body.value as? String ?? "").contains("Alex Berger"), "The Gmail signature should be inserted")
+        sleep(1)
         snapshot("4-neue-email", of: XCUIScreen.main.screenshot())
         // Close the compose window so it is not restored on the next launch.
         app.typeKey("w", modifierFlags: .command)

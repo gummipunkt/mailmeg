@@ -223,7 +223,19 @@ private final class DemoTransport: HTTPTransport, @unchecked Sendable {
         case ("GET", "profile", _):
             return (200, ["emailAddress": DemoMailbox.email, "historyId": "1000", "messagesTotal": 20, "threadsTotal": threads.count])
         case ("GET", "settings", _):
-            return (200, ["sendAs": [["sendAsEmail": DemoMailbox.email, "displayName": DemoMailbox.displayName, "isDefault": true, "isPrimary": true]]])
+            return (200, ["sendAs": [
+                [
+                    "sendAsEmail": DemoMailbox.email, "displayName": DemoMailbox.displayName, "isDefault": true, "isPrimary": true,
+                    "signature": tr(
+                        "<div>Viele Grüße<br><b>Alex Berger</b><br>Produktmanagement · <a href=\"https://example.com\">example.com</a></div>",
+                        "<div>Best regards,<br><b>Alex Berger</b><br>Product Management · <a href=\"https://example.com\">example.com</a></div>"
+                    ),
+                ],
+                [
+                    "sendAsEmail": "alex@berger-photo.example", "displayName": tr("Alex Berger Fotografie", "Alex Berger Photography"),
+                    "signature": "<div>Alex Berger<br>berger-photo.example</div>", "verificationStatus": "accepted",
+                ],
+            ]])
         case ("GET", "labels", 1):
             return (200, ["labels": allLabels().map { labelJSON($0, withCounts: false) }])
         case ("GET", "labels", 2):

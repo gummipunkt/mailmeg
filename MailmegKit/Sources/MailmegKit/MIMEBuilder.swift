@@ -14,6 +14,7 @@ public struct OutgoingAttachment: Hashable, Sendable {
 
 public struct OutgoingMessage: Sendable {
     public var from: EmailAddress?
+    public var replyTo: [EmailAddress]
     public var to: [EmailAddress]
     public var cc: [EmailAddress]
     public var bcc: [EmailAddress]
@@ -26,6 +27,7 @@ public struct OutgoingMessage: Sendable {
 
     public init(
         from: EmailAddress? = nil,
+        replyTo: [EmailAddress] = [],
         to: [EmailAddress],
         cc: [EmailAddress] = [],
         bcc: [EmailAddress] = [],
@@ -37,6 +39,7 @@ public struct OutgoingMessage: Sendable {
         attachments: [OutgoingAttachment] = []
     ) {
         self.from = from
+        self.replyTo = replyTo
         self.to = to
         self.cc = cc
         self.bcc = bcc
@@ -62,6 +65,7 @@ public struct MIMEBuilder {
     public func build(_ message: OutgoingMessage) -> Data {
         var headers: [String] = []
         if let from = message.from { headers.append("From: \(Self.encodeAddress(from))") }
+        if !message.replyTo.isEmpty { headers.append("Reply-To: \(Self.encodeAddressList(message.replyTo))") }
         if !message.to.isEmpty { headers.append("To: \(Self.encodeAddressList(message.to))") }
         if !message.cc.isEmpty { headers.append("Cc: \(Self.encodeAddressList(message.cc))") }
         if !message.bcc.isEmpty { headers.append("Bcc: \(Self.encodeAddressList(message.bcc))") }

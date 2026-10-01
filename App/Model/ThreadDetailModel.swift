@@ -146,14 +146,14 @@ final class ThreadDetailModel {
     /// Sends a short reply written in the inline reply field below the conversation.
     func sendQuickReply(_ text: String, replyAll: Bool) async throws {
         guard var draft = draft(replyAll ? .replyAll : .reply) else { return }
-        draft.body = text + draft.body
+        draft.body = DraftComposer.insert(text, into: draft)
         try await MailSender.send(draft, account: account)
         await load()
     }
 
     var replyRecipientName: String? {
         guard let message = latestMessage else { return nil }
-        let recipients = ReplyBuilder.recipients(for: message, kind: .reply, selfAddresses: [account.email])
+        let recipients = ReplyBuilder.recipients(for: message, kind: .reply, selfAddresses: Set(account.ownAddresses))
         return recipients.to.first?.name?.components(separatedBy: " ").first ?? recipients.to.first?.address
     }
 
@@ -164,19 +164,25 @@ final class ThreadDetailModel {
     func draft(_ kind: ComposeKind, messageID: String? = nil) -> ComposeDraft? {
         guard let item = messageID.flatMap({ id in messages.first { $0.id == id } }) ?? messages.last else { return nil }
         let message = item.message
-        let recipients = ReplyBuilder.recipients(for: message, kind: kind, selfAddresses: [account.email])
-        let body = ReplyBuilder.body(
+        let recipients = ReplyBuilder.recipients(for: message, kind: kind, selfAddresses: Set(account.ownAddresses))
+        let quote = ReplyBuilder.quote(
             for: message,
             quotedText: item.content.quotableText,
             kind: kind,
             strings: L10n.replyStrings,
             dateFormatter: { $0.formatted(date: .abbreviated, time: .shortened) }
         )
+        // Reply from the address the message was sent to, like Gmail does.
+        let identity = account.identity(for: ReplyBuilder.preferredSender(for: message, ownAddresses: account.ownAddresses))
         var draft = ComposeDraft(accountID: account.email, kind: kind)
+        draft.fromAddress = identity.address
+        draft.signatureBlock = DraftComposer.signatureBlock(for: identity, kind: kind)
+        let layout = DraftComposer.layout(kind: kind, quote: quote, signature: draft.signatureBlock)
         draft.to = recipients.to.map(\.formatted).joined(separator: ", ")
         draft.cc = recipients.cc.map(\.formatted).joined(separator: ", ")
         draft.subject = ReplyBuilder.subject(for: message.subject, kind: kind)
-        draft.body = body
+        draft.body = layout.body
+        draft.cursorOffset = layout.cursor
         if kind == .forward {
             draft.forwardedAttachments = item.content.visibleAttachments
         } else {

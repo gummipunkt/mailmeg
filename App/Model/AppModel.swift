@@ -249,11 +249,12 @@ final class AppModel {
     // MARK: - Compose
 
     func newDraft(to recipient: String = "") -> ComposeDraft {
-        let accountID = selection?.accountID ?? accounts.first?.id ?? ""
-        var draft = ComposeDraft(accountID: accountID)
-        draft.to = recipient
-        return draft
+        let account = selection.flatMap { account(id: $0.accountID) } ?? accounts.first
+        return DraftComposer.newDraft(account: account, to: recipient)
     }
+
+    /// All sender identities across accounts, for the "From" menu.
+    var allIdentities: [SenderIdentity] { accounts.flatMap(\.identities) }
 
     func replyDraft(_ kind: ComposeKind) -> ComposeDraft? {
         threadDetail?.draft(kind)
