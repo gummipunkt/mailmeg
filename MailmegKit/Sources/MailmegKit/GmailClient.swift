@@ -13,12 +13,13 @@ public struct GmailAPIError: Error, LocalizedError, Sendable {
 
     public var errorDescription: String? { "Gmail API error \(status): \(message)" }
 
+    /// Google's per-user / per-project quota was exhausted ("Quota exceeded …").
+    public var isRateLimited: Bool {
+        status == 429 || (status == 403 && ["rateLimitExceeded", "userRateLimitExceeded", "quotaExceeded"].contains(reason ?? ""))
+    }
+
     var isRetryable: Bool {
-        switch status {
-        case 429, 500, 502, 503, 504: true
-        case 403: reason == "rateLimitExceeded" || reason == "userRateLimitExceeded"
-        default: false
-        }
+        isRateLimited || [500, 502, 503, 504].contains(status)
     }
 }
 
@@ -40,7 +41,7 @@ public final class GmailClient: Sendable {
     public init(
         tokens: TokenManager,
         transport: HTTPTransport = URLSessionTransport(),
-        maxAttempts: Int = 4,
+        maxAttempts: Int = 5,
         sleep: @escaping @Sendable (UInt64) async throws -> Void = { try await Task.sleep(nanoseconds: $0) }
     ) {
         self.tokens = tokens
@@ -266,8 +267,20 @@ public final class GmailClient: Sendable {
             }
             forceRefresh = false
             guard error.isRetryable, attempt < maxAttempts else { throw error }
-            let delay = UInt64(pow(2, Double(attempt - 1)) * 500_000_000) + UInt64.random(in: 0...250_000_000)
-            try await self.sleep(delay)
+            try await self.sleep(Self.retryDelay(attempt: attempt, error: error, response: response))
         }
+    }
+
+    /// Backoff in nanoseconds. Quota errors wait noticeably longer (Gmail counts quota per minute)
+    /// and honour a `Retry-After` header when Google sends one.
+    static func retryDelay(attempt: Int, error: GmailAPIError, response: HTTPURLResponse) -> UInt64 {
+        let jitter = Double.random(in: 0...0.25)
+        if error.isRateLimited {
+            if let header = response.value(forHTTPHeaderField: "Retry-After"), let seconds = Double(header) {
+                return UInt64((min(seconds, 60) + jitter) * 1_000_000_000)
+            }
+            return UInt64((min(pow(2, Double(attempt)), 30) + jitter) * 1_000_000_000)
+        }
+        return UInt64((pow(2, Double(attempt - 1)) * 0.5 + jitter) * 1_000_000_000)
     }
 }

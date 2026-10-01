@@ -79,7 +79,7 @@ final class MailboxModel {
     /// Re-fetches the first page and merges it with what is already loaded,
     /// so polling does not throw away pages the user scrolled to.
     func refreshFirstPage() async {
-        guard hasLoaded, !isLoading else { return }
+        guard hasLoaded, !isLoading, !account.isRateLimited else { return }
         let current = generation
         guard let page = try? await fetchPage(pageToken: nil), current == generation else { return }
         let (fresh, token) = page
@@ -118,10 +118,8 @@ final class MailboxModel {
             pageToken: pageToken,
             maxResults: Self.pageSize
         )
-        let ids = (list.threads ?? []).map(\.id)
-        let threads = try await account.client.threads(ids: ids, format: .metadata)
-        let own: Set<String> = [account.email]
-        return (threads.map { ThreadSummary(thread: $0, selfAddresses: own, selfName: "Ich") }, list.nextPageToken)
+        let summaries = try await account.summaries(for: list.threads ?? [])
+        return (summaries, list.nextPageToken)
     }
 
     private var effectiveQuery: String? {
@@ -178,7 +176,8 @@ final class MailboxModel {
 
         do {
             try await Self.sync(action, threadID: threadID, client: account.client)
-            Task { try? await account.loadLabels() }
+            account.refreshCounts(for: original.labelIDs.union([SystemLabel.inbox, SystemLabel.spam, labelID]))
+            if !removes { account.updateCachedSummary(updated) }
             return removes
         } catch {
             if removes {
@@ -195,6 +194,7 @@ final class MailboxModel {
     func markLocallyRead(_ threadID: String) {
         guard let index = threads.firstIndex(where: { $0.id == threadID }) else { return }
         threads[index].isUnread = false
+        account.updateCachedSummary(threads[index])
     }
 
     static func sync(_ action: ThreadAction, threadID: String, client: GmailClient) async throws {

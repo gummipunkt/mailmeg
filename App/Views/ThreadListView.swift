@@ -51,6 +51,7 @@ struct ThreadListView: View {
                 .help("Neue E-Mails abrufen (⇧⌘N)")
             }
         }
+        .themedWindowBackground(Theme.listBackground)
     }
 
     private var header: some View {

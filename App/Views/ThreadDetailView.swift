@@ -41,6 +41,7 @@ struct ThreadDetailView: View {
             }
         }
         .toolbar { toolbar }
+        .themedWindowBackground(Theme.canvas)
     }
 
     @ViewBuilder

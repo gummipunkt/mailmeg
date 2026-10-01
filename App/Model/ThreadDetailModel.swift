@@ -93,7 +93,7 @@ final class ThreadDetailModel {
                 messages[index].message.labelIds?.removeAll { $0 == SystemLabel.unread }
             }
             onMarkedRead?(threadID)
-            try? await account.loadLabels()
+            account.refreshCounts(for: Set(messages.flatMap { $0.message.labelIds ?? [] }).union([SystemLabel.inbox]))
         } catch {
             onError?(error)
         }

@@ -27,7 +27,8 @@ struct ComposeView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 12) {
+            // Header fields
             VStack(spacing: 0) {
                 if model.accounts.count > 1 {
                     fieldRow("Von") {
@@ -48,8 +49,9 @@ struct ComposeView: View {
                     Button(showsCcBcc ? "Cc/Bcc ausblenden" : "Cc/Bcc") {
                         withAnimation(.snappy(duration: 0.15)) { showsCcBcc.toggle() }
                     }
-                    .buttonStyle(.borderless)
-                    .font(.system(size: 11.5))
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Color.accentColor)
+                    .font(.system(size: 11.5, weight: .medium))
                 }
                 if showsCcBcc {
                     fieldRow("Cc") {
@@ -59,57 +61,81 @@ struct ComposeView: View {
                         TextField("", text: $draft.bcc).textFieldStyle(.plain).focused($focusedField, equals: .bcc)
                     }
                 }
-                fieldRow("Betreff") {
-                    TextField("", text: $draft.subject)
+                fieldRow("Betreff", showsDivider: false) {
+                    TextField("", text: $draft.subject, prompt: Text("Worum geht es?"))
                         .textFieldStyle(.plain)
                         .font(.system(size: 13, weight: .semibold))
                         .focused($focusedField, equals: .subject)
                 }
             }
+            .card()
 
-            TextEditor(text: $draft.body)
-                .font(.system(size: 13.5))
-                .lineSpacing(3)
-                .scrollContentBackground(.hidden)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .focused($focusedField, equals: .body)
+            // Body and attachments
+            VStack(spacing: 0) {
+                TextEditor(text: $draft.body)
+                    .font(.system(size: 13.5))
+                    .lineSpacing(3)
+                    .scrollContentBackground(.hidden)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 12)
+                    .focused($focusedField, equals: .body)
 
-            if !attachments.isEmpty || !draft.forwardedAttachments.isEmpty {
-                Divider()
-                attachmentList
+                if !attachments.isEmpty || !draft.forwardedAttachments.isEmpty {
+                    Divider().overlay(Theme.hairline.opacity(0.5))
+                    attachmentList
+                }
             }
-        }
-        .background(Theme.cardFill)
-        .navigationTitle(draft.subject.isEmpty ? "Neue E-Mail" : draft.subject)
-        .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
+            .card()
+
+            // Actions
+            HStack(spacing: 10) {
                 Button {
                     isImporting = true
                 } label: {
                     Label("Anhängen", systemImage: "paperclip")
+                        .font(.system(size: 13, weight: .medium))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(Theme.tint, in: Capsule())
                 }
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.accentColor)
                 .help("Dateien anhängen")
+
+                Spacer()
 
                 Button {
                     Task { await send() }
                 } label: {
-                    HStack(spacing: 6) {
+                    HStack(spacing: 7) {
                         if isSending {
-                            ProgressView().controlSize(.small)
+                            ProgressView().controlSize(.small).tint(.white)
                         } else {
                             Image(systemName: "paperplane.fill")
                         }
                         Text("Senden")
                     }
-                    .padding(.horizontal, 4)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 8)
+                    .background(
+                        LinearGradient(colors: [Palette.periwinkle, Palette.violet], startPoint: .top, endPoint: .bottom),
+                        in: Capsule()
+                    )
+                    .shadow(color: Palette.violet.opacity(0.35), radius: 6, y: 2)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.plain)
                 .keyboardShortcut(.return, modifiers: .command)
                 .disabled(isSending || account == nil)
+                .opacity(isSending || account == nil ? 0.6 : 1)
                 .help("Senden (⌘↩)")
+                .accessibilityIdentifier("compose.send")
             }
         }
+        .padding(14)
+        .themedWindowBackground(Theme.canvas)
+        .navigationTitle(draft.subject.isEmpty ? "Neue E-Mail" : draft.subject)
         .fileImporter(isPresented: $isImporting, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
             addAttachments(result)
         }
@@ -127,7 +153,7 @@ struct ComposeView: View {
         .frame(minWidth: 520, minHeight: 400)
     }
 
-    private func fieldRow<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+    private func fieldRow<Content: View>(_ title: String, showsDivider: Bool = true, @ViewBuilder content: () -> Content) -> some View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
                 Text(title)
@@ -139,7 +165,9 @@ struct ComposeView: View {
             .font(.system(size: 13))
             .padding(.horizontal, 16)
             .padding(.vertical, 9)
-            Divider().padding(.leading, 16)
+            if showsDivider {
+                Divider().overlay(Theme.hairline.opacity(0.5)).padding(.leading, 16)
+            }
         }
     }
 

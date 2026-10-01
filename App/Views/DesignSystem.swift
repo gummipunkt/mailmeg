@@ -121,6 +121,32 @@ struct CardModifier: ViewModifier {
 
 extension View {
     func card() -> some View { modifier(CardModifier()) }
+
+    /// Paints `color` behind the view *and* the window toolbar above it, so the toolbar
+    /// takes the colour of the column below instead of the system grey.
+    func themedWindowBackground(_ color: Color) -> some View {
+        modifier(ToolbarBandModifier(color: color))
+    }
+}
+
+struct ToolbarBandModifier: ViewModifier {
+    let color: Color
+
+    func body(content: Content) -> some View {
+        GeometryReader { proxy in
+            content
+                .frame(width: proxy.size.width, height: proxy.size.height)
+                // Covers content that scrolls up underneath the transparent toolbar.
+                .overlay(alignment: .top) {
+                    color
+                        .frame(height: proxy.safeAreaInsets.top)
+                        .offset(y: -proxy.safeAreaInsets.top)
+                        .allowsHitTesting(false)
+                }
+        }
+        .background(color.ignoresSafeArea())
+        .toolbarBackground(.hidden, for: .windowToolbar)
+    }
 }
 
 /// Borderless icon button used for hover and header actions.

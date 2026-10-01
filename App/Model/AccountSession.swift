@@ -29,6 +29,14 @@ final class AccountSession: Identifiable {
     var needsReauth = false
     private var lastHistoryID: String?
 
+    /// List entries by thread ID, together with the thread's historyId. Gmail changes a
+    /// thread's historyId whenever it changes, so unchanged threads are never fetched twice.
+    private var summaryCache: [String: (historyID: String?, summary: ThreadSummary)] = [:]
+    private var pendingCountIDs = Set<String>()
+    private var countsTask: Task<Void, Never>?
+    /// After Google reports an exhausted quota, background work pauses until this date.
+    private(set) var rateLimitedUntil: Date?
+
     init(email: String, tokens: OAuthTokens, config: GoogleOAuthConfig, transport: HTTPTransport = URLSessionTransport(), persistsTokens: Bool = true) {
         self.email = email
         let oauth = GoogleOAuthClient(config: config, transport: transport)
@@ -71,10 +79,12 @@ final class AccountSession: Identifiable {
         }
     }
 
+    /// Loads all labels and their counters (one request per counted label, so this is
+    /// only done on start and manual refresh; see `refreshCounts(for:)` otherwise).
     func loadLabels() async throws {
         let all = try await client.labels()
         let wanted = all.filter { label in
-            Self.systemLabels.contains { $0.id == label.id } || (!label.isSystem && !label.isHidden)
+            Self.countedSystemLabels.contains(label.id) || (!label.isSystem && !label.isHidden)
         }
         let detailed = try await client.labels(ids: wanted.map(\.id))
         let detailedByID = Dictionary(detailed.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
@@ -92,8 +102,71 @@ final class AccountSession: Identifiable {
         if notify {
             await notifyAboutNewMessages(since: lastHistoryID)
         }
-        try await loadLabels()
+        refreshCounts(for: Self.countedSystemLabels)
         return true
+    }
+
+    // MARK: - Quota-friendly helpers
+
+    static let countedSystemLabels: Set<String> = [SystemLabel.inbox, SystemLabel.spam]
+
+    /// Refreshes the counters of a few labels after a change. Calls within a short
+    /// window are merged into one batch, so quick actions don't flood the API.
+    func refreshCounts(for ids: some Sequence<String>) {
+        let known = Set(labels.map(\.id))
+        let relevant = ids.filter { known.contains($0) && (Self.countedSystemLabels.contains($0) || label(id: $0)?.isSystem == false) }
+        pendingCountIDs.formUnion(relevant)
+        guard !pendingCountIDs.isEmpty else { return }
+        countsTask?.cancel()
+        countsTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(1.5))
+            guard let self, !Task.isCancelled else { return }
+            let batch = Array(self.pendingCountIDs)
+            self.pendingCountIDs = []
+            do {
+                let updated = try await self.client.labels(ids: batch)
+                for label in updated {
+                    if let index = self.labels.firstIndex(where: { $0.id == label.id }) {
+                        self.labels[index] = label
+                    }
+                }
+            } catch {
+                self.noteRateLimit(error)
+            }
+        }
+    }
+
+    /// Returns cached list entries for unchanged threads and fetches only the rest.
+    func summaries(for refs: [GmailThreadRef]) async throws -> [ThreadSummary] {
+        let stale = refs.filter { ref in
+            guard let cached = summaryCache[ref.id], let historyID = ref.historyId else { return true }
+            return cached.historyID != historyID
+        }
+        if !stale.isEmpty {
+            let threads = try await client.threads(ids: stale.map(\.id), format: .metadata)
+            for thread in threads {
+                let summary = ThreadSummary(thread: thread, selfAddresses: [email], selfName: "Ich")
+                summaryCache[thread.id] = (thread.historyId, summary)
+            }
+        }
+        return refs.compactMap { summaryCache[$0.id]?.summary }
+    }
+
+    /// Keeps a locally changed entry (e.g. marked read) in the cache until Gmail reports a new historyId.
+    func updateCachedSummary(_ summary: ThreadSummary) {
+        guard let cached = summaryCache[summary.id] else { return }
+        summaryCache[summary.id] = (cached.historyID, summary)
+    }
+
+    var isRateLimited: Bool {
+        guard let rateLimitedUntil else { return false }
+        return rateLimitedUntil > Date()
+    }
+
+    func noteRateLimit(_ error: Error) {
+        if let apiError = error as? GmailAPIError, apiError.isRateLimited {
+            rateLimitedUntil = Date().addingTimeInterval(60)
+        }
     }
 
     private func notifyAboutNewMessages(since historyID: String) async {

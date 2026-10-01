@@ -48,7 +48,6 @@ struct SidebarView: View {
         }
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)
-        .background(Theme.sidebar)
         .safeAreaInset(edge: .top, spacing: 0) {
             Button {
                 openWindow(value: model.newDraft())
@@ -65,6 +64,7 @@ struct SidebarView: View {
             .padding(.bottom, 8)
             .accessibilityIdentifier("compose")
         }
+        .themedWindowBackground(Theme.sidebar)
     }
 
     /// Rows are identified by their full selection value. List matches a row's tag

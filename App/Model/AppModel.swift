@@ -92,7 +92,7 @@ final class AppModel {
     }
 
     func pollAll() async {
-        for account in accounts where !account.needsReauth {
+        for account in accounts where !account.needsReauth && !account.isRateLimited {
             do {
                 let changed = try await account.poll(notify: AppSettings.notificationsEnabled && !isDemo)
                 if changed, let mailbox, mailbox.account === account {
@@ -102,6 +102,7 @@ final class AppModel {
                 account.needsReauth = true
             } catch {
                 // Transient network errors while polling are not worth an alert.
+                account.noteRateLimit(error)
             }
         }
         updateDockBadge()
@@ -260,7 +261,7 @@ final class AppModel {
 
     func didSend(from account: AccountSession) {
         Task {
-            try? await account.loadLabels()
+            account.refreshCounts(for: [SystemLabel.inbox, SystemLabel.sent])
             if mailbox?.account === account {
                 await mailbox?.refreshFirstPage()
             }
@@ -275,6 +276,11 @@ final class AppModel {
     func present(_ error: Error, account: AccountSession? = nil) {
         if let oauthError = error as? OAuthError, oauthError == .invalidGrant {
             account?.needsReauth = true
+        }
+        if let apiError = error as? GmailAPIError, apiError.isRateLimited {
+            account?.noteRateLimit(error)
+            errorMessage = "Google hat kurzzeitig zu viele Anfragen gezählt (Gmail-Kontingent pro Minute). Mailmeg pausiert die automatische Aktualisierung für eine Minute, danach geht es normal weiter."
+            return
         }
         errorMessage = error.localizedDescription
     }

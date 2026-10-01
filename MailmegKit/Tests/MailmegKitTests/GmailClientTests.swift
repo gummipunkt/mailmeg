@@ -90,4 +90,18 @@ final class GmailClientTests: XCTestCase {
         let sent = try await makeClient(api: api).send(rfc822: Data("Subject: Hi\r\n\r\nBody".utf8), threadID: "t9")
         XCTAssertEqual(sent.id, "m1")
     }
+
+    func testRateLimitBackoffHonoursRetryAfter() {
+        let error = GmailAPIError(status: 403, message: "Quota exceeded", reason: "rateLimitExceeded")
+        XCTAssertTrue(error.isRateLimited)
+        let url = URL(string: "https://gmail.googleapis.com")!
+        let withHeader = HTTPURLResponse(url: url, statusCode: 403, httpVersion: nil, headerFields: ["Retry-After": "7"])!
+        let delay = GmailClient.retryDelay(attempt: 1, error: error, response: withHeader)
+        XCTAssertGreaterThanOrEqual(delay, 7_000_000_000)
+        XCTAssertLessThan(delay, 7_300_000_000)
+
+        let plain = HTTPURLResponse(url: url, statusCode: 403, httpVersion: nil, headerFields: nil)!
+        XCTAssertGreaterThanOrEqual(GmailClient.retryDelay(attempt: 3, error: error, response: plain), 8_000_000_000)
+        XCTAssertFalse(GmailAPIError(status: 403, message: "Forbidden", reason: "insufficientPermissions").isRateLimited)
+    }
 }
