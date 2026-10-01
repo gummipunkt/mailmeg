@@ -18,11 +18,6 @@ struct ThreadListView: View {
                 .tag(thread.id)
                 .accessibilityIdentifier("thread.\(thread.id)")
                 .onAppear { mailbox.loadMoreIfNeeded(after: thread) }
-                .contextMenu { contextMenu(for: thread) }
-                // Double-click a draft to keep writing it.
-                .simultaneousGesture(TapGesture(count: 2).onEnded {
-                    if thread.labelIDs.contains(SystemLabel.draft) { openDraft(thread) }
-                })
             }
             if mailbox.isLoadingMore {
                 HStack {
@@ -32,6 +27,16 @@ struct ThreadListView: View {
                 }
                 .listRowSeparator(.hidden)
             }
+        }
+        // Right-click menu, and double-click (or Return) on a draft to keep writing it.
+        .contextMenu(forSelectionType: String.self) { ids in
+            if let id = ids.first, let thread = mailbox.thread(id: id) {
+                contextMenu(for: thread)
+            }
+        } primaryAction: { ids in
+            guard let id = ids.first, let thread = mailbox.thread(id: id),
+                  thread.labelIDs.contains(SystemLabel.draft) else { return }
+            openDraft(thread)
         }
         .listStyle(.inset)
         .scrollContentBackground(.hidden)
