@@ -102,44 +102,13 @@ unter *Mailmeg → Über Mailmeg* und in den Einstellungen.
 
 Neue Version veröffentlichen:
 
-```bash
-# 1. MARKETING_VERSION in Config/Mailmeg.xcconfig erhöhen, z. B. auf 1.1.0
-# 2. Abschnitt "## [1.1.0] – Datum" in CHANGELOG.md ergänzen
-git commit -am "Release 1.1.0"
-git tag v1.1.0
-git push origin main v1.1.0
-```
+1. `MARKETING_VERSION` in `Config/Mailmeg.xcconfig` erhöhen, z. B. auf `1.1.0`.
+2. In `CHANGELOG.md` einen Abschnitt `## [1.1.0] – Datum` ergänzen.
+3. Nach `main` pushen.
 
-Die CI prüft, dass Tag und `MARKETING_VERSION` übereinstimmen, und veröffentlicht ein Release
-„Mailmeg 1.1.0“ mit `Mailmeg.dmg` und `Mailmeg-1.1.0.dmg`. Die Release-Notizen kommen aus dem CHANGELOG.
-
-## Architektur
-
-```
-MailmegKit/              Swift Package, plattformnahe Logik ohne UI, mit Unit-Tests
-  OAuth.swift            Google OAuth 2.0 (Authorization Code + PKCE), Token-Refresh (TokenManager)
-  GmailClient.swift      Typisierter REST-Client: Labels, Threads, Messages, Anhänge, Senden, History
-                         mit automatischem Token-Refresh bei 401 und Backoff bei 429/5xx
-  MessageContent.swift   MIME-Baum → HTML/Text/Anhänge, Zeichensätze, HTML↔Text
-  MIMEBuilder.swift      RFC 5322/MIME-Erzeugung (UTF-8, RFC 2047/2231, multipart/mixed)
-  ReplyBuilder.swift     Empfänger/Betreff/Zitat für Antworten und Weiterleitungen
-App/                     SwiftUI-App
-  Model/                 AppModel, AccountSession, MailboxModel, ThreadDetailModel (@Observable)
-  Views/                 NavigationSplitView mit drei Spalten, WKWebView-Renderer, Compose-Fenster
-  Support/               Keychain, Einstellungen, Formatierung
-Design/AppIcon.svg       Quelle des App-Icons (daraus werden die PNGs in App/Assets.xcassets erzeugt)
-project.yml              XcodeGen-Projektdefinition
-```
-
-### Datenschutz und Sicherheit
-
-- Mailmeg spricht nur mit `accounts.google.com`, `oauth2.googleapis.com` und `gmail.googleapis.com`.
-  Es gibt keinen eigenen Server und keine Telemetrie.
-- Die App läuft in der macOS-Sandbox und darf nur ausgehende Netzwerkverbindungen und vom Nutzer gewählte Dateien.
-- Angefragter Scope: `gmail.modify` (lesen, senden, Labels ändern, in den Papierkorb legen).
-  Endgültiges Löschen ist damit bewusst nicht möglich.
-- Nachrichten-HTML läuft in einem WKWebView ohne JavaScript, mit Content-Security-Policy und einem
-  WebKit-Content-Blocker für externe Ressourcen.
+Die CI merkt, dass es für `v1.1.0` noch kein Release gibt, legt Tag und Release „Mailmeg 1.1.0“ an und hängt
+`Mailmeg.dmg` und `Mailmeg-1.1.0.dmg` an. Die Release-Notizen kommen aus dem CHANGELOG. Alternativ löst auch
+ein gepushter Tag `v1.1.0` das Release aus. Der Tag muss dann zu `MARKETING_VERSION` passen.
 
 ## Sprache
 

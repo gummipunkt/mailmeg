@@ -72,10 +72,26 @@ jobs:
           name: Mailmeg-${{ steps.version.outputs.version }}-${{ github.run_number }}
           path: Mailmeg.dmg
 
-      # Pushing a tag vX.Y.Z publishes a regular, versioned release.
-      # https://github.com/<owner>/<repo>/releases/latest/download/Mailmeg.dmg always points to it.
+      # A new MARKETING_VERSION on main (or a pushed tag vX.Y.Z) publishes a regular, versioned
+      # release; the tag is created by the release itself. Its DMG is always reachable at
+      # https://github.com/<owner>/<repo>/releases/latest/download/Mailmeg.dmg
+      - name: Check for new version
+        id: release
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="v${{ steps.version.outputs.version }}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
       - name: Publish versioned release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: steps.release.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -88,8 +104,8 @@ jobs:
           print(match.group(1).strip() if match else f"Mailmeg {version}")
           PY
           cp Mailmeg.dmg "Mailmeg-$version.dmg"
-          gh release create "$GITHUB_REF_NAME" Mailmeg.dmg "Mailmeg-$version.dmg" \
-            --title "Mailmeg $version" --notes-file notes.md --latest
+          gh release create "${{ steps.release.outputs.tag }}" Mailmeg.dmg "Mailmeg-$version.dmg" \
+            --target "$GITHUB_SHA" --title "Mailmeg $version" --notes-file notes.md --latest
 
       # Every push to main refreshes the "nightly" pre-release with the newest development build.
       - name: Publish development build
