@@ -1,0 +1,6 @@
+// OAuth client ID of a Google Cloud "iOS" OAuth client (see README).
+// Put your own value into Config/Secrets.xcconfig (git-ignored):
+//   GOOGLE_CLIENT_ID = 1234567890-abc.apps.googleusercontent.com
+// Alternatively, enter the client ID in the app on first launch.
+GOOGLE_CLIENT_ID =
+#include? "Secrets.xcconfig"

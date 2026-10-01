@@ -1,0 +1,58 @@
+name: Mailmeg
+options:
+  bundleIdPrefix: de.mailmeg
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+configFiles:
+  Debug: Config/Mailmeg.xcconfig
+  Release: Config/Mailmeg.xcconfig
+packages:
+  MailmegKit:
+    path: MailmegKit
+targets:
+  Mailmeg:
+    type: application
+    platform: macOS
+    sources:
+      - path: App
+    dependencies:
+      - package: MailmegKit
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: Mailmeg
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        LSApplicationCategoryType: public.app-category.productivity
+        LSMinimumSystemVersion: "14.0"
+        GoogleClientID: $(GOOGLE_CLIENT_ID)
+        NSHumanReadableCopyright: ""
+    entitlements:
+      path: App/Mailmeg.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.network.client: true
+        com.apple.security.files.user-selected.read-write: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: de.mailmeg.app
+        PRODUCT_NAME: Mailmeg
+        SWIFT_VERSION: "5.0"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""
+        COMBINE_HIDPI_IMAGES: YES
+schemes:
+  Mailmeg:
+    build:
+      targets:
+        Mailmeg: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+    archive:
+      config: Release

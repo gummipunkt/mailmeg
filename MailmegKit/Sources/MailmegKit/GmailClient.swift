@@ -1,0 +1,273 @@
+import Foundation
+
+public struct GmailAPIError: Error, LocalizedError, Sendable {
+    public let status: Int
+    public let message: String
+    public let reason: String?
+
+    public init(status: Int, message: String, reason: String?) {
+        self.status = status
+        self.message = message
+        self.reason = reason
+    }
+
+    public var errorDescription: String? { "Gmail API error \(status): \(message)" }
+
+    var isRetryable: Bool {
+        switch status {
+        case 429, 500, 502, 503, 504: true
+        case 403: reason == "rateLimitExceeded" || reason == "userRateLimitExceeded"
+        default: false
+        }
+    }
+}
+
+/// Thin, typed wrapper around the Gmail REST API (v1).
+public final class GmailClient: Sendable {
+    public enum ThreadFormat: String, Sendable {
+        case minimal, metadata, full
+    }
+
+    public static let summaryHeaders = ["From", "To", "Subject", "Date"]
+
+    let tokens: TokenManager
+    let transport: HTTPTransport
+    let apiBase = URL(string: "https://gmail.googleapis.com/gmail/v1/users/me/")!
+    let uploadBase = URL(string: "https://gmail.googleapis.com/upload/gmail/v1/users/me/")!
+    let maxAttempts: Int
+    let sleep: @Sendable (UInt64) async throws -> Void
+
+    public init(
+        tokens: TokenManager,
+        transport: HTTPTransport = URLSessionTransport(),
+        maxAttempts: Int = 4,
+        sleep: @escaping @Sendable (UInt64) async throws -> Void = { try await Task.sleep(nanoseconds: $0) }
+    ) {
+        self.tokens = tokens
+        self.transport = transport
+        self.maxAttempts = maxAttempts
+        self.sleep = sleep
+    }
+
+    // MARK: - Account
+
+    public func profile() async throws -> GmailProfile {
+        try await get("profile")
+    }
+
+    public func sendAsAliases() async throws -> [GmailSendAs] {
+        struct Response: Decodable { let sendAs: [GmailSendAs]? }
+        let response: Response = try await get("settings/sendAs")
+        return response.sendAs ?? []
+    }
+
+    // MARK: - Labels
+
+    public func labels() async throws -> [GmailLabel] {
+        struct Response: Decodable { let labels: [GmailLabel]? }
+        let response: Response = try await get("labels")
+        return response.labels ?? []
+    }
+
+    /// Single label including message/thread counters (not returned by `labels()`).
+    public func label(id: String) async throws -> GmailLabel {
+        try await get("labels/\(escapePath(id))")
+    }
+
+    /// Labels including their counters, fetched concurrently.
+    public func labels(ids: [String], concurrency: Int = 6) async throws -> [GmailLabel] {
+        try await boundedMap(ids, concurrency: concurrency) { id in
+            do {
+                return try await self.label(id: id)
+            } catch let error as GmailAPIError where error.status == 404 {
+                return nil
+            }
+        }
+    }
+
+    // MARK: - Threads
+
+    public func listThreads(labelIDs: [String] = [], query: String? = nil, pageToken: String? = nil, maxResults: Int = 50) async throws -> GmailThreadList {
+        var items = labelIDs.map { URLQueryItem(name: "labelIds", value: $0) }
+        if let query, !query.isEmpty { items.append(URLQueryItem(name: "q", value: query)) }
+        if let pageToken { items.append(URLQueryItem(name: "pageToken", value: pageToken)) }
+        items.append(URLQueryItem(name: "maxResults", value: String(maxResults)))
+        return try await get("threads", query: items)
+    }
+
+    public func thread(id: String, format: ThreadFormat = .full, metadataHeaders: [String] = GmailClient.summaryHeaders) async throws -> GmailThread {
+        var items = [URLQueryItem(name: "format", value: format.rawValue)]
+        if format == .metadata {
+            items += metadataHeaders.map { URLQueryItem(name: "metadataHeaders", value: $0) }
+        }
+        return try await get("threads/\(escapePath(id))", query: items)
+    }
+
+    /// Fetches several threads concurrently (bounded) and returns them in the order of `ids`.
+    /// Threads that fail to load (e.g. deleted in the meantime) are skipped.
+    public func threads(ids: [String], format: ThreadFormat = .metadata, concurrency: Int = 8) async throws -> [GmailThread] {
+        try await boundedMap(ids, concurrency: concurrency) { id in
+            do {
+                return try await self.thread(id: id, format: format)
+            } catch let error as GmailAPIError where error.status == 404 {
+                return nil
+            }
+        }
+    }
+
+    public func modifyThread(id: String, add: [String] = [], remove: [String] = []) async throws {
+        struct Body: Encodable { let addLabelIds: [String]; let removeLabelIds: [String] }
+        let _: GmailThreadRef = try await post("threads/\(escapePath(id))/modify", json: Body(addLabelIds: add, removeLabelIds: remove))
+    }
+
+    public func trashThread(id: String) async throws {
+        let _: GmailThreadRef = try await post("threads/\(escapePath(id))/trash")
+    }
+
+    public func untrashThread(id: String) async throws {
+        let _: GmailThreadRef = try await post("threads/\(escapePath(id))/untrash")
+    }
+
+    // MARK: - Messages
+
+    public func message(id: String, format: ThreadFormat = .full) async throws -> GmailMessage {
+        try await get("messages/\(escapePath(id))", query: [URLQueryItem(name: "format", value: format.rawValue)])
+    }
+
+    public func attachment(messageID: String, attachmentID: String) async throws -> Data {
+        let body: MessagePartBody = try await get("messages/\(escapePath(messageID))/attachments/\(escapePath(attachmentID))")
+        guard let data = body.decodedData else {
+            throw GmailAPIError(status: 0, message: "Attachment data could not be decoded.", reason: nil)
+        }
+        return data
+    }
+
+    /// Sends an RFC 5322 message. Uses the multipart upload endpoint so large
+    /// attachments (up to Gmail's 35 MB limit) work and `threadId` can be set.
+    @discardableResult
+    public func send(rfc822 message: Data, threadID: String? = nil) async throws -> GmailMessage {
+        struct Metadata: Encodable { let threadId: String? }
+        let boundary = "mailmeg-upload-\(UUID().uuidString)"
+        var body = Data()
+        body.append(Data("--\(boundary)\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n".utf8))
+        body.append(try JSONEncoder().encode(Metadata(threadId: threadID)))
+        body.append(Data("\r\n--\(boundary)\r\nContent-Type: message/rfc822\r\n\r\n".utf8))
+        body.append(message)
+        body.append(Data("\r\n--\(boundary)--\r\n".utf8))
+
+        var components = URLComponents(url: uploadBase.appendingPathComponent("messages/send"), resolvingAgainstBaseURL: false)!
+        components.queryItems = [URLQueryItem(name: "uploadType", value: "multipart")]
+        var request = URLRequest(url: components.url!)
+        request.httpMethod = "POST"
+        request.setValue("multipart/related; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.httpBody = body
+        return try await perform(request)
+    }
+
+    // MARK: - History
+
+    public func history(startHistoryID: String, labelID: String? = nil, historyTypes: [String] = ["messageAdded"], pageToken: String? = nil) async throws -> GmailHistoryList {
+        var items = [URLQueryItem(name: "startHistoryId", value: startHistoryID)]
+        items += historyTypes.map { URLQueryItem(name: "historyTypes", value: $0) }
+        if let labelID { items.append(URLQueryItem(name: "labelId", value: labelID)) }
+        if let pageToken { items.append(URLQueryItem(name: "pageToken", value: pageToken)) }
+        return try await get("history", query: items)
+    }
+
+    // MARK: - Plumbing
+
+    /// Runs `transform` for every element with at most `concurrency` requests in flight,
+    /// keeping the input order and dropping `nil` results.
+    func boundedMap<Output: Sendable>(
+        _ inputs: [String],
+        concurrency: Int,
+        _ transform: @escaping @Sendable (String) async throws -> Output?
+    ) async throws -> [Output] {
+        var results = [Output?](repeating: nil, count: inputs.count)
+        try await withThrowingTaskGroup(of: (Int, Output?).self) { group in
+            var pending: [(offset: Int, element: String)] = Array(inputs.enumerated().reversed())
+            for _ in 0..<max(1, concurrency) {
+                guard let item = pending.popLast() else { break }
+                group.addTask { (item.offset, try await transform(item.element)) }
+            }
+            while let result = try await group.next() {
+                results[result.0] = result.1
+                if let item = pending.popLast() {
+                    group.addTask { (item.offset, try await transform(item.element)) }
+                }
+            }
+        }
+        return results.compactMap { $0 }
+    }
+
+    private func escapePath(_ component: String) -> String {
+        component.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed.subtracting(CharacterSet(charactersIn: "/"))) ?? component
+    }
+
+    private func url(_ path: String, query: [URLQueryItem]) -> URL {
+        var components = URLComponents(string: apiBase.absoluteString + path)!
+        if !query.isEmpty { components.queryItems = query }
+        return components.url!
+    }
+
+    private func get<T: Decodable>(_ path: String, query: [URLQueryItem] = []) async throws -> T {
+        try await perform(URLRequest(url: url(path, query: query)))
+    }
+
+    private func post<T: Decodable>(_ path: String) async throws -> T {
+        var request = URLRequest(url: url(path, query: []))
+        request.httpMethod = "POST"
+        return try await perform(request)
+    }
+
+    private func post<T: Decodable, Body: Encodable>(_ path: String, json: Body) async throws -> T {
+        var request = URLRequest(url: url(path, query: []))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(json)
+        return try await perform(request)
+    }
+
+    private struct ErrorEnvelope: Decodable {
+        struct Detail: Decodable { let reason: String? }
+        struct Body: Decodable {
+            let code: Int?
+            let message: String?
+            let errors: [Detail]?
+        }
+        let error: Body
+    }
+
+    func perform<T: Decodable>(_ baseRequest: URLRequest) async throws -> T {
+        var attempt = 0
+        var forceRefresh = false
+        while true {
+            attempt += 1
+            var request = baseRequest
+            let token = try await tokens.accessToken(forceRefresh: forceRefresh)
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+            let (data, response) = try await transport.data(for: request)
+            if (200..<300).contains(response.statusCode) {
+                return try JSONDecoder().decode(T.self, from: data)
+            }
+
+            let envelope = try? JSONDecoder().decode(ErrorEnvelope.self, from: data)
+            let error = GmailAPIError(
+                status: response.statusCode,
+                message: envelope?.error.message ?? HTTPURLResponse.localizedString(forStatusCode: response.statusCode),
+                reason: envelope?.error.errors?.first?.reason
+            )
+
+            if response.statusCode == 401, !forceRefresh {
+                forceRefresh = true
+                continue
+            }
+            forceRefresh = false
+            guard error.isRetryable, attempt < maxAttempts else { throw error }
+            let delay = UInt64(pow(2, Double(attempt - 1)) * 500_000_000) + UInt64.random(in: 0...250_000_000)
+            try await self.sleep(delay)
+        }
+    }
+}
