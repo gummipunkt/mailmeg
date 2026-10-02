@@ -444,6 +444,7 @@ private struct MessageDetailsGrid: View {
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("message.detailsGrid")
     }
 

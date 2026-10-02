@@ -482,12 +482,11 @@ struct FormatBar: View {
             .fixedSize()
             .help(tr("Textfarbe", "Text Color"))
             separator
-            formatButton("textformat", tr("Formatierung entfernen", "Clear Formatting"), id: "format.clear") { controller.clearFormatting() }
+            formatButton("eraser", tr("Formatierung entfernen", "Clear Formatting"), id: "format.clear") { controller.clearFormatting() }
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 5)
-        .accessibilityIdentifier("compose.formatBar")
     }
 
     private var separator: some View {

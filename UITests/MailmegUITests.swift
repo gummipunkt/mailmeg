@@ -165,9 +165,8 @@ final class MailmegUITests: XCTestCase {
         XCTAssertTrue(details.waitForExistence(timeout: 5))
         details.click()
         XCTAssertTrue(element(app, "message.detailsGrid").waitForExistence(timeout: 5), "Clicking the recipients should show the details")
-        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "value CONTAINS 'alex@example.com'")).firstMatch.exists
-            || app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'alex@example.com'")).firstMatch.exists,
-            "The own address should be shown, not just „mich“")
+        let ownAddress = NSPredicate(format: "value CONTAINS 'alex@example.com' OR label CONTAINS 'alex@example.com'")
+        XCTAssertTrue(app.staticTexts.matching(ownAddress).firstMatch.exists, "The own address should be shown, not just „mich“")
         sleep(1)
         snapshot("8-details-empfaenger", of: app.windows.firstMatch.screenshot())
 
