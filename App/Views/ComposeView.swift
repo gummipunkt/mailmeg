@@ -68,6 +68,7 @@ struct ComposeView: View {
                     TextField("", text: $draft.to, prompt: Text(tr("name@beispiel.de", "name@example.com")))
                         .textFieldStyle(.plain)
                         .focused($focusedField, equals: .to)
+                        .accessibilityIdentifier("compose.to")
                     Button(showsCcBcc ? tr("Cc/Bcc ausblenden", "Hide Cc/Bcc") : "Cc/Bcc") {
                         withAnimation(.snappy(duration: 0.15)) { showsCcBcc.toggle() }
                     }
