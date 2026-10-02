@@ -3,6 +3,13 @@
 Alle nennenswerten Änderungen an Mailmeg. Versionen folgen [Semantic Versioning](https://semver.org/lang/de/).
 All notable changes to Mailmeg. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.4.2] – 2026-10-02
+
+- Fenster für Header und Quelltext im Mailmeg-Design: Glas-Hintergrund, Karten, runde Buttons, Umschalter Header/Quelltext, Header-Filter, hervorgehobene Header-Namen
+  · Headers and source window in the Mailmeg design: glass background, cards, round buttons, headers/source switch, header filter, highlighted header names
+- App-Symbol mit neu zentriertem Briefträger
+  · App icon with the re-centred mail carrier
+
 ## [1.4.1] – 2026-10-02
 
 - Antworten gehen zuverlässig von der Adresse raus, an die die E-Mail ging: An und Cc haben Vorrang vor „Delivered-To“ (vorher konnte die Hauptadresse gewinnen), eigene Nachrichten behalten ihren Absender, sonst helfen Weiterleitungs-Header und frühere Nachrichten der Konversation

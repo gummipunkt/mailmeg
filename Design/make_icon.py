@@ -41,9 +41,11 @@ def build():
     tile.putalpha(mask)
     canvas.alpha_composite(tile)
 
-    # The character, scaled into the tile and clipped to it.
+    # The character, scaled into the tile and clipped to it. Only the empty rows are
+    # trimmed; the horizontal framing of Postman.png is kept, as it is centred by eye.
     postman = Image.open(os.path.join(HERE, "Postman.png")).convert("RGBA")
-    postman = postman.crop(postman.getbbox())
+    left, top, right, bottom = postman.getbbox()
+    postman = postman.crop((0, top, postman.width, bottom))
     target_h = 770 * S
     scale = target_h / postman.height
     postman = postman.resize((round(postman.width * scale), target_h), Image.LANCZOS)

@@ -167,6 +167,8 @@ struct ThreadListView: View {
 /// Capsule search field in the list header (Gmail search syntax works, e.g. `from:anna`).
 struct SearchField: View {
     @Binding var text: String
+    var prompt = tr("Suchen – z. B. from:anna has:attachment", "Search – e.g. from:anna has:attachment")
+    var identifier = "mailbox.search"
     let onSubmit: () -> Void
     @FocusState private var isFocused: Bool
 
@@ -175,12 +177,12 @@ struct SearchField: View {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(.secondary)
-            TextField(tr("Suchen – z. B. from:anna has:attachment", "Search – e.g. from:anna has:attachment"), text: $text)
+            TextField(prompt, text: $text)
                 .textFieldStyle(.plain)
                 .font(.system(size: 12.5))
                 .focused($isFocused)
                 .onSubmit(onSubmit)
-                .accessibilityIdentifier("mailbox.search")
+                .accessibilityIdentifier(identifier)
             if !text.isEmpty {
                 Button {
                     text = ""

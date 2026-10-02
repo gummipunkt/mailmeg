@@ -31,6 +31,7 @@ struct MailmegApp: App {
             }
         }
         .defaultSize(width: 820, height: 620)
+        .windowToolbarStyle(.unified(showsTitle: true))
 
         Settings {
             SettingsView()
