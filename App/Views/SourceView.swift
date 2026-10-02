@@ -82,7 +82,6 @@ struct SourceView: View {
                     .accessibilityIdentifier("source.headers")
                 } else {
                     ReadOnlyTextView(text: source ?? "")
-                        .accessibilityIdentifier("source.text")
                 }
             }
         }

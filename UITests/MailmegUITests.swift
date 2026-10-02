@@ -172,7 +172,7 @@ final class MailmegUITests: XCTestCase {
 
         // Message source (⌥⌘U), then switch to the header list.
         app.typeKey("u", modifierFlags: [.command, .option])
-        let source = element(app, "source.text")
+        let source = app.textViews["source.text"].firstMatch
         XCTAssertTrue(source.waitForExistence(timeout: 10), "⌥⌘U should open the message source")
         XCTAssertTrue((source.value as? String ?? "").contains("Delivered-To: alex@example.com"))
         sleep(1)
