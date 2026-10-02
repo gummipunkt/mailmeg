@@ -119,8 +119,9 @@ jobs:
           notes="Development build ${{ steps.version.outputs.version }} (build ${{ github.run_number }}, ${GITHUB_SHA::7}). Not a stable release."
           if gh release view nightly >/dev/null 2>&1; then
             gh release edit nightly --prerelease --title "MailMeG ${{ steps.version.outputs.version }} – development build" --notes "$notes"
-            gh release upload nightly MailMeG.dmg --clobber
+            # Asset names are case-insensitive: the pre-rename Mailmeg.dmg would block MailMeG.dmg.
             gh release delete-asset nightly Mailmeg.dmg -y 2>/dev/null || true
+            gh release upload nightly MailMeG.dmg --clobber
           else
             gh release create nightly MailMeG.dmg --prerelease --title "MailMeG ${{ steps.version.outputs.version }} – development build" --notes "$notes"
           fi
