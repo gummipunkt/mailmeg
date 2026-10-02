@@ -170,20 +170,6 @@ jobs:
           name: Screenshots
           path: screenshots
 
-      # Full-resolution demo screenshots for the website, kept at stable URLs:
-      # https://github.com/<owner>/<repo>/releases/download/screenshots/landing-de-inbox-light.png
-      - name: Publish landing page screenshots
-        if: always() && github.event_name == 'push'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          ls /tmp/mailmeg-screenshots/landing-*.png >/dev/null 2>&1 || { echo "No landing page screenshots."; exit 0; }
-          if ! gh release view screenshots >/dev/null 2>&1; then
-            gh release create screenshots --prerelease --target "$GITHUB_SHA" --title "MailMeG – Screenshots" \
-              --notes "Screenshots of the demo mailbox for the website, refreshed by CI."
-          fi
-          gh release upload screenshots /tmp/mailmeg-screenshots/landing-*.png --clobber
-
       # Small JPEG copies in the log, so the UI can be reviewed without downloading artifacts.
       - name: Print screenshots
         if: always()
@@ -209,3 +195,17 @@ jobs:
             base64 -i /tmp/shot.jpg | fold -w 2000
             echo "SCREENSHOT-END"
           done
+
+      # Full-resolution demo screenshots for the website, kept at stable URLs:
+      # https://github.com/<owner>/<repo>/releases/download/screenshots/landing-de-inbox-light.png
+      - name: Publish landing page screenshots
+        if: always() && github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls screenshots/landing-*.png >/dev/null 2>&1 || { echo "No landing page screenshots."; exit 0; }
+          if ! gh release view screenshots >/dev/null 2>&1; then
+            gh release create screenshots --prerelease --target "$GITHUB_SHA" --title "MailMeG – Screenshots" \
+              --notes "Screenshots of the demo mailbox for the website, refreshed by CI."
+          fi
+          gh release upload screenshots screenshots/landing-*.png --clobber

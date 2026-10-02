@@ -443,6 +443,11 @@ enum LaunchOptions {
         ProcessInfo.processInfo.arguments.contains("--onboarding")
     }
 
+    /// Clean screenshots for the website: no spell-check underlines.
+    static var screenshots: Bool {
+        ProcessInfo.processInfo.arguments.contains("--screenshots")
+    }
+
     /// Forces dark appearance (used for screenshots).
     static var dark: Bool {
         ProcessInfo.processInfo.arguments.contains("--dark")

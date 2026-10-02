@@ -272,6 +272,7 @@ struct GlassCircleMenu<Content: View>: View {
         .buttonStyle(.plain)
         .menuIndicator(.hidden)
         .fixedSize()
+        .frame(width: 32, height: 32)
         .help(help)
         .accessibilityLabel(help)
     }

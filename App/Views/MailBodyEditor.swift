@@ -32,7 +32,7 @@ struct MailBodyEditor: NSViewRepresentable {
         textView.isAutomaticQuoteSubstitutionEnabled = false
         textView.isAutomaticDashSubstitutionEnabled = false
         textView.isAutomaticLinkDetectionEnabled = false
-        textView.isContinuousSpellCheckingEnabled = true
+        textView.isContinuousSpellCheckingEnabled = !LaunchOptions.screenshots
         textView.defaultParagraphStyle = RichTextController.paragraphStyle
         textView.typingAttributes = RichTextController.baseAttributes
         textView.linkTextAttributes = [.foregroundColor: NSColor.linkColor, .underlineStyle: NSUnderlineStyle.single.rawValue, .cursor: NSCursor.pointingHand]

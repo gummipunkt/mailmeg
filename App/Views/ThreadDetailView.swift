@@ -48,14 +48,32 @@ struct ThreadDetailView: View {
 
     private var thread: ThreadSummary? { model.selectedThread }
 
+    /// Full bar when there is room; in a narrow column the reply actions share one menu.
     private var actionBar: some View {
-        HStack(spacing: 7) {
+        ViewThatFits(in: .horizontal) {
+            actionButtons(compact: false)
+            actionButtons(compact: true)
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, 8)
+        .padding(.bottom, 8)
+    }
+
+    private func actionButtons(compact: Bool) -> some View {
+        HStack(spacing: 6) {
             GlassCircleButton(systemImage: "arrowshape.turn.up.left", help: tr("Antworten (⌘R)", "Reply (⌘R)")) { compose(.reply) }
                 .accessibilityIdentifier("detail.reply")
-            GlassCircleButton(systemImage: "arrowshape.turn.up.left.2", help: tr("Allen antworten (⇧⌘R)", "Reply All (⇧⌘R)")) { compose(.replyAll) }
-            GlassCircleButton(systemImage: "arrowshape.turn.up.right", help: tr("Weiterleiten (⇧⌘F)", "Forward (⇧⌘F)")) { compose(.forward) }
+            if compact {
+                GlassCircleMenu(systemImage: "arrowshape.turn.up.right", help: tr("Allen antworten oder weiterleiten", "Reply All or Forward")) {
+                    Button(tr("Allen antworten", "Reply All")) { compose(.replyAll) }
+                    Button(tr("Weiterleiten", "Forward")) { compose(.forward) }
+                }
+            } else {
+                GlassCircleButton(systemImage: "arrowshape.turn.up.left.2", help: tr("Allen antworten (⇧⌘R)", "Reply All (⇧⌘R)")) { compose(.replyAll) }
+                GlassCircleButton(systemImage: "arrowshape.turn.up.right", help: tr("Weiterleiten (⇧⌘F)", "Forward (⇧⌘F)")) { compose(.forward) }
+            }
 
-            Spacer().frame(width: 6)
+            Spacer().frame(width: compact ? 2 : 6)
 
             if thread?.labelIDs.contains(SystemLabel.trash) == true {
                 GlassCircleButton(systemImage: "arrow.uturn.backward", help: tr("Wiederherstellen", "Restore")) { model.perform(.untrash) }
@@ -82,9 +100,6 @@ struct ThreadDetailView: View {
                 .accessibilityIdentifier("detail.next")
             moreMenu
         }
-        .padding(.horizontal, 18)
-        .padding(.top, 8)
-        .padding(.bottom, 8)
     }
 
     private var labelsMenu: some View {

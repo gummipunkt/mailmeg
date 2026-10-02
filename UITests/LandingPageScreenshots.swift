@@ -10,7 +10,7 @@ final class LandingPageScreenshots: XCTestCase {
 
     private func launch(_ arguments: [String], language: String) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["--demo", "--lang=\(language)"] + arguments
+        app.launchArguments = ["--demo", "--screenshots", "--lang=\(language)"] + arguments
         app.launch()
         app.activate()
         return app
@@ -81,7 +81,8 @@ final class LandingPageScreenshots: XCTestCase {
             app.typeKey("i", modifierFlags: .command)
             body.typeText("Launch")
             app.typeKey("i", modifierFlags: .command)
-            body.typeText("\n\n")
+            // Return twice ends the list, a third Return leaves an empty line.
+            body.typeText("\n\n\n")
             body.typeText(language == "de" ? "Bis dann!" : "See you then!")
             sleep(1)
             save("\(language)-compose", window(of: app, containing: "compose.body").screenshot())
