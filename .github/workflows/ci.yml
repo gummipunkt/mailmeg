@@ -200,7 +200,8 @@ jobs:
       # Full-resolution demo screenshots for the website, kept at stable URLs:
       # https://github.com/<owner>/<repo>/releases/download/screenshots/landing-de-inbox-light.png
       - name: Publish landing page screenshots
-        if: always() && github.event_name == 'push'
+        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
