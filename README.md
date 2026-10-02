@@ -100,6 +100,13 @@ Jeder Push baut die App außerdem per GitHub Actions auf macOS, führt Unit- und
 `MailMeG.dmg`. Pushes auf `main` aktualisieren den
 [Development-Build](https://github.com/gummipunkt/mailmeg/releases/tag/nightly).
 
+## Screenshots für die Website
+
+Beispielbilder des Demo-Postfachs (Deutsch/Englisch, hell/dunkel, Verfassen, Header, Einstellungen) liegen in
+`Design/Screenshots/` und werden bei jedem Push von der CI unter
+`https://github.com/gummipunkt/mailmeg/releases/download/screenshots/landing-de-inbox-light.png` usw. aktualisiert.
+Die CI hat nur ein 1024×768-Display; Retina-Bilder in doppelter Auflösung erzeugt `make screenshots` auf dem eigenen Mac.
+
 ## Versionen und Releases
 
 Die Versionsnummer steht an genau einer Stelle: `MARKETING_VERSION` in `Config/Mailmeg.xcconfig`.
