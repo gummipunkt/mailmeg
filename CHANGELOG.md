@@ -1,12 +1,17 @@
 # Changelog
 
-Alle nennenswerten Änderungen an Mailmeg. Versionen folgen [Semantic Versioning](https://semver.org/lang/de/).
-All notable changes to Mailmeg. Versions follow [Semantic Versioning](https://semver.org/).
+Alle nennenswerten Änderungen an MailMeG. Versionen folgen [Semantic Versioning](https://semver.org/lang/de/).
+All notable changes to MailMeG. Versions follow [Semantic Versioning](https://semver.org/).
+
+## [1.5.0] – 2026-10-02
+
+- Neuer Name: **MailMeG** – „Mail Me Google Mail“. App, Menüs, Fenster, Mitteilungen und Download heißen jetzt so (`MailMeG.app`, `MailMeG.dmg`); Einstellungen und Anmeldungen bleiben erhalten
+  · New name: **MailMeG** – “Mail Me Google Mail”. App, menus, windows, notifications and download now use it (`MailMeG.app`, `MailMeG.dmg`); settings and sign-ins are kept
 
 ## [1.4.2] – 2026-10-02
 
-- Fenster für Header und Quelltext im Mailmeg-Design: Glas-Hintergrund, Karten, runde Buttons, Umschalter Header/Quelltext, Header-Filter, hervorgehobene Header-Namen
-  · Headers and source window in the Mailmeg design: glass background, cards, round buttons, headers/source switch, header filter, highlighted header names
+- Fenster für Header und Quelltext im MailMeG-Design: Glas-Hintergrund, Karten, runde Buttons, Umschalter Header/Quelltext, Header-Filter, hervorgehobene Header-Namen
+  · Headers and source window in the MailMeG design: glass background, cards, round buttons, headers/source switch, header filter, highlighted header names
 - App-Symbol mit neu zentriertem Briefträger
   · App icon with the re-centred mail carrier
 
@@ -19,12 +24,12 @@ All notable changes to Mailmeg. Versions follow [Semantic Versioning](https://se
 
 ## [1.4.0] – 2026-10-02
 
-- Neues App-Symbol: der Mailmeg-Briefträger
-  · New app icon: the Mailmeg mail carrier
+- Neues App-Symbol: der MailMeG-Briefträger
+  · New app icon: the MailMeG mail carrier
 - Umlaute und Sonderzeichen werden korrekt angezeigt, auch wenn der Absender einen falschen Zeichensatz angibt (z. B. „fÃ¼r“ statt „für“)
   · Umlauts and special characters display correctly even when the sender declares the wrong charset (e.g. “fÃ¼r” instead of “für”)
-- Mitteilungen: Klick öffnet die Konversation; Antworten, Als gelesen markieren und Archivieren direkt in der Mitteilung; Banner auch, wenn Mailmeg im Vordergrund ist; gelesene Konversationen verschwinden aus der Mitteilungszentrale
-  · Notifications: a click opens the conversation; reply, mark as read and archive right from the notification; banners also while Mailmeg is in front; read conversations are removed from Notification Center
+- Mitteilungen: Klick öffnet die Konversation; Antworten, Als gelesen markieren und Archivieren direkt in der Mitteilung; Banner auch, wenn MailMeG im Vordergrund ist; gelesene Konversationen verschwinden aus der Mitteilungszentrale
+  · Notifications: a click opens the conversation; reply, mark as read and archive right from the notification; banners also while MailMeG is in front; read conversations are removed from Notification Center
 - Zähler für ungelesene E-Mails im Dock-Symbol aktualisiert sich sofort (abschaltbar); Einstellungen zeigen, ob macOS Mitteilungen erlaubt, mit Test-Mitteilung
   · The unread counter on the Dock icon updates right away (can be turned off); Settings show whether macOS allows notifications, with a test notification
 
@@ -43,8 +48,8 @@ All notable changes to Mailmeg. Versions follow [Semantic Versioning](https://se
 
 ## [1.2.0] – 2026-10-01
 
-- Entwürfe: Mailmeg sichert E-Mails beim Schreiben automatisch als Gmail-Entwurf (auch beim Schließen des Fensters, ⌘S sofort), synchron mit Gmail im Web und auf dem Handy
-  · Drafts: Mailmeg saves messages as Gmail drafts while you write (also when closing the window, ⌘S to save now), in sync with Gmail on the web and on your phone
+- Entwürfe: MailMeG sichert E-Mails beim Schreiben automatisch als Gmail-Entwurf (auch beim Schließen des Fensters, ⌘S sofort), synchron mit Gmail im Web und auf dem Handy
+  · Drafts: MailMeG saves messages as Gmail drafts while you write (also when closing the window, ⌘S to save now), in sync with Gmail on the web and on your phone
 - Entwürfe bearbeiten per Doppelklick im Ordner „Entwürfe“ oder über „Bearbeiten“ in der Konversation; „Verwerfen“ löscht den Entwurf auch in Gmail
   · Edit drafts by double-clicking them in Drafts or via “Edit” in the conversation; “Discard” also deletes the draft in Gmail
 - Beim Senden wird der gespeicherte Entwurf entfernt; Entwürfe sind in der Liste markiert

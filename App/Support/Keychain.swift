@@ -32,7 +32,7 @@ enum Keychain {
             var item = query
             item[kSecValueData as String] = data
             item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
-            item[kSecAttrLabel as String] = "Mailmeg (\(account))"
+            item[kSecAttrLabel as String] = "MailMeG (\(account))"
             let addStatus = SecItemAdd(item as CFDictionary, nil)
             guard addStatus == errSecSuccess else { throw KeychainError.unexpectedStatus(addStatus) }
         } else if status != errSecSuccess {

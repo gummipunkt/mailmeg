@@ -1,9 +1,11 @@
 import AppKit
 import Foundation
 
-/// Version and imprint information shown in "About Mailmeg" and in Settings.
+/// Version and imprint information shown in "About MailMeG" and in Settings.
 enum AppInfo {
-    static let name = "Mailmeg"
+    static let name = "MailMeG"
+    /// What the name stands for.
+    static let nameMeaning = "Mail Me Google Mail"
     static let author = "Patrick Walter"
     static let website = URL(string: "https://www.gummipunkt.eu")!
     static let websiteLabel = "www.gummipunkt.eu"
@@ -32,7 +34,7 @@ enum AppInfo {
             .foregroundColor: NSColor.secondaryLabelColor,
             .paragraphStyle: paragraph,
         ]
-        credits.append(NSAttributedString(string: tr("Ein nativer Gmail-Client für macOS.\n", "A native Gmail client for macOS.\n"), attributes: base))
+        credits.append(NSAttributedString(string: tr("\(nameMeaning) – ein nativer Gmail-Client für macOS.\n", "\(nameMeaning) – a native Gmail client for macOS.\n"), attributes: base))
         credits.append(NSAttributedString(string: tr("Kontakt: ", "Contact: "), attributes: base))
         var link = base
         link[.link] = website

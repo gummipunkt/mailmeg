@@ -369,7 +369,7 @@ final class AppModel {
 
     // MARK: - Notifications
 
-    /// Click on a notification: bring Mailmeg to the front and open the conversation.
+    /// Click on a notification: bring MailMeG to the front and open the conversation.
     func openFromNotification(accountID: String, threadID: String) {
         NSApp.activate(ignoringOtherApps: true)
         NSApp.windows.first { $0.identifier?.rawValue.hasPrefix("main") == true }?.makeKeyAndOrderFront(nil)
@@ -422,7 +422,7 @@ final class AppModel {
         }
         if let apiError = error as? GmailAPIError, apiError.isRateLimited {
             account?.noteRateLimit(error)
-            errorMessage = tr("Google hat kurzzeitig zu viele Anfragen gezählt (Gmail-Kontingent pro Minute). Mailmeg pausiert die automatische Aktualisierung für eine Minute, danach geht es normal weiter.", "Google counted too many requests for a moment (Gmail quota per minute). Mailmeg pauses automatic refreshing for a minute, then carries on as usual.")
+            errorMessage = tr("Google hat kurzzeitig zu viele Anfragen gezählt (Gmail-Kontingent pro Minute). MailMeG pausiert die automatische Aktualisierung für eine Minute, danach geht es normal weiter.", "Google counted too many requests for a moment (Gmail quota per minute). MailMeG pauses automatic refreshing for a minute, then carries on as usual.")
             return
         }
         errorMessage = error.localizedDescription

@@ -183,7 +183,7 @@ private struct AccountsSettingsView: View {
                 }
             }
         } message: {
-            Text(tr("Mailmeg vergisst das Konto und widerruft den Zugriff. Deine E-Mails bleiben in Gmail.", "Mailmeg forgets the account and revokes its access. Your email stays in Gmail."))
+            Text(tr("MailMeG vergisst das Konto und widerruft den Zugriff. Deine E-Mails bleiben in Gmail.", "MailMeG forgets the account and revokes its access. Your email stays in Gmail."))
         }
     }
 }
@@ -248,8 +248,8 @@ private struct ComposeSettingsView: View {
                 Text(tr("Signatur", "Signature"))
             } footer: {
                 Text(tr(
-                    "Mailmeg verwendet die Signaturen aus Gmail (Einstellungen → Allgemein → Signatur). Beim Wechsel des Absenders wird die passende Signatur eingesetzt.",
-                    "Mailmeg uses your Gmail signatures (Settings → General → Signature). Switching the sender inserts the matching signature."
+                    "MailMeG verwendet die Signaturen aus Gmail (Einstellungen → Allgemein → Signatur). Beim Wechsel des Absenders wird die passende Signatur eingesetzt.",
+                    "MailMeG uses your Gmail signatures (Settings → General → Signature). Switching the sender inserts the matching signature."
                 ))
                 .font(.caption)
                 .foregroundStyle(.secondary)

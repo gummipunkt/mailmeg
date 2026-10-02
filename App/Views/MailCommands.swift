@@ -7,7 +7,7 @@ struct MailCommands: Commands {
 
     var body: some Commands {
         CommandGroup(replacing: .appInfo) {
-            Button(tr("Über Mailmeg", "About Mailmeg")) { AppInfo.showAboutPanel() }
+            Button(tr("Über MailMeG", "About MailMeG")) { AppInfo.showAboutPanel() }
         }
 
         CommandGroup(replacing: .newItem) {

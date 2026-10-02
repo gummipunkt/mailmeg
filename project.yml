@@ -22,7 +22,8 @@ targets:
     info:
       path: App/Info.plist
       properties:
-        CFBundleDisplayName: Mailmeg
+        CFBundleDisplayName: MailMeG
+        CFBundleName: MailMeG
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, de]
         CFBundleShortVersionString: $(MARKETING_VERSION)
@@ -40,7 +41,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: de.mailmeg.app
-        PRODUCT_NAME: Mailmeg
+        PRODUCT_NAME: MailMeG
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         SWIFT_VERSION: "5.0"

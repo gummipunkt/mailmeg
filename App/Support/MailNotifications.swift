@@ -3,7 +3,7 @@ import Foundation
 import MailmegKit
 import UserNotifications
 
-/// macOS notifications for new mail: banners (also while Mailmeg is in front), a click
+/// macOS notifications for new mail: banners (also while MailMeG is in front), a click
 /// opens the conversation, and the actions Reply, Mark as Read and Archive work right
 /// from the notification.
 @MainActor
@@ -48,7 +48,7 @@ final class MailNotifications: NSObject, UNUserNotificationCenterDelegate {
         await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
     }
 
-    /// Opens the notification settings of Mailmeg in System Settings.
+    /// Opens the notification settings of MailMeG in System Settings.
     func openSystemSettings() {
         let id = Bundle.main.bundleIdentifier ?? "de.mailmeg.app"
         let urls = [
@@ -63,7 +63,7 @@ final class MailNotifications: NSObject, UNUserNotificationCenterDelegate {
     /// Posts a sample notification so people can check their settings.
     func sendTest() async {
         let content = UNMutableNotificationContent()
-        content.title = "Mailmeg"
+        content.title = "MailMeG"
         content.subtitle = tr("Test-Mitteilung", "Test notification")
         content.body = tr("So sehen Mitteilungen über neue E-Mails aus.", "This is how new email notifications look.")
         content.sound = .default

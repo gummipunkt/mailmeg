@@ -28,7 +28,7 @@ struct OnboardingView: View {
                     .shadow(color: .black.opacity(0.15), radius: 12, y: 6)
 
                 VStack(spacing: 6) {
-                    Text(tr("Willkommen bei Mailmeg", "Welcome to Mailmeg"))
+                    Text(tr("Willkommen bei MailMeG", "Welcome to MailMeG"))
                         .font(.system(size: 30, weight: .bold))
                     Text(tr("Gmail als echte Mac-App, direkt über die Gmail-API. Ohne Browser, ohne Umwege.", "Gmail as a real Mac app, straight through the Gmail API. No browser, no detours."))
                         .font(.system(size: 14))

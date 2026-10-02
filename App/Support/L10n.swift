@@ -1,7 +1,7 @@
 import Foundation
 import MailmegKit
 
-/// Mailmeg ships German and English. The language follows the order in
+/// MailMeG ships German and English. The language follows the order in
 /// System Settings → General → Language & Region (German if it comes before English).
 enum L10n {
     static let isGerman: Bool = {

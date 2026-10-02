@@ -6,7 +6,7 @@ struct MailmegApp: App {
     @State private var model = AppModel()
 
     var body: some Scene {
-        Window("Mailmeg", id: "main") {
+        Window("MailMeG", id: "main") {
             ContentView()
                 .environment(model)
                 .frame(minWidth: 960, minHeight: 560)

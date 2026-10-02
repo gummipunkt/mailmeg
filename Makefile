@@ -12,4 +12,4 @@ test:
 
 build: project
 	xcodebuild -project Mailmeg.xcodeproj -scheme Mailmeg -configuration Release -derivedDataPath build build
-	@echo "App: build/Build/Products/Release/Mailmeg.app"
+	@echo "App: build/Build/Products/Release/MailMeG.app"

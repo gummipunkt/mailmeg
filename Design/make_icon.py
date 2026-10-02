@@ -1,5 +1,5 @@
 """Builds the app icon from Design/Postman.png: the character on a macOS-style
-rounded tile (824×824 body on a 1024 canvas) in the Mailmeg palette.
+rounded tile (824×824 body on a 1024 canvas) in the MailMeG palette.
 
     python3 Design/make_icon.py
 """

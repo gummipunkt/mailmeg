@@ -34,7 +34,7 @@ jobs:
         run: |
           version=$(grep '^MARKETING_VERSION' Config/Mailmeg.xcconfig | cut -d= -f2 | tr -d ' ')
           echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "Mailmeg $version (build ${{ github.run_number }})"
+          echo "MailMeG $version (build ${{ github.run_number }})"
           if [[ "$GITHUB_REF" == refs/tags/v* && "${GITHUB_REF_NAME#v}" != "$version" ]]; then
             echo "::error::Tag $GITHUB_REF_NAME does not match MARKETING_VERSION $version in Config/Mailmeg.xcconfig"
             exit 1
@@ -53,8 +53,8 @@ jobs:
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             CODE_SIGN_IDENTITY=- \
             build
-          app=build/Build/Products/Release/Mailmeg.app
-          lipo -archs $app/Contents/MacOS/Mailmeg
+          app=build/Build/Products/Release/MailMeG.app
+          lipo -archs $app/Contents/MacOS/MailMeG
           test -f $app/Contents/Resources/AppIcon.icns
           /usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" -c "Print CFBundleVersion" $app/Contents/Info.plist
           codesign --verify --deep --strict --verbose=2 $app
@@ -62,19 +62,19 @@ jobs:
       - name: Create DMG
         run: |
           mkdir -p dmg
-          cp -R build/Build/Products/Release/Mailmeg.app dmg/
+          cp -R build/Build/Products/Release/MailMeG.app dmg/
           ln -s /Applications dmg/Applications
-          hdiutil create -volname "Mailmeg ${{ steps.version.outputs.version }}" -srcfolder dmg -ov -format UDZO Mailmeg.dmg
-          hdiutil verify Mailmeg.dmg
+          hdiutil create -volname "MailMeG ${{ steps.version.outputs.version }}" -srcfolder dmg -ov -format UDZO MailMeG.dmg
+          hdiutil verify MailMeG.dmg
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Mailmeg-${{ steps.version.outputs.version }}-${{ github.run_number }}
-          path: Mailmeg.dmg
+          name: MailMeG-${{ steps.version.outputs.version }}-${{ github.run_number }}
+          path: MailMeG.dmg
 
       # A new MARKETING_VERSION on main (or a pushed tag vX.Y.Z) publishes a regular, versioned
       # release; the tag is created by the release itself. Its DMG is always reachable at
-      # https://github.com/<owner>/<repo>/releases/latest/download/Mailmeg.dmg
+      # https://github.com/<owner>/<repo>/releases/latest/download/MailMeG.dmg
       - name: Check for new version
         id: release
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
@@ -101,11 +101,11 @@ jobs:
           version = sys.argv[1]
           text = open("CHANGELOG.md", encoding="utf-8").read()
           match = re.search(r"^## \[?" + re.escape(version) + r"\]?.*?$(.*?)(?=^## |\Z)", text, re.S | re.M)
-          print(match.group(1).strip() if match else f"Mailmeg {version}")
+          print(match.group(1).strip() if match else f"MailMeG {version}")
           PY
-          cp Mailmeg.dmg "Mailmeg-$version.dmg"
-          gh release create "${{ steps.release.outputs.tag }}" Mailmeg.dmg "Mailmeg-$version.dmg" \
-            --target "$GITHUB_SHA" --title "Mailmeg $version" --notes-file notes.md --latest
+          cp MailMeG.dmg "MailMeG-$version.dmg"
+          gh release create "${{ steps.release.outputs.tag }}" MailMeG.dmg "MailMeG-$version.dmg" \
+            --target "$GITHUB_SHA" --title "MailMeG $version" --notes-file notes.md --latest
 
       # Every push to main refreshes the "nightly" pre-release with the newest development build.
       - name: Publish development build
@@ -118,10 +118,11 @@ jobs:
           git push -f origin nightly
           notes="Development build ${{ steps.version.outputs.version }} (build ${{ github.run_number }}, ${GITHUB_SHA::7}). Not a stable release."
           if gh release view nightly >/dev/null 2>&1; then
-            gh release edit nightly --prerelease --title "Mailmeg ${{ steps.version.outputs.version }} – development build" --notes "$notes"
-            gh release upload nightly Mailmeg.dmg --clobber
+            gh release edit nightly --prerelease --title "MailMeG ${{ steps.version.outputs.version }} – development build" --notes "$notes"
+            gh release upload nightly MailMeG.dmg --clobber
+            gh release delete-asset nightly Mailmeg.dmg -y 2>/dev/null || true
           else
-            gh release create nightly Mailmeg.dmg --prerelease --title "Mailmeg ${{ steps.version.outputs.version }} – development build" --notes "$notes"
+            gh release create nightly MailMeG.dmg --prerelease --title "MailMeG ${{ steps.version.outputs.version }} – development build" --notes "$notes"
           fi
 
   ui-tests:

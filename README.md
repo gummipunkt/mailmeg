@@ -1,7 +1,7 @@
-# Mailmeg
+# MailMeG
 
-Ein nativer Gmail-Client für macOS: SwiftUI, AppKit und WebKit, ohne Web-Wrapper.
-Mailmeg greift direkt über die [Gmail REST API](https://developers.google.com/gmail/api) auf dein Postfach zu
+**MailMeG** steht für **Mail Me Google Mail**: ein nativer Gmail-Client für macOS (SwiftUI, AppKit und WebKit), ohne Web-Wrapper.
+MailMeG greift direkt über die [Gmail REST API](https://developers.google.com/gmail/api) auf dein Postfach zu
 und nicht über IMAP und nicht über eine eingebettete gmail.com-Seite.
 
 ## Funktionen
@@ -28,21 +28,21 @@ und nicht über IMAP und nicht über eine eingebettete gmail.com-Seite.
 
 ## Installation (fertige DMG, ohne Xcode)
 
-1. **[Mailmeg.dmg herunterladen](https://github.com/gummipunkt/mailmeg/releases/latest/download/Mailmeg.dmg)**
+1. **[MailMeG.dmg herunterladen](https://github.com/gummipunkt/mailmeg/releases/latest/download/MailMeG.dmg)**
    (aktuelle stabile Version, Universal: Apple Silicon und Intel, macOS 14 oder neuer).
    Alle Versionen stehen unter [Releases](https://github.com/gummipunkt/mailmeg/releases), den neuesten
-   Entwicklungsstand gibt es als [Development-Build](https://github.com/gummipunkt/mailmeg/releases/download/nightly/Mailmeg.dmg).
-2. DMG öffnen und **Mailmeg** in den Ordner **Programme** ziehen.
+   Entwicklungsstand gibt es als [Development-Build](https://github.com/gummipunkt/mailmeg/releases/download/nightly/MailMeG.dmg).
+2. DMG öffnen und **MailMeG** in den Ordner **Programme** ziehen.
 3. **Erster Start:** Die App ist nicht mit einem kostenpflichtigen Apple-Entwicklerzertifikat signiert
    und nicht notarisiert, deshalb blockiert macOS sie beim ersten Öffnen. So gibst du sie frei:
-   - Mailmeg einmal per Doppelklick öffnen und die Warnung mit *Fertig* schließen.
+   - MailMeG einmal per Doppelklick öffnen und die Warnung mit *Fertig* schließen.
    - *Systemeinstellungen → Datenschutz & Sicherheit* öffnen, nach unten scrollen und bei
-     „Mailmeg wurde blockiert“ auf **Dennoch öffnen** klicken.
+     „MailMeG wurde blockiert“ auf **Dennoch öffnen** klicken.
 
-   Alternativ im Terminal: `xattr -dr com.apple.quarantine /Applications/Mailmeg.app`
-4. Beim ersten Start fragt Mailmeg nach deiner **Google-OAuth-Client-ID**, siehe Abschnitt 1.
+   Alternativ im Terminal: `xattr -dr com.apple.quarantine /Applications/MailMeG.app`
+4. Beim ersten Start fragt MailMeG nach deiner **Google-OAuth-Client-ID**, siehe Abschnitt 1.
 
-Nach einem Update kann macOS einmalig fragen, ob Mailmeg auf den Schlüsselbund-Eintrag zugreifen darf.
+Nach einem Update kann macOS einmalig fragen, ob MailMeG auf den Schlüsselbund-Eintrag zugreifen darf.
 Dann *Immer erlauben* wählen.
 
 ## Voraussetzungen zum selbst Bauen
@@ -56,10 +56,10 @@ Dann *Immer erlauben* wählen.
 
 Google erlaubt Gmail-Zugriff nur über einen registrierten OAuth-Client. Für die private Nutzung legst du ihn selbst an:
 
-1. Öffne die [Google Cloud Console](https://console.cloud.google.com/) und lege ein **neues Projekt** an, z. B. „Mailmeg“.
+1. Öffne die [Google Cloud Console](https://console.cloud.google.com/) und lege ein **neues Projekt** an, z. B. „MailMeG“.
 2. **Gmail API aktivieren**: *APIs & Dienste → Bibliothek → „Gmail API“ → Aktivieren*.
 3. **OAuth-Zustimmungsbildschirm** (*Google Auth Platform*):
-   - *Branding*: App-Name „Mailmeg“ und deine E-Mail-Adresse eintragen.
+   - *Branding*: App-Name „MailMeG“ und deine E-Mail-Adresse eintragen.
    - *Zielgruppe*: Nutzertyp **Extern** wählen. Unter *Testnutzer* deine Gmail-Adresse(n) hinzufügen.
    - *Datenzugriff* (optional): Bereich `https://www.googleapis.com/auth/gmail.modify` hinzufügen.
 4. **OAuth-Client anlegen**: *Clients → Client erstellen*
@@ -68,10 +68,10 @@ Google erlaubt Gmail-Zugriff nur über einen registrierten OAuth-Client. Für di
    - Die angezeigte **Client-ID** kopieren (`…apps.googleusercontent.com`).
 
 > **Wichtig, Token-Laufzeit:** Solange die App im Google-Projekt im Status *Testen* ist, laufen Refresh-Tokens
-> nach **7 Tagen** ab, und du musst dich dann neu anmelden (Mailmeg zeigt dafür „Erneut anmelden“).
+> nach **7 Tagen** ab, und du musst dich dann neu anmelden (MailMeG zeigt dafür „Erneut anmelden“).
 > Das umgehst du, indem du unter *Zielgruppe* auf **„App veröffentlichen“** klickst. Für den Eigengebrauch
 > ist keine Google-Verifizierung nötig. Beim Login erscheint dann einmalig der Hinweis „Google hat diese App
-> nicht überprüft“, über *Erweitert → Weiter zu Mailmeg* geht es weiter.
+> nicht überprüft“, über *Erweitert → Weiter zu MailMeG* geht es weiter.
 > Mit einem Google-Workspace-Konto kannst du stattdessen den Nutzertyp *Intern* wählen.
 
 ## 2. Selbst bauen (optional)
@@ -85,7 +85,7 @@ echo 'GOOGLE_CLIENT_ID = 1234567890-abc.apps.googleusercontent.com' > Config/Sec
 make open        # erzeugt Mailmeg.xcodeproj mit XcodeGen und öffnet Xcode
 ```
 
-In Xcode das Schema **Mailmeg** wählen und mit ⌘R starten. Ohne `Secrets.xcconfig` fragt die App beim
+In Xcode das Schema **MailMeG** wählen und mit ⌘R starten. Ohne `Secrets.xcconfig` fragt die App beim
 ersten Start nach der Client-ID.
 
 Weitere Befehle:
@@ -93,18 +93,18 @@ Weitere Befehle:
 ```bash
 make test        # Unit-Tests der MailmegKit-Bibliothek
 # UI-Tests (klicken sich im Demo-Modus durch die App): in Xcode ⌘U
-make build       # Release-Build nach build/Build/Products/Release/Mailmeg.app
+make build       # Release-Build nach build/Build/Products/Release/MailMeG.app
 ```
 
 Jeder Push baut die App außerdem per GitHub Actions auf macOS, führt Unit- und UI-Tests aus und erzeugt
-`Mailmeg.dmg`. Pushes auf `main` aktualisieren den
+`MailMeG.dmg`. Pushes auf `main` aktualisieren den
 [Development-Build](https://github.com/gummipunkt/mailmeg/releases/tag/nightly).
 
 ## Versionen und Releases
 
 Die Versionsnummer steht an genau einer Stelle: `MARKETING_VERSION` in `Config/Mailmeg.xcconfig`.
 Die Build-Nummer setzt die CI automatisch (fortlaufende Nummer des Workflow-Laufs). Beides zeigt die App
-unter *Mailmeg → Über Mailmeg* und in den Einstellungen.
+unter *MailMeG → Über MailMeG* und in den Einstellungen.
 
 Neue Version veröffentlichen:
 
@@ -112,13 +112,13 @@ Neue Version veröffentlichen:
 2. In `CHANGELOG.md` einen Abschnitt `## [1.1.0] – Datum` ergänzen.
 3. Nach `main` pushen.
 
-Die CI merkt, dass es für `v1.1.0` noch kein Release gibt, legt Tag und Release „Mailmeg 1.1.0“ an und hängt
-`Mailmeg.dmg` und `Mailmeg-1.1.0.dmg` an. Die Release-Notizen kommen aus dem CHANGELOG. Alternativ löst auch
+Die CI merkt, dass es für `v1.1.0` noch kein Release gibt, legt Tag und Release „MailMeG 1.1.0“ an und hängt
+`MailMeG.dmg` und `MailMeG-1.1.0.dmg` an. Die Release-Notizen kommen aus dem CHANGELOG. Alternativ löst auch
 ein gepushter Tag `v1.1.0` das Release aus. Der Tag muss dann zu `MARKETING_VERSION` passen.
 
 ## Sprache
 
-Mailmeg gibt es auf Deutsch und Englisch. Die App folgt der Reihenfolge unter
+MailMeG gibt es auf Deutsch und Englisch. Die App folgt der Reihenfolge unter
 *Systemeinstellungen → Allgemein → Sprache & Region*. Steht Deutsch vor Englisch, ist die Oberfläche deutsch.
 
 ## Roadmap
@@ -129,15 +129,15 @@ Mailmeg gibt es auf Deutsch und Englisch. Die App folgt der Reihenfolge unter
 
 ## English
 
-Mailmeg is a native Gmail client for macOS (SwiftUI) that talks to the Gmail REST API directly instead of
+MailMeG (“Mail Me Google Mail”) is a native Gmail client for macOS (SwiftUI) that talks to the Gmail REST API directly instead of
 wrapping the Gmail website. The interface is available in English and German and follows your macOS language
 order. Highlights: multiple accounts, Gmail aliases and signatures, drafts synced with Gmail, a rich text
 editor, message source and headers, configurable fetch interval and an Airmail-style glass design.
 
-1. Download **[Mailmeg.dmg](https://github.com/gummipunkt/mailmeg/releases/latest/download/Mailmeg.dmg)**
-   (universal, macOS 14 or later) and drag Mailmeg into *Applications*.
+1. Download **[MailMeG.dmg](https://github.com/gummipunkt/mailmeg/releases/latest/download/MailMeG.dmg)**
+   (universal, macOS 14 or later) and drag MailMeG into *Applications*.
 2. The app is not notarized: open it once, then choose *System Settings → Privacy & Security → Open Anyway*
-   (or run `xattr -dr com.apple.quarantine /Applications/Mailmeg.app`).
+   (or run `xattr -dr com.apple.quarantine /Applications/MailMeG.app`).
 3. Create your own Google Cloud OAuth client of type **iOS** (bundle ID `de.mailmeg.app`) with the Gmail API
    enabled, paste the client ID on first launch and sign in. Section 1 above describes every step. Or try the
    demo mailbox first.

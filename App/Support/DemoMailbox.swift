@@ -265,7 +265,7 @@ private final class DemoTransport: HTTPTransport, @unchecked Sendable {
             }
             return (200, ["id": threads[index].id])
         case ("GET", "messages", _) where parts.count == 4:
-            return (200, ["size": 18, "data": Base64URL.encode(Data("Mailmeg Demo-Anhang".utf8))])
+            return (200, ["size": 18, "data": Base64URL.encode(Data("MailMeG Demo-Anhang".utf8))])
         case ("GET", "messages", 2) where query.contains(where: { $0.name == "format" && $0.value == "raw" }):
             guard let source = rawSource(messageID: parts[1]) else { return notFound() }
             return (200, ["id": parts[1], "raw": Base64URL.encode(Data(source.utf8))])
