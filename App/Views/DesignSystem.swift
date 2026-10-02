@@ -106,6 +106,23 @@ struct LabelChip: View {
     }
 }
 
+/// Gmail's "Important" marker, styled like a label chip.
+struct ImportantChip: View {
+    private static let color = Color(hex: "#E8A200")
+
+    var body: some View {
+        Label(tr("Wichtig", "Important"), systemImage: "bookmark.fill")
+            .labelStyle(.titleAndIcon)
+            .font(.system(size: 10.5, weight: .medium))
+            .imageScale(.small)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 2)
+            .foregroundStyle(Self.color)
+            .background(Self.color.opacity(0.15), in: Capsule())
+            .help(tr("Von Gmail als wichtig markiert", "Marked important by Gmail"))
+    }
+}
+
 struct CardModifier: ViewModifier {
     func body(content: Content) -> some View {
         content

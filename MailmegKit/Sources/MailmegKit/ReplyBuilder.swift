@@ -129,11 +129,29 @@ public enum ReplyBuilder {
         return block.isEmpty ? "" : "\n\n\(block)\n"
     }
 
-    /// The alias a reply should be sent from: the first of one's own addresses the original
-    /// message was sent to, so replies keep using the address the sender wrote to.
-    public static func preferredSender(for message: GmailMessage, ownAddresses: [String]) -> String? {
-        let addressed = (message.to + message.cc + (message.header("Delivered-To").map(EmailAddress.parseList) ?? []))
-            .map { $0.address.lowercased() }
-        return ownAddresses.first { addressed.contains($0.lowercased()) }
+    /// Headers that name the address a message was delivered to, in order of reliability
+    /// after To and Cc (Gmail puts the receiving account into Delivered-To, forwarders use the others).
+    static let deliveryHeaders = ["X-Original-To", "Delivered-To", "X-Forwarded-To", "X-Forwarded-For", "Envelope-To"]
+
+    /// The alias a reply should be sent from: the own address the original message was
+    /// written to, so replies keep using the address the sender wrote to. If the message
+    /// is one's own, its sender is kept. Earlier messages of the conversation are the
+    /// fallback (e.g. when the address was only in Bcc).
+    public static func preferredSender(for message: GmailMessage, in thread: [GmailMessage] = [], ownAddresses: [String]) -> String? {
+        let own = Set(ownAddresses.map { $0.lowercased() })
+        func ownAddress(of message: GmailMessage) -> String? {
+            if let from = message.from?.address.lowercased(), own.contains(from) { return from }
+            var candidates = message.to + message.cc
+            for name in deliveryHeaders {
+                candidates += message.header(name).map(EmailAddress.parseList) ?? []
+            }
+            // First match in header order, not in alphabetical order of one's addresses.
+            return candidates.map { $0.address.lowercased() }.first { own.contains($0) }
+        }
+        if let address = ownAddress(of: message) { return address }
+        for earlier in thread.reversed() where earlier.id != message.id {
+            if let address = ownAddress(of: earlier) { return address }
+        }
+        return nil
     }
 }

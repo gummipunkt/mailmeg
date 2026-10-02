@@ -201,7 +201,11 @@ final class ThreadDetailModel {
             dateFormatter: { $0.formatted(date: .abbreviated, time: .shortened) }
         )
         // Reply from the address the message was sent to, like Gmail does.
-        let identity = account.identity(for: ReplyBuilder.preferredSender(for: message, ownAddresses: account.ownAddresses))
+        let identity = account.identity(for: ReplyBuilder.preferredSender(
+            for: message,
+            in: messages.map(\.message).filter { !$0.isDraft },
+            ownAddresses: account.ownAddresses
+        ))
         var draft = ComposeDraft(accountID: account.email, kind: kind)
         draft.fromAddress = identity.address
         draft.signatureBlock = DraftComposer.signatureBlock(for: identity, kind: kind)

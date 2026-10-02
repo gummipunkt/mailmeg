@@ -34,6 +34,8 @@ final class MailmegUITests: XCTestCase {
 
         let inboxThread = element(app, "thread.t-projektplan")
         XCTAssertTrue(inboxThread.waitForExistence(timeout: 20), "Inbox should list the demo conversations")
+        let important = inboxThread.descendants(matching: .any).matching(NSPredicate(format: "label == 'Wichtig' OR value == 'Wichtig'")).firstMatch
+        XCTAssertTrue(important.exists, "Important conversations should be marked in the list")
         inboxThread.click()
         XCTAssertTrue(element(app, "detail.subject").waitForExistence(timeout: 10), "Selecting a conversation should open it")
         sleep(2)

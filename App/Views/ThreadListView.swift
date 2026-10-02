@@ -13,6 +13,7 @@ struct ThreadListView: View {
                     thread: thread,
                     labels: mailbox.account.userLabels(in: thread.labelIDs).filter { $0.id != mailbox.labelID },
                     isTrash: mailbox.labelID == SystemLabel.trash,
+                    showsImportant: mailbox.labelID != SystemLabel.important && thread.labelIDs.contains(SystemLabel.important),
                     onAction: { model.perform($0, threadID: thread.id) }
                 )
                 .tag(thread.id)
@@ -203,6 +204,7 @@ struct ThreadRow: View {
     let thread: ThreadSummary
     let labels: [GmailLabel]
     let isTrash: Bool
+    var showsImportant = false
     let onAction: (ThreadAction) -> Void
     @AppStorage(AppSettings.showAvatarsKey) private var showAvatars = false
     @State private var isHovering = false
@@ -256,8 +258,11 @@ struct ThreadRow: View {
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
-                if !labels.isEmpty {
+                if showsImportant || !labels.isEmpty {
                     HStack(spacing: 4) {
+                        if showsImportant {
+                            ImportantChip()
+                        }
                         ForEach(labels.prefix(3)) { LabelChip(label: $0) }
                     }
                     .padding(.top, 2)

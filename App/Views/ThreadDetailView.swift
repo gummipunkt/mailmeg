@@ -156,12 +156,8 @@ struct ThreadDetailView: View {
                 }
                 HStack(spacing: 6) {
                     let labelIDs = Set(detail.messages.flatMap { $0.message.labelIds ?? [] })
+                    if labelIDs.contains(SystemLabel.important) { ImportantChip() }
                     ForEach(detail.account.userLabels(in: labelIDs)) { LabelChip(label: $0) }
-                    if labelIDs.contains(SystemLabel.important) {
-                        Label(tr("Wichtig", "Important"), systemImage: "bookmark.fill")
-                            .font(.system(size: 10.5, weight: .medium))
-                            .foregroundStyle(Color.accentColor)
-                    }
                     Text(metaLine)
                         .font(.system(size: 11.5))
                         .foregroundStyle(.secondary)

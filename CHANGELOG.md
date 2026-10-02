@@ -3,6 +3,13 @@
 Alle nennenswerten Änderungen an Mailmeg. Versionen folgen [Semantic Versioning](https://semver.org/lang/de/).
 All notable changes to Mailmeg. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.4.1] – 2026-10-02
+
+- Antworten gehen zuverlässig von der Adresse raus, an die die E-Mail ging: An und Cc haben Vorrang vor „Delivered-To“ (vorher konnte die Hauptadresse gewinnen), eigene Nachrichten behalten ihren Absender, sonst helfen Weiterleitungs-Header und frühere Nachrichten der Konversation
+  · Replies reliably go out from the address the email was sent to: To and Cc take precedence over “Delivered-To” (the main address could win before), own messages keep their sender, otherwise forwarding headers and earlier messages of the conversation are used
+- Gmails „Wichtig“-Markierung erscheint jetzt auch in der Nachrichtenliste
+  · Gmail's “Important” marker is now also shown in the message list
+
 ## [1.4.0] – 2026-10-02
 
 - Neues App-Symbol: der Mailmeg-Briefträger
