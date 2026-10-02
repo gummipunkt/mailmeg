@@ -1,6 +1,7 @@
 import AppKit
 import MailmegKit
 import SwiftUI
+import UserNotifications
 
 struct SettingsView: View {
     var body: some View {
@@ -24,6 +25,8 @@ private struct GeneralSettingsView: View {
     @AppStorage(AppSettings.notificationsKey) private var notificationsEnabled = true
     @AppStorage(AppSettings.refreshIntervalKey) private var refreshInterval: Double = 60
     @AppStorage(AppSettings.showAvatarsKey) private var showAvatars = false
+    @AppStorage(AppSettings.dockBadgeKey) private var dockBadge = true
+    @State private var notificationStatus: UNAuthorizationStatus?
 
     private var lastRefreshText: String {
         guard let date = model.lastRefresh else { return tr("Noch nicht abgerufen", "Not checked yet") }
@@ -48,11 +51,40 @@ private struct GeneralSettingsView: View {
                     Button(tr("Jetzt abrufen", "Check Now")) { Task { await model.refreshAll() } }
                         .disabled(model.isRefreshing)
                 }
-                Toggle(tr("Mitteilungen bei neuen E-Mails", "Notify me about new email"), isOn: $notificationsEnabled)
             } header: {
                 Text(tr("Abrufen", "Fetching"))
             } footer: {
                 Text(tr("„Manuell“ ruft nur ab, wenn du ⇧⌘N drückst oder auf Aktualisieren klickst.", "“Manually” only checks when you press ⇧⌘N or click Refresh."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
+                Toggle(tr("Mitteilungen bei neuen E-Mails", "Notify me about new email"), isOn: $notificationsEnabled)
+                    .onChange(of: notificationsEnabled) { _, enabled in
+                        if enabled { Task { await requestNotifications() } }
+                    }
+                Toggle(tr("Anzahl ungelesener E-Mails im Dock-Symbol", "Show unread count on the Dock icon"), isOn: $dockBadge)
+                    .onChange(of: dockBadge) { model.updateDockBadge() }
+                HStack(spacing: 8) {
+                    Image(systemName: statusIcon)
+                        .foregroundStyle(notificationStatus == .denied ? Color.orange : Color.secondary)
+                    Text(statusText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    if notificationStatus == .notDetermined {
+                        Button(tr("Erlauben …", "Allow…")) { Task { await requestNotifications() } }
+                    } else if notificationStatus == .denied {
+                        Button(tr("Systemeinstellungen …", "System Settings…")) { MailNotifications.shared.openSystemSettings() }
+                    } else {
+                        Button(tr("Test-Mitteilung", "Send Test")) { Task { await MailNotifications.shared.sendTest() } }
+                    }
+                }
+            } header: {
+                Text(tr("Mitteilungen", "Notifications"))
+            } footer: {
+                Text(tr("Klick auf eine Mitteilung öffnet die Konversation. Direkt in der Mitteilung kannst du antworten, als gelesen markieren oder archivieren.", "Clicking a notification opens the conversation. You can reply, mark as read or archive right from the notification."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -69,6 +101,36 @@ private struct GeneralSettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .task { notificationStatus = await MailNotifications.shared.authorizationStatus() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            Task { notificationStatus = await MailNotifications.shared.authorizationStatus() }
+        }
+    }
+
+    private func requestNotifications() async {
+        await MailNotifications.shared.requestAuthorization()
+        notificationStatus = await MailNotifications.shared.authorizationStatus()
+    }
+
+    private var statusIcon: String {
+        switch notificationStatus {
+        case .denied: return "exclamationmark.triangle.fill"
+        case .notDetermined, .none: return "bell"
+        default: return "checkmark.circle"
+        }
+    }
+
+    private var statusText: String {
+        switch notificationStatus {
+        case .denied:
+            return tr("In den macOS-Systemeinstellungen ausgeschaltet", "Turned off in macOS System Settings")
+        case .notDetermined:
+            return tr("Noch nicht erlaubt", "Not allowed yet")
+        case .none:
+            return ""
+        default:
+            return tr("Von macOS erlaubt", "Allowed by macOS")
+        }
     }
 }
 

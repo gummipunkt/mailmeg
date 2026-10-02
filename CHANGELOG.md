@@ -3,6 +3,17 @@
 Alle nennenswerten Änderungen an Mailmeg. Versionen folgen [Semantic Versioning](https://semver.org/lang/de/).
 All notable changes to Mailmeg. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.4.0] – 2026-10-02
+
+- Neues App-Symbol: der Mailmeg-Briefträger
+  · New app icon: the Mailmeg mail carrier
+- Umlaute und Sonderzeichen werden korrekt angezeigt, auch wenn der Absender einen falschen Zeichensatz angibt (z. B. „fÃ¼r“ statt „für“)
+  · Umlauts and special characters display correctly even when the sender declares the wrong charset (e.g. “fÃ¼r” instead of “für”)
+- Mitteilungen: Klick öffnet die Konversation; Antworten, Als gelesen markieren und Archivieren direkt in der Mitteilung; Banner auch, wenn Mailmeg im Vordergrund ist; gelesene Konversationen verschwinden aus der Mitteilungszentrale
+  · Notifications: a click opens the conversation; reply, mark as read and archive right from the notification; banners also while Mailmeg is in front; read conversations are removed from Notification Center
+- Zähler für ungelesene E-Mails im Dock-Symbol aktualisiert sich sofort (abschaltbar); Einstellungen zeigen, ob macOS Mitteilungen erlaubt, mit Test-Mitteilung
+  · The unread counter on the Dock icon updates right away (can be turned off); Settings show whether macOS allows notifications, with a test notification
+
 ## [1.3.0] – 2026-10-02
 
 - Neues Design im Stil von Airmail: Glas-Oberflächen, runde Buttons, zentrierter Listentitel mit Suchfeld, aufgeräumte Liste ohne Avatare (in den Einstellungen wieder einschaltbar), großer Betreff und Navigation zur vorherigen/nächsten Konversation (⌥⌘↑/↓) – die System-Titelleiste bleibt

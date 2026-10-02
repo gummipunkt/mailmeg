@@ -67,7 +67,7 @@ public struct MessageContent: Sendable {
         let isAttachment = !filename.isEmpty || disposition?.value == "attachment"
 
         if !isAttachment, mimeType == "text/html" || mimeType == "text/plain" {
-            let text = part.body?.decodedData.map { TextDecoding.string(from: $0, charset: contentType?["charset"]) } ?? ""
+            let text = part.body?.decodedData.map { TextDecoding.body(from: $0, charset: contentType?["charset"]) } ?? ""
             if mimeType == "text/html" {
                 html = html.map { $0 + "\n" + text } ?? text
             } else {

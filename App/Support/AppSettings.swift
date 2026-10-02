@@ -67,6 +67,12 @@ enum AppSettings {
     }
 
     static let showAvatarsKey = "showAvatars"
+    static let dockBadgeKey = "dockBadge"
+
+    /// Shows the number of unread conversations on the Dock icon.
+    static var dockBadgeEnabled: Bool {
+        UserDefaults.standard.object(forKey: dockBadgeKey) as? Bool ?? true
+    }
 
     static let refreshOptions: [RefreshOption] = [
         RefreshOption(seconds: 30, title: tr("Alle 30 Sekunden", "Every 30 seconds")),

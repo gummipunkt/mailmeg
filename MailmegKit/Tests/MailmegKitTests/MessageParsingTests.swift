@@ -63,6 +63,17 @@ final class MessageParsingTests: XCTestCase {
         XCTAssertEqual(referencing.visibleAttachments.map(\.filename), ["report.pdf"])
     }
 
+    func testUTF8BodyWithStaleLatin1Header() {
+        // Gmail converts text parts to UTF-8 but leaves the original charset in the header.
+        let part = MessagePart(
+            partId: "0", mimeType: "text/plain", filename: "",
+            headers: [header("Content-Type", "text/plain; charset=iso-8859-1")],
+            body: MessagePartBody(size: 60, data: "VmllbGVuIERhbmsgZsO8ciBkaWUgc2NobmVsbGUgQmVhcmJlaXR1bmcg4oCTIGF1w59lcmRlbSBtw7ZjaHRlIGljaA")
+        )
+        let message = GmailMessage(id: "m1", threadId: "t1", payload: part)
+        XCTAssertEqual(MessageContent(message: message).plainText, "Vielen Dank für die schnelle Bearbeitung – außerdem möchte ich")
+    }
+
     func testHeaderAccessors() {
         let message = sampleMessage
         XCTAssertEqual(message.subject, "Quarterly report")

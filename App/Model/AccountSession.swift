@@ -257,7 +257,8 @@ final class AccountSession: Identifiable {
             content.body = HTMLText.decodeEntities(full.snippet ?? "")
             content.threadIdentifier = full.threadId
             content.sound = .default
-            content.userInfo = ["account": email, "thread": full.threadId]
+            content.categoryIdentifier = MailNotifications.newMailCategory
+            content.userInfo = ["account": id, "thread": full.threadId]
             try? await center.add(UNNotificationRequest(identifier: full.id, content: content, trigger: nil))
         }
     }

@@ -30,6 +30,7 @@ final class AppModel {
     private var started = false
 
     init() {
+        MailNotifications.shared.configure(model: self)
         if LaunchOptions.demo {
             isDemo = true
             accounts = [DemoMailbox.makeSession()]
@@ -52,8 +53,10 @@ final class AppModel {
     func start() async {
         guard !started else { return }
         started = true
-        if AppSettings.notificationsEnabled, !isDemo {
-            _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
+        observeUnread()
+        if !isDemo {
+            // Also covers the unread counter on the Dock icon.
+            await MailNotifications.shared.requestAuthorization()
         }
         if selection == nil, let first = accounts.first {
             select(MailboxSelection(accountID: first.id, labelID: SystemLabel.inbox))
@@ -136,9 +139,24 @@ final class AppModel {
         updateDockBadge()
     }
 
-    private func updateDockBadge() {
-        let unread = accounts.reduce(0) { $0 + $1.inboxUnread }
-        NSApp.dockTile.badgeLabel = unread > 0 ? String(unread) : nil
+    /// Unread conversations in all inboxes, shown on the Dock icon.
+    var totalInboxUnread: Int { accounts.reduce(0) { $0 + $1.inboxUnread } }
+
+    func updateDockBadge() {
+        let unread = AppSettings.dockBadgeEnabled ? totalInboxUnread : 0
+        NSApp.dockTile.badgeLabel = unread > 0 ? (unread > 9999 ? "9999+" : String(unread)) : nil
+    }
+
+    /// Keeps the Dock badge in step with the unread counters, whatever changed them.
+    private func observeUnread() {
+        withObservationTracking {
+            _ = totalInboxUnread
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.updateDockBadge()
+                self?.observeUnread()
+            }
+        }
     }
 
     // MARK: - Accounts
@@ -220,7 +238,10 @@ final class AppModel {
             return
         }
         let detail = ThreadDetailModel(account: mailbox.account, threadID: threadID)
-        detail.onMarkedRead = { [weak mailbox] id in mailbox?.markLocallyRead(id) }
+        detail.onMarkedRead = { [weak mailbox] id in
+            mailbox?.markLocallyRead(id)
+            MailNotifications.shared.removeNotifications(threadID: id)
+        }
         detail.onError = { [weak self] error in self?.present(error, account: mailbox.account) }
         detail.onDraftsChanged = { [weak self, weak mailbox] in
             guard let self, let mailbox else { return }
@@ -344,6 +365,53 @@ final class AppModel {
                 await threadDetail?.load()
             }
         }
+    }
+
+    // MARK: - Notifications
+
+    /// Click on a notification: bring Mailmeg to the front and open the conversation.
+    func openFromNotification(accountID: String, threadID: String) {
+        NSApp.activate(ignoringOtherApps: true)
+        NSApp.windows.first { $0.identifier?.rawValue.hasPrefix("main") == true }?.makeKeyAndOrderFront(nil)
+        guard account(id: accountID) != nil else { return }
+        if selection?.accountID != accountID || mailbox?.thread(id: threadID) == nil {
+            select(MailboxSelection(accountID: accountID, labelID: SystemLabel.inbox))
+        }
+        selectThread(threadID)
+    }
+
+    /// "Mark as Read" / "Archive" from a notification.
+    func notificationAction(_ action: ThreadAction, accountID: String, threadID: String) async {
+        guard let account = account(id: accountID) else { return }
+        if let mailbox, mailbox.account === account, mailbox.thread(id: threadID) != nil {
+            perform(action, threadID: threadID)
+        } else {
+            do {
+                try await MailboxModel.sync(action, threadID: threadID, client: account.client)
+                account.refreshCounts(for: [SystemLabel.inbox])
+            } catch {
+                present(error, account: account)
+            }
+        }
+        MailNotifications.shared.removeNotifications(threadID: threadID)
+    }
+
+    /// "Reply" typed right into a notification.
+    func replyFromNotification(_ text: String, accountID: String, threadID: String) async {
+        guard let account = account(id: accountID) else { return }
+        let detail = ThreadDetailModel(account: account, threadID: threadID)
+        await detail.load()
+        if let error = detail.loadError {
+            errorMessage = error
+            return
+        }
+        do {
+            try await detail.sendQuickReply(text, replyAll: false)
+            didSend(from: account)
+        } catch {
+            present(error, account: account)
+        }
+        MailNotifications.shared.removeNotifications(threadID: threadID)
     }
 
     // MARK: - Errors

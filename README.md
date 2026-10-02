@@ -22,7 +22,8 @@ und nicht über IMAP und nicht über eine eingebettete gmail.com-Seite.
 - **Design im Stil von Airmail** mit Glas-Oberflächen und runden Buttons, Avatare in der Liste optional
 - **Entwürfe** werden beim Schreiben automatisch in Gmail gesichert und lassen sich jederzeit weiterbearbeiten
 - **Verfassen, Antworten, Allen antworten, Weiterleiten** inklusive Anhängen. Antworten landen im richtigen Gmail-Thread (`threadId`, `In-Reply-To`, `References`).
-- **Neue Mails**: Polling über die History-API, Mitteilungen und Dock-Badge
+- **Neue Mails**: Polling über die History-API, Dock-Symbol mit Zähler ungelesener E-Mails
+- **Mitteilungen**: Klick öffnet die Konversation, Antworten, Als gelesen markieren und Archivieren direkt in der Mitteilung
 - **Tastaturkürzel** wie in Apple Mail: ⌘N, ⌘R, ⇧⌘R, ⇧⌘F, ⌃⌘A, ⌘⌫, ⇧⌘U, ⇧⌘L, ⇧⌘N, ⌥⌘U, ⇧⌘H, ⌥⌘↑/↓
 
 ## Installation (fertige DMG, ohne Xcode)
@@ -125,7 +126,6 @@ Mailmeg gibt es auf Deutsch und Englisch. Die App folgt der Reihenfolge unter
 - Offline-Cache (SwiftData) und Delta-Sync über `history.list`
 - Mehrfachauswahl in der Liste, Labels zuweisen per Drag & Drop
 - Gmail-Kategorien (Allgemein, Werbung, Soziale Netzwerke …)
-- Klick auf Mitteilung öffnet die Konversation
 
 ## English
 
