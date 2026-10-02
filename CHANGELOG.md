@@ -3,6 +3,19 @@
 Alle nennenswerten Änderungen an Mailmeg. Versionen folgen [Semantic Versioning](https://semver.org/lang/de/).
 All notable changes to Mailmeg. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.3.0] – 2026-10-02
+
+- Neues Design im Stil von Airmail: Glas-Oberflächen, runde Buttons, zentrierter Listentitel mit Suchfeld, aufgeräumte Liste ohne Avatare (in den Einstellungen wieder einschaltbar), großer Betreff und Navigation zur vorherigen/nächsten Konversation (⌥⌘↑/↓) – die System-Titelleiste bleibt
+  · New Airmail-style design: glass surfaces, round buttons, centred list title with search field, clean list without avatars (can be switched back on in Settings), large subject and previous/next conversation navigation (⌥⌘↑/↓) – the system title bar stays
+- Rich-Text-Editor beim Verfassen: Fett (⌘B), Kursiv (⌘I), Unterstrichen (⌘U), Durchgestrichen, Aufzählungen und nummerierte Listen, Links (⌘K), Schriftgröße, Textfarbe; verschickt als HTML mit Gmail-Signatur
+  · Rich text editor: bold (⌘B), italic (⌘I), underline (⌘U), strikethrough, bulleted and numbered lists, links (⌘K), text size and colour; sent as HTML together with the Gmail signature
+- Empfänger mit genauer Adresse: im Kopf jeder Nachricht steht, an welche Adresse sie ging (auch bei „mich“); „Details“ zeigt Von, Antwort an, An, Cc, Bcc, Zugestellt an, Datum
+  · Recipients with their exact address: each message header shows which address it went to (also for “me”); “Details” lists From, Reply-To, To, Cc, Bcc, Delivered-To and Date
+- Quelltext (⌥⌘U) und alle Header (⇧⌘H) einer E-Mail in eigenem Fenster, mit Kopieren und Sichern als .eml
+  · Message source (⌥⌘U) and all headers (⇧⌘H) in their own window, with copy and save as .eml
+- Abrufintervall einstellbar (30 Sekunden bis 1 Stunde oder manuell), Zeit des letzten Abrufs in der Seitenleiste; Labels direkt aus der Konversation zuweisen
+  · Configurable fetch interval (30 seconds to 1 hour, or manually), last fetch time in the sidebar; assign labels right from the conversation
+
 ## [1.2.0] – 2026-10-01
 
 - Entwürfe: Mailmeg sichert E-Mails beim Schreiben automatisch als Gmail-Entwurf (auch beim Schließen des Fensters, ⌘S sofort), synchron mit Gmail im Web und auf dem Handy

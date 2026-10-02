@@ -16,10 +16,14 @@ und nicht über IMAP und nicht über eine eingebettete gmail.com-Seite.
 - **Inline-Bilder** (`cid:`) und **Anhänge**: öffnen oder sichern
 - **Suche** mit der vollen Gmail-Syntax (`from:`, `has:attachment`, `older_than:` …)
 - **Aktionen**: Archivieren, Löschen, Wiederherstellen, Spam, Gelesen/Ungelesen, Stern
+- **Rich-Text-Editor**: Fett, Kursiv, Unterstrichen, Durchgestrichen, Listen, Links, Schriftgröße und Farbe – verschickt als HTML mit der Gmail-Signatur
+- **Empfängerdetails** mit der genauen Zieladresse (auch bei „mich“), **Quelltext** (⌥⌘U) und **alle Header** (⇧⌘H) jeder E-Mail
+- **Abrufintervall** einstellbar (30 Sekunden bis 1 Stunde oder manuell)
+- **Design im Stil von Airmail** mit Glas-Oberflächen und runden Buttons, Avatare in der Liste optional
 - **Entwürfe** werden beim Schreiben automatisch in Gmail gesichert und lassen sich jederzeit weiterbearbeiten
 - **Verfassen, Antworten, Allen antworten, Weiterleiten** inklusive Anhängen. Antworten landen im richtigen Gmail-Thread (`threadId`, `In-Reply-To`, `References`).
 - **Neue Mails**: Polling über die History-API, Mitteilungen und Dock-Badge
-- **Tastaturkürzel** wie in Apple Mail: ⌘N, ⌘R, ⇧⌘R, ⇧⌘F, ⌃⌘A, ⌘⌫, ⇧⌘U, ⇧⌘L, ⇧⌘N
+- **Tastaturkürzel** wie in Apple Mail: ⌘N, ⌘R, ⇧⌘R, ⇧⌘F, ⌃⌘A, ⌘⌫, ⇧⌘U, ⇧⌘L, ⇧⌘N, ⌥⌘U, ⇧⌘H, ⌥⌘↑/↓
 
 ## Installation (fertige DMG, ohne Xcode)
 
@@ -121,14 +125,14 @@ Mailmeg gibt es auf Deutsch und Englisch. Die App folgt der Reihenfolge unter
 - Offline-Cache (SwiftData) und Delta-Sync über `history.list`
 - Mehrfachauswahl in der Liste, Labels zuweisen per Drag & Drop
 - Gmail-Kategorien (Allgemein, Werbung, Soziale Netzwerke …)
-- Signaturen aus den Gmail-Einstellungen und Rich-Text-Editor
 - Klick auf Mitteilung öffnet die Konversation
 
 ## English
 
 Mailmeg is a native Gmail client for macOS (SwiftUI) that talks to the Gmail REST API directly instead of
 wrapping the Gmail website. The interface is available in English and German and follows your macOS language
-order.
+order. Highlights: multiple accounts, Gmail aliases and signatures, drafts synced with Gmail, a rich text
+editor, message source and headers, configurable fetch interval and an Airmail-style glass design.
 
 1. Download **[Mailmeg.dmg](https://github.com/gummipunkt/mailmeg/releases/latest/download/Mailmeg.dmg)**
    (universal, macOS 14 or later) and drag Mailmeg into *Applications*.

@@ -272,14 +272,14 @@ final class AccountSession: Identifiable {
     }
 
     private static let systemLabels: [SystemLabelInfo] = [
-        SystemLabelInfo(id: SystemLabel.inbox, title: tr("Posteingang", "Inbox"), systemImage: "tray.fill", showsUnread: true),
-        SystemLabelInfo(id: SystemLabel.starred, title: tr("Markiert", "Starred"), systemImage: "star.fill", showsUnread: false),
-        SystemLabelInfo(id: SystemLabel.important, title: tr("Wichtig", "Important"), systemImage: "bookmark.fill", showsUnread: false),
-        SystemLabelInfo(id: SystemLabel.sent, title: tr("Gesendet", "Sent"), systemImage: "paperplane.fill", showsUnread: false),
-        SystemLabelInfo(id: SystemLabel.draft, title: tr("Entwürfe", "Drafts"), systemImage: "doc.fill", showsUnread: false),
-        SystemLabelInfo(id: allMailID, title: tr("Alle Nachrichten", "All Mail"), systemImage: "archivebox.fill", showsUnread: false),
-        SystemLabelInfo(id: SystemLabel.spam, title: "Spam", systemImage: "exclamationmark.octagon.fill", showsUnread: true),
-        SystemLabelInfo(id: SystemLabel.trash, title: tr("Papierkorb", "Trash"), systemImage: "trash.fill", showsUnread: false),
+        SystemLabelInfo(id: SystemLabel.inbox, title: tr("Posteingang", "Inbox"), systemImage: "tray", showsUnread: true),
+        SystemLabelInfo(id: SystemLabel.starred, title: tr("Markiert", "Starred"), systemImage: "star", showsUnread: false),
+        SystemLabelInfo(id: SystemLabel.important, title: tr("Wichtig", "Important"), systemImage: "bookmark", showsUnread: false),
+        SystemLabelInfo(id: SystemLabel.sent, title: tr("Gesendet", "Sent"), systemImage: "paperplane", showsUnread: false),
+        SystemLabelInfo(id: SystemLabel.draft, title: tr("Entwürfe", "Drafts"), systemImage: "doc.text", showsUnread: false),
+        SystemLabelInfo(id: allMailID, title: tr("Alle Nachrichten", "All Mail"), systemImage: "archivebox", showsUnread: false),
+        SystemLabelInfo(id: SystemLabel.spam, title: "Spam", systemImage: "exclamationmark.octagon", showsUnread: true),
+        SystemLabelInfo(id: SystemLabel.trash, title: tr("Papierkorb", "Trash"), systemImage: "trash", showsUnread: false),
     ]
 
     var systemItems: [SidebarItem] {

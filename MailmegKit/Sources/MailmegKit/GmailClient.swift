@@ -135,6 +135,16 @@ public final class GmailClient: Sendable {
         try await get("messages/\(escapePath(id))", query: [URLQueryItem(name: "format", value: format.rawValue)])
     }
 
+    /// The complete original message (RFC 822 source) as Gmail stores it.
+    public func rawMessage(id: String) async throws -> Data {
+        struct Raw: Decodable { let raw: String? }
+        let response: Raw = try await get("messages/\(escapePath(id))", query: [URLQueryItem(name: "format", value: "raw")])
+        guard let raw = response.raw, let data = Base64URL.decode(raw) else {
+            throw GmailAPIError(status: 0, message: "The message source could not be decoded.", reason: nil)
+        }
+        return data
+    }
+
     public func attachment(messageID: String, attachmentID: String) async throws -> Data {
         let body: MessagePartBody = try await get("messages/\(escapePath(messageID))/attachments/\(escapePath(attachmentID))")
         guard let data = body.decodedData else {

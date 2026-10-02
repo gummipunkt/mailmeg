@@ -24,6 +24,14 @@ struct MailmegApp: App {
         .defaultSize(width: 700, height: 600)
         .windowToolbarStyle(.unified(showsTitle: true))
 
+        WindowGroup(tr("Quelltext", "Source"), id: "source", for: SourceRequest.self) { $request in
+            if let request {
+                SourceView(request: request)
+                    .environment(model)
+            }
+        }
+        .defaultSize(width: 820, height: 620)
+
         Settings {
             SettingsView()
                 .environment(model)

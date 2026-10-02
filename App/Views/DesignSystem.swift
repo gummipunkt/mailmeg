@@ -125,12 +125,12 @@ extension View {
     /// Paints `color` behind the view *and* the window toolbar above it, so the toolbar
     /// takes the colour of the column below instead of the system grey.
     func themedWindowBackground(_ color: Color) -> some View {
-        modifier(ToolbarBandModifier(color: color))
+        modifier(ToolbarBandModifier(background: color))
     }
 }
 
-struct ToolbarBandModifier: ViewModifier {
-    let color: Color
+struct ToolbarBandModifier<Background: View>: ViewModifier {
+    let background: Background
 
     func body(content: Content) -> some View {
         GeometryReader { proxy in
@@ -138,14 +138,125 @@ struct ToolbarBandModifier: ViewModifier {
                 .frame(width: proxy.size.width, height: proxy.size.height)
                 // Covers content that scrolls up underneath the transparent toolbar.
                 .overlay(alignment: .top) {
-                    color
+                    background
                         .frame(height: proxy.safeAreaInsets.top)
                         .offset(y: -proxy.safeAreaInsets.top)
                         .allowsHitTesting(false)
                 }
         }
-        .background(color.ignoresSafeArea())
+        .background(background.ignoresSafeArea())
         .toolbarBackground(.hidden, for: .windowToolbar)
+    }
+}
+
+// MARK: - Glass (Airmail-style translucent surfaces)
+
+/// AppKit vibrancy: blurs whatever is behind the window (the desktop).
+struct VisualEffectView: NSViewRepresentable {
+    var material: NSVisualEffectView.Material
+    var blendingMode: NSVisualEffectView.BlendingMode = .behindWindow
+
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.state = .followsWindowActiveState
+        view.material = material
+        view.blendingMode = blendingMode
+        return view
+    }
+
+    func updateNSView(_ view: NSVisualEffectView, context: Context) {
+        view.material = material
+        view.blendingMode = blendingMode
+    }
+}
+
+/// Frosted surfaces for the three columns, lightly tinted with the palette.
+enum GlassStyle {
+    case sidebar, list, canvas
+
+    @ViewBuilder
+    var background: some View {
+        switch self {
+        case .sidebar:
+            ZStack {
+                VisualEffectView(material: .sidebar)
+                Theme.sidebar.opacity(0.55)
+            }
+        case .list:
+            ZStack {
+                VisualEffectView(material: .menu)
+                Theme.listBackground.opacity(0.6)
+            }
+        case .canvas:
+            ZStack {
+                VisualEffectView(material: .underWindowBackground)
+                Theme.canvas.opacity(0.62)
+            }
+        }
+    }
+}
+
+extension View {
+    /// Frosted glass behind the view and the toolbar above it.
+    func glassBackground(_ style: GlassStyle) -> some View {
+        modifier(ToolbarBandModifier(background: style.background))
+    }
+}
+
+/// Round frosted button, as in Airmail's toolbar.
+struct GlassCircleButton: View {
+    let systemImage: String
+    let help: String
+    var isActive = false
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            GlassCircleLabel(systemImage: systemImage, isActive: isActive)
+        }
+        .buttonStyle(.plain)
+        .help(help)
+        .accessibilityLabel(help)
+    }
+}
+
+struct GlassCircleLabel: View {
+    let systemImage: String
+    var isActive = false
+    @State private var isHovering = false
+
+    var body: some View {
+        Image(systemName: systemImage)
+            .font(.system(size: 14, weight: .medium))
+            .foregroundStyle(isActive ? Color.accentColor : Color.primary.opacity(0.8))
+            .frame(width: 32, height: 32)
+            .background(.ultraThinMaterial, in: Circle())
+            .background(Circle().fill(Color.primary.opacity(isHovering ? 0.12 : 0.05)))
+            .overlay(Circle().strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8))
+            .shadow(color: .black.opacity(0.08), radius: 3, y: 1)
+            .contentShape(Circle())
+            .onHover { isHovering = $0 }
+    }
+}
+
+/// A round glass button that opens a menu.
+struct GlassCircleMenu<Content: View>: View {
+    let systemImage: String
+    let help: String
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        Menu {
+            content()
+        } label: {
+            GlassCircleLabel(systemImage: systemImage)
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help(help)
+        .accessibilityLabel(help)
     }
 }
 

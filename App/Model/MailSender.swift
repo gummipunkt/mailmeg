@@ -61,11 +61,19 @@ enum MailSender {
             bcc: EmailAddress.parseList(draft.bcc),
             subject: draft.subject,
             textBody: draft.body,
-            htmlBody: ComposeHTML.render(text: draft.body, signatureText: draft.signatureBlock, signatureHTML: identity.signatureHTML),
+            htmlBody: htmlBody(for: draft, signatureHTML: identity.signatureHTML),
             inReplyTo: draft.inReplyTo,
             references: draft.references,
             attachments: allAttachments
         )
         return MIMEBuilder().build(message)
+    }
+
+    /// The HTML part: with the editor's formatting if there is any, otherwise from the plain text.
+    static func htmlBody(for draft: ComposeDraft, signatureHTML: String?) -> String {
+        if let runs = draft.richBody, runs.map(\.text).joined() == draft.body {
+            return RichTextHTML.render(runs: runs, signatureText: draft.signatureBlock, signatureHTML: signatureHTML)
+        }
+        return ComposeHTML.render(text: draft.body, signatureText: draft.signatureBlock, signatureHTML: signatureHTML)
     }
 }

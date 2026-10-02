@@ -53,8 +53,30 @@ enum AppSettings {
         UserDefaults.standard.object(forKey: notificationsKey) as? Bool ?? true
     }
 
+    /// Seconds between automatic checks for new mail; 0 means "manually only".
     static var refreshInterval: TimeInterval {
+        guard UserDefaults.standard.object(forKey: refreshIntervalKey) != nil else { return 60 }
         let value = UserDefaults.standard.double(forKey: refreshIntervalKey)
-        return value >= 15 ? value : 60
+        return value <= 0 ? 0 : max(value, 15)
     }
+
+    struct RefreshOption: Identifiable {
+        let seconds: Double
+        let title: String
+        var id: Double { seconds }
+    }
+
+    static let showAvatarsKey = "showAvatars"
+
+    static let refreshOptions: [RefreshOption] = [
+        RefreshOption(seconds: 30, title: tr("Alle 30 Sekunden", "Every 30 seconds")),
+        RefreshOption(seconds: 60, title: tr("Jede Minute", "Every minute")),
+        RefreshOption(seconds: 120, title: tr("Alle 2 Minuten", "Every 2 minutes")),
+        RefreshOption(seconds: 300, title: tr("Alle 5 Minuten", "Every 5 minutes")),
+        RefreshOption(seconds: 600, title: tr("Alle 10 Minuten", "Every 10 minutes")),
+        RefreshOption(seconds: 900, title: tr("Alle 15 Minuten", "Every 15 minutes")),
+        RefreshOption(seconds: 1800, title: tr("Alle 30 Minuten", "Every 30 minutes")),
+        RefreshOption(seconds: 3600, title: tr("Jede Stunde", "Every hour")),
+        RefreshOption(seconds: 0, title: tr("Manuell", "Manually")),
+    ]
 }

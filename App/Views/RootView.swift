@@ -15,7 +15,7 @@ struct RootView: View {
                     ThreadListView(mailbox: mailbox)
                 } else {
                     ContentUnavailableView(tr("Kein Postfach ausgewählt", "No Mailbox Selected"), systemImage: "tray")
-                        .themedWindowBackground(Theme.listBackground)
+                        .glassBackground(.list)
                 }
             }
             .navigationSplitViewColumnWidth(min: 300, ideal: 380, max: 560)
@@ -48,6 +48,6 @@ private struct EmptyDetailView: View {
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .themedWindowBackground(Theme.canvas)
+        .glassBackground(.canvas)
     }
 }

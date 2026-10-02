@@ -3,7 +3,6 @@ import SwiftUI
 
 struct SidebarView: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         List(selection: Binding(
@@ -48,23 +47,45 @@ struct SidebarView: View {
         }
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)
-        .safeAreaInset(edge: .top, spacing: 0) {
-            Button {
-                openWindow(value: model.newDraft())
-            } label: {
-                Label(tr("Neue E-Mail", "New Message"), systemImage: "square.and.pencil")
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 3)
+        .safeAreaInset(edge: .bottom, spacing: 0) { footer }
+        .glassBackground(.sidebar)
+    }
+
+    /// Fetch status and quick access to refresh and settings, at the foot of the sidebar.
+    private var footer: some View {
+        HStack(spacing: 8) {
+            if model.isRefreshing {
+                ProgressView().controlSize(.mini)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .padding(.horizontal, 12)
-            .padding(.top, 6)
-            .padding(.bottom, 8)
-            .accessibilityIdentifier("compose")
+            Text(fetchStatus)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .accessibilityIdentifier("sidebar.lastRefresh")
+            Spacer(minLength: 4)
+            IconButton(systemImage: "arrow.clockwise", help: tr("Neue E-Mails abrufen (⇧⌘N)", "Get New Mail (⇧⌘N)")) {
+                Task { await model.refreshAll() }
+            }
+            SettingsLink {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 24, height: 22)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+            .help(tr("Einstellungen", "Settings"))
         }
-        .themedWindowBackground(Theme.sidebar)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .overlay(alignment: .top) { Divider().opacity(0.5) }
+    }
+
+    private var fetchStatus: String {
+        if model.isRefreshing { return tr("Wird abgerufen …", "Fetching…") }
+        guard let date = model.lastRefresh else { return "" }
+        let time = date.formatted(date: .omitted, time: .shortened)
+        return tr("Abgerufen \(time)", "Fetched \(time)")
     }
 
     /// Rows are identified by their full selection value. List matches a row's tag

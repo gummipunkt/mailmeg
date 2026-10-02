@@ -2,8 +2,9 @@ import Foundation
 import MailmegKit
 import Observation
 
-enum ThreadAction {
+enum ThreadAction: Equatable {
     case archive, moveToInbox, trash, untrash, markRead, markUnread, star, unstar, reportSpam, notSpam
+    case addLabel(String), removeLabel(String)
 }
 
 /// The thread list for one label of one account, including search and paging.
@@ -166,6 +167,11 @@ final class MailboxModel {
             removes = labelID != SystemLabel.spam
         case .notSpam:
             removes = labelID == SystemLabel.spam
+        case .addLabel(let id):
+            updated.labelIDs.insert(id)
+        case .removeLabel(let id):
+            updated.labelIDs.remove(id)
+            removes = labelID == id
         }
 
         if removes {
@@ -209,6 +215,8 @@ final class MailboxModel {
         case .unstar: try await client.modifyThread(id: threadID, remove: [SystemLabel.starred])
         case .reportSpam: try await client.modifyThread(id: threadID, add: [SystemLabel.spam], remove: [SystemLabel.inbox])
         case .notSpam: try await client.modifyThread(id: threadID, add: [SystemLabel.inbox], remove: [SystemLabel.spam])
+        case .addLabel(let id): try await client.modifyThread(id: threadID, add: [id])
+        case .removeLabel(let id): try await client.modifyThread(id: threadID, remove: [id])
         }
     }
 }

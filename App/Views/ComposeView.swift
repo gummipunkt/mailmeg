@@ -15,6 +15,7 @@ struct ComposeView: View {
     @State private var errorMessage: String?
     @State private var autosaver: DraftAutosaver
     @State private var confirmsDiscard = false
+    @State private var formatter = RichTextController()
     @FocusState private var focusedField: Field?
 
     private enum Field { case to, cc, bcc, subject, body }
@@ -94,10 +95,14 @@ struct ComposeView: View {
 
             // Body and attachments
             VStack(spacing: 0) {
+                FormatBar(controller: formatter)
+                Divider().overlay(Theme.hairline.opacity(0.5))
                 MailBodyEditor(
                     text: $draft.body,
+                    runs: $draft.richBody,
                     initialCursor: draft.cursorOffset,
-                    focusOnAppear: !draft.to.isEmpty
+                    focusOnAppear: !draft.to.isEmpty,
+                    controller: formatter
                 )
                 .padding(.horizontal, 2)
 
@@ -172,7 +177,7 @@ struct ComposeView: View {
             }
         }
         .padding(14)
-        .themedWindowBackground(Theme.canvas)
+        .glassBackground(.canvas)
         .navigationTitle(draft.subject.isEmpty ? tr("Neue E-Mail", "New Message") : draft.subject)
         .fileImporter(isPresented: $isImporting, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
             addAttachments(result)

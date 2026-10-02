@@ -171,6 +171,14 @@ final class ThreadDetailModel {
         await load()
     }
 
+    /// Opens the source or header window for one message (default: the newest one).
+    func sourceRequest(_ mode: SourceRequest.Mode, messageID: String? = nil) -> SourceRequest? {
+        let target = messageID.flatMap { id in messages.first { $0.id == id } }
+            ?? messages.last { !$0.message.isDraft } ?? messages.last
+        guard let target else { return nil }
+        return SourceRequest(accountID: account.id, messageID: target.message.id, subject: subject, mode: mode)
+    }
+
     var replyRecipientName: String? {
         guard let message = latestMessage else { return nil }
         let recipients = ReplyBuilder.recipients(for: message, kind: .reply, selfAddresses: Set(account.ownAddresses))

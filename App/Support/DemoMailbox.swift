@@ -266,6 +266,9 @@ private final class DemoTransport: HTTPTransport, @unchecked Sendable {
             return (200, ["id": threads[index].id])
         case ("GET", "messages", _) where parts.count == 4:
             return (200, ["size": 18, "data": Base64URL.encode(Data("Mailmeg Demo-Anhang".utf8))])
+        case ("GET", "messages", 2) where query.contains(where: { $0.name == "format" && $0.value == "raw" }):
+            guard let source = rawSource(messageID: parts[1]) else { return notFound() }
+            return (200, ["id": parts[1], "raw": Base64URL.encode(Data(source.utf8))])
         case ("GET", "messages", 2):
             for thread in threads {
                 if let json = threadJSON(thread)["messages"] as? [[String: Any]],
@@ -309,6 +312,41 @@ private final class DemoTransport: HTTPTransport, @unchecked Sendable {
         default:
             return notFound()
         }
+    }
+
+    /// A plausible RFC 822 source for a demo message ("thread-index").
+    private func rawSource(messageID: String) -> String? {
+        guard let dash = messageID.lastIndex(of: "-"), let index = Int(messageID[messageID.index(after: dash)...]),
+              let thread = threads.first(where: { $0.id == String(messageID[..<dash]) }),
+              thread.messages.indices.contains(index) else { return nil }
+        let message = thread.messages[index]
+        let date = now.addingTimeInterval(-message.hoursAgo * 3600)
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss Z"
+        let stamp = formatter.string(from: date)
+        let domain = message.from.email.split(separator: "@").last.map(String.init) ?? "example.com"
+        let lines = [
+            "Delivered-To: \(DemoMailbox.email)",
+            "Received: by 2002:a05:6a10:demo with SMTP id demo;",
+            "        \(stamp)",
+            "Return-Path: <\(message.from.email)>",
+            "Received: from mail.\(domain) (mail.\(domain). [203.0.113.7])",
+            "        by mx.google.com with ESMTPS id demo.\(index)",
+            "        for <\(DemoMailbox.email)>; \(stamp)",
+            "Authentication-Results: mx.google.com; dkim=pass header.i=@\(domain); spf=pass; dmarc=pass",
+            "Message-ID: <\(messageID)@demo.mailmeg>",
+            "Date: \(stamp)",
+            "From: \(message.from.header)",
+            "To: \(message.to.map(\.header).joined(separator: ", "))",
+            "Subject: \(MIMEBuilder.encodeHeaderText(thread.subject))",
+            "MIME-Version: 1.0",
+            "Content-Type: text/plain; charset=\"UTF-8\"",
+            "Content-Transfer-Encoding: 8bit",
+            "",
+            message.text,
+        ]
+        return lines.joined(separator: "\r\n")
     }
 
     /// Tiny MIME reader for the demo: subject, recipients and the text/plain part.
@@ -442,6 +480,7 @@ private final class DemoTransport: HTTPTransport, @unchecked Sendable {
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss Z"
         let headers: [[String: String]] = [
+            ["name": "Delivered-To", "value": DemoMailbox.email],
             ["name": "From", "value": message.from.header],
             ["name": "To", "value": message.to.map(\.header).joined(separator: ", ")],
             ["name": "Subject", "value": thread.subject],

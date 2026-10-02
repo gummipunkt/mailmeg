@@ -20,6 +20,9 @@ final class AppModel {
     private(set) var selectedThreadID: String?
     private(set) var isSigningIn = false
     private(set) var isDemo = false
+    /// When mail was last fetched (automatically or manually).
+    private(set) var lastRefresh: Date?
+    private(set) var isRefreshing = false
     var errorMessage: String?
 
     private let auth = AuthService()
@@ -58,6 +61,7 @@ final class AppModel {
         for account in accounts {
             await refreshAccount(account)
         }
+        lastRefresh = Date()
         updateDockBadge()
         startPolling()
     }
@@ -82,9 +86,13 @@ final class AppModel {
 
     func startPolling() {
         pollTask?.cancel()
+        pollTask = nil
+        guard AppSettings.refreshInterval > 0 else { return }
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(AppSettings.refreshInterval))
+                let interval = AppSettings.refreshInterval
+                guard interval > 0 else { return }
+                try? await Task.sleep(for: .seconds(interval))
                 guard !Task.isCancelled else { return }
                 await self?.pollAll()
             }
@@ -105,11 +113,17 @@ final class AppModel {
                 account.noteRateLimit(error)
             }
         }
+        lastRefresh = Date()
         updateDockBadge()
     }
 
     /// Manual refresh (⇧⌘N): reload labels and the visible list.
     func refreshAll() async {
+        isRefreshing = true
+        defer {
+            isRefreshing = false
+            lastRefresh = Date()
+        }
         for account in accounts {
             do {
                 try await account.loadLabels()
@@ -240,11 +254,36 @@ final class AppModel {
                 } else {
                     selectThread(nil)
                 }
-            } else if id == selectedThreadID, [.markRead, .markUnread, .star, .unstar].contains(action) {
+            } else if id == selectedThreadID, Self.reloadsDetail(action) {
                 await threadDetail?.load()
             }
             updateDockBadge()
         }
+    }
+
+    private static func reloadsDetail(_ action: ThreadAction) -> Bool {
+        switch action {
+        case .markRead, .markUnread, .star, .unstar, .addLabel, .removeLabel: return true
+        default: return false
+        }
+    }
+
+    /// Selects the previous (-1) or next (+1) conversation in the list.
+    func selectAdjacentThread(_ offset: Int) {
+        guard let threads = mailbox?.threads, !threads.isEmpty else { return }
+        guard let id = selectedThreadID, let index = threads.firstIndex(where: { $0.id == id }) else {
+            selectThread(threads.first?.id)
+            return
+        }
+        let target = index + offset
+        guard threads.indices.contains(target) else { return }
+        selectThread(threads[target].id)
+    }
+
+    func canSelectAdjacentThread(_ offset: Int) -> Bool {
+        guard let threads = mailbox?.threads, let id = selectedThreadID,
+              let index = threads.firstIndex(where: { $0.id == id }) else { return false }
+        return threads.indices.contains(index + offset)
     }
 
     func toggleRead() {

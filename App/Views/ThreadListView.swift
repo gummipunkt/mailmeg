@@ -40,11 +40,8 @@ struct ThreadListView: View {
         }
         .listStyle(.inset)
         .scrollContentBackground(.hidden)
-        .background(Theme.listBackground)
         .safeAreaInset(edge: .top, spacing: 0) { header }
         .overlay { emptyState }
-        .searchable(text: $mailbox.searchText, placement: .toolbar, prompt: tr("Suchen – z. B. from:anna has:attachment", "Search – e.g. from:anna has:attachment"))
-        .onSubmit(of: .search) { mailbox.submitSearch() }
         .onChange(of: mailbox.searchText) { _, newValue in
             if newValue.isEmpty, !mailbox.activeQuery.isEmpty {
                 mailbox.submitSearch()
@@ -61,7 +58,7 @@ struct ThreadListView: View {
                 .help(tr("Neue E-Mails abrufen (⇧⌘N)", "Get New Mail (⇧⌘N)"))
             }
         }
-        .themedWindowBackground(Theme.listBackground)
+        .glassBackground(.list)
     }
 
     private func openDraft(_ thread: ThreadSummary) {
@@ -72,32 +69,45 @@ struct ThreadListView: View {
         }
     }
 
+    /// Airmail-style header: round glass buttons around a centred title, search below.
     private var header: some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(mailbox.title)
-                    .font(.system(size: 20, weight: .bold))
-                    .accessibilityIdentifier("mailbox.title")
-                Text(subtitle)
-                    .font(.system(size: 11.5))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+        VStack(spacing: 10) {
+            HStack(alignment: .center, spacing: 10) {
+                GlassCircleMenu(
+                    systemImage: mailbox.unreadOnly ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease",
+                    help: tr("Filter", "Filter")
+                ) {
+                    Picker("Filter", selection: Binding(get: { mailbox.unreadOnly }, set: { mailbox.setUnreadOnly($0) })) {
+                        Label(tr("Alle E-Mails", "All Mail"), systemImage: "tray").tag(false)
+                        Label(tr("Nur ungelesene", "Unread Only"), systemImage: "envelope.badge").tag(true)
+                    }
+                    .pickerStyle(.inline)
+                }
+                .accessibilityIdentifier("mailbox.filter")
+
+                Spacer(minLength: 4)
+                VStack(spacing: 1) {
+                    Text(mailbox.title)
+                        .font(.system(size: 15, weight: .bold))
+                        .lineLimit(1)
+                        .accessibilityIdentifier("mailbox.title")
+                    Text(subtitle)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 4)
+
+                GlassCircleButton(systemImage: "square.and.pencil", help: tr("Neue E-Mail (⌘N)", "New Message (⌘N)")) {
+                    openWindow(value: model.newDraft())
+                }
+                .accessibilityIdentifier("compose")
             }
-            Spacer()
-            Picker("Filter", selection: Binding(get: { mailbox.unreadOnly }, set: { mailbox.setUnreadOnly($0) })) {
-                Text(tr("Alle", "All")).tag(false)
-                Text(tr("Ungelesen", "Unread")).tag(true)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .controlSize(.small)
-            .fixedSize()
+            SearchField(text: $mailbox.searchText) { mailbox.submitSearch() }
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 10)
-        .padding(.bottom, 8)
-        .background(Theme.listBackground)
-        .overlay(alignment: .bottom) { Divider() }
+        .padding(.horizontal, 14)
+        .padding(.top, 8)
+        .padding(.bottom, 10)
     }
 
     private var subtitle: String {
@@ -153,30 +163,66 @@ struct ThreadListView: View {
     }
 }
 
+/// Capsule search field in the list header (Gmail search syntax works, e.g. `from:anna`).
+struct SearchField: View {
+    @Binding var text: String
+    let onSubmit: () -> Void
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.secondary)
+            TextField(tr("Suchen – z. B. from:anna has:attachment", "Search – e.g. from:anna has:attachment"), text: $text)
+                .textFieldStyle(.plain)
+                .font(.system(size: 12.5))
+                .focused($isFocused)
+                .onSubmit(onSubmit)
+                .accessibilityIdentifier("mailbox.search")
+            if !text.isEmpty {
+                Button {
+                    text = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help(tr("Suche löschen", "Clear Search"))
+            }
+        }
+        .padding(.horizontal, 10)
+        .frame(height: 28)
+        .background(.ultraThinMaterial, in: Capsule())
+        .background(Capsule().fill(Color.primary.opacity(0.05)))
+        .overlay(Capsule().strokeBorder(isFocused ? Color.accentColor.opacity(0.7) : Color.white.opacity(0.22), lineWidth: isFocused ? 1.5 : 0.8))
+    }
+}
+
 struct ThreadRow: View {
     let thread: ThreadSummary
     let labels: [GmailLabel]
     let isTrash: Bool
     let onAction: (ThreadAction) -> Void
+    @AppStorage(AppSettings.showAvatarsKey) private var showAvatars = false
     @State private var isHovering = false
 
     var body: some View {
-        HStack(alignment: .top, spacing: 11) {
-            AvatarView(name: thread.correspondents.first ?? thread.participants.first ?? "?", size: 36)
-                .overlay(alignment: .topLeading) {
-                    if thread.isUnread {
-                        Circle()
-                            .fill(Color.accentColor)
-                            .frame(width: 11, height: 11)
-                            .overlay(Circle().strokeBorder(Theme.listBackground, lineWidth: 2))
-                            .offset(x: -3, y: -3)
-                    }
-                }
+        HStack(alignment: .top, spacing: 10) {
+            if showAvatars {
+                AvatarView(name: thread.correspondents.first ?? thread.participants.first ?? "?", size: 34)
+            }
+            // Unread marker in its own narrow gutter, like Airmail.
+            Circle()
+                .fill(thread.isUnread ? Color.accentColor : Color.clear)
+                .frame(width: 8, height: 8)
+                .padding(.top, 6)
+                .padding(.leading, showAvatars ? -6 : 0)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(senderLine)
-                        .font(.system(size: 13, weight: thread.isUnread ? .bold : .medium))
+                        .font(.system(size: 13.5, weight: thread.isUnread ? .bold : .semibold))
                         .lineLimit(1)
                     if thread.messageCount > 1 {
                         Text("\(thread.messageCount)")
@@ -184,7 +230,7 @@ struct ThreadRow: View {
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 1)
-                            .background(Theme.tint, in: Capsule())
+                            .background(Color.primary.opacity(0.08), in: Capsule())
                     }
                     Spacer(minLength: 6)
                     if isHovering {
@@ -198,11 +244,12 @@ struct ThreadRow: View {
                 HStack(spacing: 5) {
                     if thread.labelIDs.contains(SystemLabel.draft) {
                         Text(tr("Entwurf", "Draft"))
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.system(size: 12.5, weight: .semibold))
                             .foregroundStyle(Color.accentColor)
                     }
                     Text(thread.subject.isEmpty ? tr("(kein Betreff)", "(no subject)") : thread.subject)
-                        .font(.system(size: 13, weight: thread.isUnread ? .semibold : .regular))
+                        .font(.system(size: 12.5, weight: thread.isUnread ? .semibold : .medium))
+                        .foregroundStyle(.primary.opacity(0.9))
                         .lineLimit(1)
                 }
                 Text(thread.snippet)
@@ -213,12 +260,12 @@ struct ThreadRow: View {
                     HStack(spacing: 4) {
                         ForEach(labels.prefix(3)) { LabelChip(label: $0) }
                     }
-                    .padding(.top, 3)
+                    .padding(.top, 2)
                 }
             }
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 2)
+        .padding(.vertical, 9)
+        .padding(.trailing, 2)
         .contentShape(Rectangle())
         .onHover { isHovering = $0 }
     }

@@ -50,6 +50,26 @@ struct MailCommands: Commands {
             Button(model.selectedThread?.isStarred == true ? tr("Markierung entfernen", "Remove Star") : tr("Markieren", "Star")) { model.toggleStar() }
                 .keyboardShortcut("l", modifiers: [.command, .shift])
                 .disabled(model.selectedThreadID == nil)
+            Divider()
+            Button(tr("Vorherige Konversation", "Previous Conversation")) { model.selectAdjacentThread(-1) }
+                .keyboardShortcut(.upArrow, modifiers: [.command, .option])
+                .disabled(model.mailbox?.threads.isEmpty ?? true)
+            Button(tr("Nächste Konversation", "Next Conversation")) { model.selectAdjacentThread(1) }
+                .keyboardShortcut(.downArrow, modifiers: [.command, .option])
+                .disabled(model.mailbox?.threads.isEmpty ?? true)
+            Divider()
+            Button(tr("Header anzeigen", "Show Headers")) { showSource(.headers) }
+                .keyboardShortcut("h", modifiers: [.command, .shift])
+                .disabled(model.threadDetail == nil)
+            Button(tr("Quelltext anzeigen", "Show Source")) { showSource(.source) }
+                .keyboardShortcut("u", modifiers: [.command, .option])
+                .disabled(model.threadDetail == nil)
+        }
+    }
+
+    private func showSource(_ mode: SourceRequest.Mode) {
+        if let request = model.threadDetail?.sourceRequest(mode) {
+            openWindow(value: request)
         }
     }
 

@@ -23,25 +23,49 @@ private struct GeneralSettingsView: View {
     @AppStorage(AppSettings.loadRemoteContentKey) private var loadRemoteContent = false
     @AppStorage(AppSettings.notificationsKey) private var notificationsEnabled = true
     @AppStorage(AppSettings.refreshIntervalKey) private var refreshInterval: Double = 60
+    @AppStorage(AppSettings.showAvatarsKey) private var showAvatars = false
+
+    private var lastRefreshText: String {
+        guard let date = model.lastRefresh else { return tr("Noch nicht abgerufen", "Not checked yet") }
+        return tr("Zuletzt abgerufen: \(date.formatted(date: .omitted, time: .shortened))", "Last checked: \(date.formatted(date: .omitted, time: .shortened))")
+    }
 
     var body: some View {
         Form {
             Section {
+                Picker(tr("Nach neuen E-Mails suchen", "Check for new email"), selection: $refreshInterval) {
+                    ForEach(AppSettings.refreshOptions) { option in
+                        Text(option.title).tag(option.seconds)
+                    }
+                }
+                .onChange(of: refreshInterval) { model.startPolling() }
+                .accessibilityIdentifier("settings.refreshInterval")
+                HStack {
+                    Text(lastRefreshText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button(tr("Jetzt abrufen", "Check Now")) { Task { await model.refreshAll() } }
+                        .disabled(model.isRefreshing)
+                }
+                Toggle(tr("Mitteilungen bei neuen E-Mails", "Notify me about new email"), isOn: $notificationsEnabled)
+            } header: {
+                Text(tr("Abrufen", "Fetching"))
+            } footer: {
+                Text(tr("„Manuell“ ruft nur ab, wenn du ⇧⌘N drückst oder auf Aktualisieren klickst.", "“Manually” only checks when you press ⇧⌘N or click Refresh."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
+                Toggle(tr("Avatare in der Nachrichtenliste", "Show avatars in the message list"), isOn: $showAvatars)
                 Toggle(tr("Externe Inhalte automatisch laden", "Load remote content automatically"), isOn: $loadRemoteContent)
+            } header: {
+                Text(tr("Darstellung", "Appearance"))
             } footer: {
                 Text(tr("Externe Bilder können verraten, wann und wo du eine E-Mail liest.", "Remote images can reveal when and where you read an email."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
-            }
-            Section {
-                Toggle(tr("Mitteilungen bei neuen E-Mails", "Notify me about new email"), isOn: $notificationsEnabled)
-                Picker(tr("Nach neuen E-Mails suchen", "Check for new email"), selection: $refreshInterval) {
-                    Text(tr("Alle 30 Sekunden", "Every 30 seconds")).tag(30.0)
-                    Text(tr("Jede Minute", "Every minute")).tag(60.0)
-                    Text(tr("Alle 5 Minuten", "Every 5 minutes")).tag(300.0)
-                    Text(tr("Alle 15 Minuten", "Every 15 minutes")).tag(900.0)
-                }
-                .onChange(of: refreshInterval) { model.startPolling() }
             }
         }
         .formStyle(.grouped)

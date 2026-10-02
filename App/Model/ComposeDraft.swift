@@ -11,6 +11,8 @@ struct ComposeDraft: Codable, Hashable, Identifiable {
     var bcc = ""
     var subject = ""
     var body = ""
+    /// The body with formatting from the rich-text editor; nil while nothing is formatted.
+    var richBody: [RichTextRun]?
     var threadID: String?
     var inReplyTo: String?
     var references: [String] = []
@@ -243,6 +245,7 @@ final class DraftAutosaver {
         hasher.combine(draft.bcc)
         hasher.combine(draft.subject)
         hasher.combine(draft.body)
+        hasher.combine(draft.richBody)
         hasher.combine(draft.fromAddress)
         hasher.combine(draft.forwardedAttachments.map(\.id))
         for attachment in attachments {

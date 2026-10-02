@@ -17,11 +17,12 @@ struct ThreadDetailView: View {
                 }
             }
             .padding(.horizontal, 28)
-            .padding(.vertical, 22)
+            .padding(.top, 8)
+            .padding(.bottom, 22)
             .frame(maxWidth: 900)
             .frame(maxWidth: .infinity)
         }
-        .background(Theme.canvas)
+        .safeAreaInset(edge: .top, spacing: 0) { actionBar }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if !detail.messages.isEmpty {
                 QuickReplyBar(detail: detail)
@@ -40,19 +41,119 @@ struct ThreadDetailView: View {
                 }
             }
         }
-        .toolbar { toolbar }
-        .themedWindowBackground(Theme.canvas)
+        .glassBackground(.canvas)
+    }
+
+    // MARK: Airmail-style action bar
+
+    private var thread: ThreadSummary? { model.selectedThread }
+
+    private var actionBar: some View {
+        HStack(spacing: 7) {
+            GlassCircleButton(systemImage: "arrowshape.turn.up.left", help: tr("Antworten (⌘R)", "Reply (⌘R)")) { compose(.reply) }
+                .accessibilityIdentifier("detail.reply")
+            GlassCircleButton(systemImage: "arrowshape.turn.up.left.2", help: tr("Allen antworten (⇧⌘R)", "Reply All (⇧⌘R)")) { compose(.replyAll) }
+            GlassCircleButton(systemImage: "arrowshape.turn.up.right", help: tr("Weiterleiten (⇧⌘F)", "Forward (⇧⌘F)")) { compose(.forward) }
+
+            Spacer().frame(width: 6)
+
+            if thread?.labelIDs.contains(SystemLabel.trash) == true {
+                GlassCircleButton(systemImage: "arrow.uturn.backward", help: tr("Wiederherstellen", "Restore")) { model.perform(.untrash) }
+            } else {
+                GlassCircleButton(systemImage: "archivebox", help: tr("Archivieren (⌃⌘A)", "Archive (⌃⌘A)")) { model.perform(.archive) }
+                GlassCircleButton(systemImage: "trash", help: tr("In den Papierkorb (⌘⌫)", "Move to Trash (⌘⌫)")) { model.perform(.trash) }
+            }
+            labelsMenu
+            GlassCircleButton(
+                systemImage: thread?.isUnread == true ? "envelope.badge" : "envelope.open",
+                help: tr("Als gelesen/ungelesen markieren (⇧⌘U)", "Mark as Read/Unread (⇧⌘U)"),
+                isActive: thread?.isUnread == true
+            ) { model.toggleRead() }
+
+            Spacer(minLength: 6)
+
+            GlassCircleButton(systemImage: "chevron.up", help: tr("Vorherige Konversation (⌥⌘↑)", "Previous Conversation (⌥⌘↑)")) { model.selectAdjacentThread(-1) }
+                .disabled(!model.canSelectAdjacentThread(-1))
+                .opacity(model.canSelectAdjacentThread(-1) ? 1 : 0.45)
+                .accessibilityIdentifier("detail.previous")
+            GlassCircleButton(systemImage: "chevron.down", help: tr("Nächste Konversation (⌥⌘↓)", "Next Conversation (⌥⌘↓)")) { model.selectAdjacentThread(1) }
+                .disabled(!model.canSelectAdjacentThread(1))
+                .opacity(model.canSelectAdjacentThread(1) ? 1 : 0.45)
+                .accessibilityIdentifier("detail.next")
+            moreMenu
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, 8)
+        .padding(.bottom, 8)
+    }
+
+    private var labelsMenu: some View {
+        let userLabels = detail.account.labels
+            .filter { !$0.isSystem && !$0.isHidden }
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        let applied = thread?.labelIDs ?? []
+        return GlassCircleMenu(systemImage: "square.grid.2x2", help: tr("Labels", "Labels")) {
+            if userLabels.isEmpty {
+                Text(tr("Keine eigenen Labels", "No Custom Labels"))
+            }
+            ForEach(userLabels) { label in
+                let isOn = applied.contains(label.id)
+                Toggle(label.name, isOn: Binding(
+                    get: { isOn },
+                    set: { model.perform($0 ? .addLabel(label.id) : .removeLabel(label.id)) }
+                ))
+            }
+        }
+        .accessibilityIdentifier("detail.labels")
+    }
+
+    private var moreMenu: some View {
+        GlassCircleMenu(systemImage: "ellipsis", help: tr("Weitere Aktionen", "More Actions")) {
+            Button(thread?.isStarred == true ? tr("Markierung entfernen", "Remove Star") : tr("Markieren", "Star")) { model.toggleStar() }
+            if thread?.labelIDs.contains(SystemLabel.spam) == true {
+                Button(tr("Kein Spam", "Not Spam")) { model.perform(.notSpam) }
+            } else {
+                Button(tr("Als Spam melden", "Report Spam")) { model.perform(.reportSpam) }
+            }
+            if thread?.labelIDs.contains(SystemLabel.inbox) == false {
+                Button(tr("In den Posteingang", "Move to Inbox")) { model.perform(.moveToInbox) }
+            }
+            Divider()
+            Button(tr("Header anzeigen", "Show Headers")) { showSource(.headers) }
+            Button(tr("Quelltext anzeigen", "Show Source")) { showSource(.source) }
+        }
+        .accessibilityIdentifier("detail.more")
+    }
+
+    private func compose(_ kind: ComposeKind) {
+        if let draft = detail.draft(kind) { openWindow(value: draft) }
+    }
+
+    private func showSource(_ mode: SourceRequest.Mode) {
+        if let request = detail.sourceRequest(mode) { openWindow(value: request) }
     }
 
     @ViewBuilder
     private var header: some View {
         if !detail.subject.isEmpty || !detail.messages.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                Text(detail.subject.isEmpty ? tr("(kein Betreff)", "(no subject)") : detail.subject)
-                    .font(.system(size: 22, weight: .bold))
-                    .textSelection(.enabled)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityIdentifier("detail.subject")
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text(detail.subject.isEmpty ? tr("(kein Betreff)", "(no subject)") : detail.subject)
+                        .font(.system(size: 26, weight: .bold))
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("detail.subject")
+                    Spacer(minLength: 8)
+                    Button {
+                        model.toggleStar()
+                    } label: {
+                        Image(systemName: thread?.isStarred == true ? "star.fill" : "star")
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundStyle(thread?.isStarred == true ? Color.accentColor : Color.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help(tr("Markieren (⇧⌘L)", "Star (⇧⌘L)"))
+                }
                 HStack(spacing: 6) {
                     let labelIDs = Set(detail.messages.flatMap { $0.message.labelIds ?? [] })
                     ForEach(detail.account.userLabels(in: labelIDs)) { LabelChip(label: $0) }
@@ -66,7 +167,7 @@ struct ThreadDetailView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .padding(.bottom, 6)
+            .padding(.bottom, 8)
         }
     }
 
@@ -75,60 +176,6 @@ struct ThreadDetailView: View {
         let messages = count == 1 ? tr("1 Nachricht", "1 message") : tr("\(count) Nachrichten", "\(count) messages")
         let people = detail.participantCount
         return people > 2 ? tr("\(messages) · \(people) Beteiligte", "\(messages) · \(people) people") : messages
-    }
-
-    @ToolbarContentBuilder
-    private var toolbar: some ToolbarContent {
-        ToolbarItemGroup(placement: .primaryAction) {
-            ControlGroup {
-                Button {
-                    if let draft = detail.draft(.reply) { openWindow(value: draft) }
-                } label: {
-                    Label(tr("Antworten", "Reply"), systemImage: "arrowshape.turn.up.left")
-                }
-                .help(tr("Antworten (⌘R)", "Reply (⌘R)"))
-                Button {
-                    if let draft = detail.draft(.replyAll) { openWindow(value: draft) }
-                } label: {
-                    Label(tr("Allen antworten", "Reply All"), systemImage: "arrowshape.turn.up.left.2")
-                }
-                .help(tr("Allen antworten (⇧⌘R)", "Reply All (⇧⌘R)"))
-                Button {
-                    if let draft = detail.draft(.forward) { openWindow(value: draft) }
-                } label: {
-                    Label(tr("Weiterleiten", "Forward"), systemImage: "arrowshape.turn.up.right")
-                }
-                .help(tr("Weiterleiten (⇧⌘F)", "Forward (⇧⌘F)"))
-            }
-
-            Button {
-                model.perform(.archive)
-            } label: {
-                Label(tr("Archivieren", "Archive"), systemImage: "archivebox")
-            }
-            .help(tr("Archivieren (⌃⌘A)", "Archive (⌃⌘A)"))
-
-            Button {
-                model.perform(.trash)
-            } label: {
-                Label(tr("Löschen", "Delete"), systemImage: "trash")
-            }
-            .help(tr("In den Papierkorb (⌘⌫)", "Move to Trash (⌘⌫)"))
-
-            Button {
-                model.toggleRead()
-            } label: {
-                Label(tr("Gelesen/Ungelesen", "Read/Unread"), systemImage: model.selectedThread?.isUnread == true ? "envelope.open" : "envelope.badge")
-            }
-            .help(tr("Als gelesen/ungelesen markieren (⇧⌘U)", "Mark as Read/Unread (⇧⌘U)"))
-
-            Button {
-                model.toggleStar()
-            } label: {
-                Label(tr("Markieren", "Star"), systemImage: model.selectedThread?.isStarred == true ? "star.fill" : "star")
-            }
-            .help(tr("Markieren (⇧⌘L)", "Star (⇧⌘L)"))
-        }
     }
 }
 
@@ -139,6 +186,7 @@ struct MessageCardView: View {
     let detail: ThreadDetailModel
     @Environment(\.openWindow) private var openWindow
     @State private var bodyHeight: CGFloat = 60
+    @State private var showsDetails = false
 
     private var message: GmailMessage { item.message }
     private var senderName: String { message.from?.displayName ?? tr("(unbekannt)", "(unknown)") }
@@ -199,19 +247,62 @@ struct MessageCardView: View {
                             .fixedSize()
                     }
                     .textSelection(.enabled)
-                    HStack(alignment: .center, spacing: 8) {
-                        Text(recipientLine)
+                    if let address = message.from?.address {
+                        Text(address)
                             .font(.system(size: 11.5))
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
-                            .truncationMode(.tail)
+                            .textSelection(.enabled)
+                    }
+                    HStack(alignment: .center, spacing: 8) {
+                        Button {
+                            withAnimation(.snappy(duration: 0.2)) { showsDetails.toggle() }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(recipientLine)
+                                    .lineLimit(1)
+                                    .truncationMode(.tail)
+                                Image(systemName: showsDetails ? "chevron.up" : "chevron.down")
+                                    .font(.system(size: 8.5, weight: .bold))
+                            }
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(.secondary)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .help(tr("Alle Empfänger und Details anzeigen", "Show all recipients and details"))
+                        .accessibilityIdentifier("message.details.\(message.id)")
                         Spacer(minLength: 8)
                         HStack(spacing: 0) {
                             IconButton(systemImage: "arrowshape.turn.up.left", help: tr("Antworten", "Reply")) { open(.reply) }
                             IconButton(systemImage: "arrowshape.turn.up.left.2", help: tr("Allen antworten", "Reply All")) { open(.replyAll) }
                             IconButton(systemImage: "arrowshape.turn.up.right", help: tr("Weiterleiten", "Forward")) { open(.forward) }
+                            Menu {
+                                Button(tr("Header anzeigen", "Show Headers")) { showSource(.headers) }
+                                Button(tr("Quelltext anzeigen", "Show Source")) { showSource(.source) }
+                                Divider()
+                                Button(tr("Absenderadresse kopieren", "Copy Sender Address")) {
+                                    NSPasteboard.general.clearContents()
+                                    NSPasteboard.general.setString(message.from?.address ?? "", forType: .string)
+                                }
+                            } label: {
+                                Image(systemName: "ellipsis")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 24, height: 22)
+                            }
+                            .menuStyle(.button)
+                            .buttonStyle(.borderless)
+                            .menuIndicator(.hidden)
+                            .fixedSize()
+                            .help(tr("Weitere Aktionen", "More Actions"))
                         }
                         .fixedSize()
+                    }
+                    if showsDetails {
+                        MessageDetailsGrid(message: message, ownAddress: detail.account.email)
+                            .padding(.top, 6)
+                            .transition(.opacity)
                     }
                 }
             }
@@ -233,18 +324,38 @@ struct MessageCardView: View {
         }
     }
 
+    /// "to anna@example.com, me (alex@example.com)" – always with the exact address it went to.
     private var recipientLine: String {
         var parts: [String] = []
-        if let address = message.from?.address, message.from?.name != nil {
-            parts.append(address)
-        }
-        if !message.to.isEmpty {
-            parts.append(tr("an ", "to ") + message.to.map { $0.address == detail.account.email ? tr("mich", "me") : $0.displayName }.joined(separator: ", "))
+        let recipients = message.to.isEmpty ? deliveredTo.map { [$0] } ?? [] : message.to
+        if !recipients.isEmpty {
+            parts.append(tr("an ", "to ") + recipients.map(describe).joined(separator: ", "))
         }
         if !message.cc.isEmpty {
-            parts.append("Cc " + message.cc.map(\.displayName).joined(separator: ", "))
+            parts.append("Cc " + message.cc.map(describe).joined(separator: ", "))
         }
-        return parts.joined(separator: " · ")
+        if !message.bcc.isEmpty {
+            parts.append("Bcc " + message.bcc.map(describe).joined(separator: ", "))
+        }
+        return parts.isEmpty ? tr("an (unbekannt)", "to (unknown)") : parts.joined(separator: " · ")
+    }
+
+    private var deliveredTo: EmailAddress? {
+        message.header("Delivered-To").flatMap { EmailAddress.parseList($0).first }
+    }
+
+    private func describe(_ address: EmailAddress) -> String {
+        if address.address.caseInsensitiveCompare(detail.account.email) == .orderedSame {
+            return tr("mich", "me") + " (\(address.address))"
+        }
+        if address.name != nil {
+            return "\(address.displayName) <\(address.address)>"
+        }
+        return address.address
+    }
+
+    private func showSource(_ mode: SourceRequest.Mode) {
+        if let request = detail.sourceRequest(mode, messageID: message.id) { openWindow(value: request) }
     }
 
     private var draftBanner: some View {
@@ -309,6 +420,52 @@ struct MessageCardView: View {
             }
         }
         openWindow(value: draft)
+    }
+}
+
+/// Full sender/recipient list of one message, with complete addresses (Mail's "Details").
+private struct MessageDetailsGrid: View {
+    let message: GmailMessage
+    let ownAddress: String
+
+    var body: some View {
+        Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 10, verticalSpacing: 4) {
+            row(tr("Von", "From"), message.header("From"))
+            row(tr("Antwort an", "Reply-To"), message.header("Reply-To"))
+            row(tr("An", "To"), message.header("To"))
+            row("Cc", message.header("Cc"))
+            row("Bcc", message.header("Bcc"))
+            row(tr("Zugestellt an", "Delivered to"), message.header("Delivered-To"))
+            row(tr("Datum", "Date"), message.date.map { Formatting.fullDate($0) } ?? message.header("Date"))
+            row(tr("Betreff", "Subject"), message.subject)
+        }
+        .font(.system(size: 11.5))
+        .textSelection(.enabled)
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .accessibilityIdentifier("message.detailsGrid")
+    }
+
+    @ViewBuilder
+    private func row(_ title: String, _ value: String?) -> some View {
+        if let value, !value.isEmpty {
+            GridRow {
+                Text(title)
+                    .foregroundStyle(.secondary)
+                    .gridColumnAlignment(.trailing)
+                Text(EmailAddress.parseList(value).isEmpty || title == tr("Datum", "Date") || title == tr("Betreff", "Subject")
+                     ? value
+                     : EmailAddress.parseList(value).map(format).joined(separator: ", "))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func format(_ address: EmailAddress) -> String {
+        let own = address.address.caseInsensitiveCompare(ownAddress) == .orderedSame ? tr(" (ich)", " (me)") : ""
+        if address.name != nil { return "\(address.displayName) <\(address.address)>\(own)" }
+        return address.address + own
     }
 }
 
@@ -431,8 +588,8 @@ private struct QuickReplyBar: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background(Theme.canvas)
-        .overlay(alignment: .top) { Divider() }
+        .background(.ultraThinMaterial)
+        .overlay(alignment: .top) { Divider().opacity(0.6) }
     }
 
     private var placeholder: String {

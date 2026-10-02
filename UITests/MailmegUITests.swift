@@ -151,4 +151,71 @@ final class MailmegUITests: XCTestCase {
         XCTAssertTrue(element(app, "compose.body").waitForExistence(timeout: 10))
         XCTAssertTrue((element(app, "compose.body").value as? String ?? "").contains("Angebot"))
     }
+
+    func testSourceHeadersAndRecipientDetails() {
+        let app = launch(["--demo"])
+        let thread = element(app, "thread.t-projektplan")
+        XCTAssertTrue(thread.waitForExistence(timeout: 20))
+        thread.click()
+        XCTAssertTrue(element(app, "detail.subject").waitForExistence(timeout: 10))
+        sleep(1)
+
+        // The exact address the message went to is listed in the details.
+        let details = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'message.details.'")).firstMatch
+        XCTAssertTrue(details.waitForExistence(timeout: 5))
+        details.click()
+        XCTAssertTrue(element(app, "message.detailsGrid").waitForExistence(timeout: 5), "Clicking the recipients should show the details")
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "value CONTAINS 'alex@example.com'")).firstMatch.exists
+            || app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'alex@example.com'")).firstMatch.exists,
+            "The own address should be shown, not just „mich“")
+        sleep(1)
+        snapshot("8-details-empfaenger", of: app.windows.firstMatch.screenshot())
+
+        // Message source (⌥⌘U), then switch to the header list.
+        app.typeKey("u", modifierFlags: [.command, .option])
+        let source = element(app, "source.text")
+        XCTAssertTrue(source.waitForExistence(timeout: 10), "⌥⌘U should open the message source")
+        XCTAssertTrue((source.value as? String ?? "").contains("Delivered-To: alex@example.com"))
+        sleep(1)
+        snapshot("9-quelltext", of: XCUIScreen.main.screenshot())
+        app.typeKey("w", modifierFlags: .command)
+
+        app.typeKey("h", modifierFlags: [.command, .shift])
+        XCTAssertTrue(element(app, "source.headers").waitForExistence(timeout: 10), "⇧⌘H should list the headers")
+        sleep(1)
+        snapshot("10-header", of: XCUIScreen.main.screenshot())
+        app.typeKey("w", modifierFlags: .command)
+
+        // Next / previous conversation.
+        let next = element(app, "detail.next")
+        XCTAssertTrue(next.waitForExistence(timeout: 5))
+        next.click()
+        sleep(1)
+        XCTAssertNotEqual(element(app, "detail.subject").value as? String, "Projektplan Q4")
+    }
+
+    func testRichTextFormatting() {
+        let app = launch(["--demo"])
+        XCTAssertTrue(element(app, "thread.t-projektplan").waitForExistence(timeout: 20))
+        sleep(1)
+        element(app, "compose").click()
+        let body = element(app, "compose.body")
+        XCTAssertTrue(body.waitForExistence(timeout: 10))
+        XCTAssertTrue(element(app, "format.bold").exists, "The format bar should be shown")
+        body.click()
+        app.typeKey(.upArrow, modifierFlags: .command)
+        app.typeKey("b", modifierFlags: .command)
+        body.typeText("Fett ")
+        app.typeKey("b", modifierFlags: .command)
+        app.typeKey("i", modifierFlags: .command)
+        body.typeText("kursiv")
+        app.typeKey("i", modifierFlags: .command)
+        body.typeText("\n")
+        element(app, "format.bullets").click()
+        body.typeText("Punkt eins\nPunkt zwei\n")
+        XCTAssertTrue((body.value as? String ?? "").contains("• Punkt eins\n• Punkt zwei"), "Lists should continue on Return")
+        sleep(1)
+        snapshot("11-rich-text", of: XCUIScreen.main.screenshot())
+        app.typeKey("w", modifierFlags: .command)
+    }
 }
