@@ -111,7 +111,7 @@ public enum RichTextHTML {
     }
 
     /// Length (UTF-16) of a "12. " prefix, if the line starts with one.
-    static func numberedPrefixLength(_ text: String) -> Int? {
+    public static func numberedPrefixLength(_ text: String) -> Int? {
         let digits = text.prefix { $0.isASCII && $0.isNumber }
         guard !digits.isEmpty, digits.count <= 3 else { return nil }
         let rest = text.dropFirst(digits.count)
