@@ -3,6 +3,11 @@
 Alle nennenswerten Änderungen an MailMeG. Versionen folgen [Semantic Versioning](https://semver.org/lang/de/).
 All notable changes to MailMeG. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.5.1] – 2026-10-03
+
+- Start hängt nicht mehr (Symbol hüpft nur): Die gespeicherten Anmeldungen werden jetzt im Hintergrund aus dem Schlüsselbund gelesen, das Fenster erscheint sofort mit „Konten werden geladen …“ und einem Hinweis, falls macOS nach dem Schlüsselbund fragt
+  · Launch no longer hangs (icon only bounces): saved sign-ins are now read from the keychain in the background, the window appears right away with “Loading accounts…” and a hint in case macOS asks about the keychain
+
 ## [1.5.0] – 2026-10-02
 
 - Neuer Name: **MailMeG** – „Mail Me Google Mail“. App, Menüs, Fenster, Mitteilungen und Download heißen jetzt so (`MailMeG.app`, `MailMeG.dmg`); Einstellungen und Anmeldungen bleiben erhalten

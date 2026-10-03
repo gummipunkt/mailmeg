@@ -20,6 +20,8 @@ final class AppModel {
     private(set) var selectedThreadID: String?
     private(set) var isSigningIn = false
     private(set) var isDemo = false
+    /// True while the saved accounts are being read from the keychain at launch.
+    private(set) var isLoadingAccounts = false
     /// When mail was last fetched (automatically or manually).
     private(set) var lastRefresh: Date?
     private(set) var isRefreshing = false
@@ -37,10 +39,26 @@ final class AppModel {
             return
         }
         guard !LaunchOptions.onboarding else { return }
+        // The keychain is read in `start()`, off the main thread: macOS may ask for
+        // keychain access after an update, and that must not block the app's launch.
+        isLoadingAccounts = !AccountStore.emails.isEmpty
+    }
+
+    /// Reads the saved sign-ins from the keychain in the background.
+    private func loadStoredAccounts() async {
+        let emails = AccountStore.emails
         let config = AppSettings.oauthConfig
-        accounts = AccountStore.emails.compactMap { email in
-            guard let tokens = AccountStore.tokens(for: email) else { return nil }
-            return AccountSession(email: email, tokens: tokens, config: config)
+        let stored: [(email: String, tokens: OAuthTokens)] = await Task.detached(priority: .userInitiated) {
+            emails.compactMap { email in AccountStore.tokens(for: email).map { (email: email, tokens: $0) } }
+        }.value
+        accounts = stored.map { AccountSession(email: $0.email, tokens: $0.tokens, config: config) }
+        isLoadingAccounts = false
+        let missing = emails.filter { email in !stored.contains { $0.email == email } }
+        if !missing.isEmpty {
+            errorMessage = tr(
+                "MailMeG konnte die Anmeldung für \(missing.joined(separator: ", ")) nicht aus dem Schlüsselbund lesen. Falls macOS nach dem Schlüsselbund gefragt hat, wähle beim nächsten Start „Immer erlauben“ – oder melde dich einfach erneut an.",
+                "MailMeG couldn’t read the sign-in for \(missing.joined(separator: ", ")) from the keychain. If macOS asked about the keychain, choose “Always Allow” next time – or simply sign in again."
+            )
         }
     }
 
@@ -53,6 +71,9 @@ final class AppModel {
     func start() async {
         guard !started else { return }
         started = true
+        if isLoadingAccounts {
+            await loadStoredAccounts()
+        }
         observeUnread()
         if !isDemo {
             // Also covers the unread counter on the Dock icon.
