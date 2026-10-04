@@ -3,6 +3,19 @@
 Alle nennenswerten Änderungen an MailMeG. Versionen folgen [Semantic Versioning](https://semver.org/lang/de/).
 All notable changes to MailMeG. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.6.0] – 2026-10-04
+
+- **Google Kalender** in MailMeG: „Kalender“ in der Seitenleiste mit Mini-Monat, Agenda der nächsten Tage und Tages-/Wochenansicht (⌥⌘K); Termine in den Farben deiner Kalender, Kalender ein- und ausblendbar
+  · **Google Calendar** in MailMeG: “Calendar” in the sidebar with a mini month, an agenda of the coming days and a day/week view (⌥⌘K); events in your calendars’ colours, calendars can be shown or hidden
+- „Heute“ in der Seitenleiste: die restlichen Termine des Tages auf einen Blick
+  · “Today” in the sidebar: the rest of the day’s events at a glance
+- Einladungen in E-Mails erscheinen als Karte mit Datum, Ort und Zusagen/Vielleicht/Absagen; die Antwort geht wie in Gmail an den Organisator
+  · Invitations in emails appear as a card with date, place and Accept/Maybe/Decline; the answer goes to the organizer like in Gmail
+- Neue Termine anlegen (⌥⌘N), auch direkt aus einer E-Mail (⌥⌘E): Betreff und Beteiligte sind schon eingetragen, Einladungen werden auf Wunsch verschickt
+  · Create events (⌥⌘N), also straight from an email (⌥⌘E): subject and people are filled in, invitations are sent if you like
+- Bestehende Konten verbinden den Kalender einmalig über „Kalender verbinden“; im Google-Cloud-Projekt muss zusätzlich die „Google Calendar API“ aktiviert sein
+  · Existing accounts connect the calendar once via “Connect Calendar”; the “Google Calendar API” must also be enabled in the Google Cloud project
+
 ## [1.5.1] – 2026-10-03
 
 - Start hängt nicht mehr (Symbol hüpft nur): Die gespeicherten Anmeldungen werden jetzt im Hintergrund aus dem Schlüsselbund gelesen, das Fenster erscheint sofort mit „Konten werden geladen …“ und einem Hinweis, falls macOS nach dem Schlüsselbund fragt

@@ -7,6 +7,8 @@ import Foundation
 public struct GoogleOAuthConfig: Sendable, Equatable {
     public static let defaultScopes = [
         "https://www.googleapis.com/auth/gmail.modify",
+        "https://www.googleapis.com/auth/calendar.readonly",
+        "https://www.googleapis.com/auth/calendar.events",
     ]
 
     public static let authorizationEndpoint = URL(string: "https://accounts.google.com/o/oauth2/v2/auth")!
@@ -47,6 +49,7 @@ public struct GoogleOAuthConfig: Sendable, Equatable {
             URLQueryItem(name: "code_challenge_method", value: "S256"),
             URLQueryItem(name: "state", value: state),
             URLQueryItem(name: "prompt", value: "select_account"),
+            URLQueryItem(name: "include_granted_scopes", value: "true"),
         ]
         if let loginHint {
             items.append(URLQueryItem(name: "login_hint", value: loginHint))

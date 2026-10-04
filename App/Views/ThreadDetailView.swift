@@ -134,6 +134,10 @@ struct ThreadDetailView: View {
                 Button(tr("In den Posteingang", "Move to Inbox")) { model.perform(.moveToInbox) }
             }
             Divider()
+            Button(tr("Termin aus E-Mail erstellen …", "Create Event from Email…")) {
+                if let draft = model.eventDraftFromSelectedMessage() { openWindow(value: draft) }
+            }
+            Divider()
             Button(tr("Header anzeigen", "Show Headers")) { showSource(.headers) }
             Button(tr("Quelltext anzeigen", "Show Source")) { showSource(.source) }
         }
@@ -214,6 +218,9 @@ struct MessageCardView: View {
                 draftBanner
             }
             if item.isExpanded {
+                if item.invitation != nil {
+                    InvitationCard(item: item, detail: detail)
+                }
                 if item.hasRemoteContent && !item.allowsRemoteContent {
                     remoteContentBanner
                 }
@@ -289,6 +296,10 @@ struct MessageCardView: View {
                             IconButton(systemImage: "arrowshape.turn.up.left.2", help: tr("Allen antworten", "Reply All")) { open(.replyAll) }
                             IconButton(systemImage: "arrowshape.turn.up.right", help: tr("Weiterleiten", "Forward")) { open(.forward) }
                             Menu {
+                                Button(tr("Termin erstellen …", "Create Event…")) {
+                                    openWindow(value: EventDraft.from(message, account: detail.account))
+                                }
+                                Divider()
                                 Button(tr("Header anzeigen", "Show Headers")) { showSource(.headers) }
                                 Button(tr("Quelltext anzeigen", "Show Source")) { showSource(.source) }
                                 Divider()

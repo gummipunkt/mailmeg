@@ -16,6 +16,8 @@ final class AppModel {
     private(set) var accounts: [AccountSession] = []
     private(set) var mailbox: MailboxModel?
     private(set) var threadDetail: ThreadDetailModel?
+    /// Set while a calendar is shown instead of a mailbox.
+    private(set) var calendarView: CalendarViewState?
     private(set) var selection: MailboxSelection?
     private(set) var selectedThreadID: String?
     private(set) var isSigningIn = false
@@ -88,6 +90,7 @@ final class AppModel {
         lastRefresh = Date()
         updateDockBadge()
         startPolling()
+        await loadTodayEvents()
     }
 
     /// Lets people try the app without a Google account.
@@ -137,6 +140,9 @@ final class AppModel {
                 account.noteRateLimit(error)
             }
         }
+        for account in accounts where !account.needsReauth {
+            await account.calendar.refreshIfStale(maxAge: 300)
+        }
         lastRefresh = Date()
         updateDockBadge()
     }
@@ -157,6 +163,9 @@ final class AppModel {
         }
         await mailbox?.reload()
         await threadDetail?.load()
+        for account in accounts {
+            await account.calendar.refresh()
+        }
         updateDockBadge()
     }
 
@@ -243,8 +252,17 @@ final class AppModel {
         selectThread(nil)
         guard let newSelection, let account = account(id: newSelection.accountID) else {
             mailbox = nil
+            calendarView = nil
             return
         }
+        if newSelection.labelID == AccountSession.calendarID {
+            mailbox = nil
+            let view = CalendarViewState(account: account)
+            calendarView = view
+            Task { await view.load() }
+            return
+        }
+        calendarView = nil
         let mailbox = MailboxModel(account: account, labelID: newSelection.labelID)
         mailbox.onError = { [weak self] error in self?.present(error, account: account) }
         self.mailbox = mailbox
@@ -385,6 +403,46 @@ final class AppModel {
             if threadDetail?.account === account {
                 await threadDetail?.load()
             }
+        }
+    }
+
+    // MARK: - Calendar
+
+    /// Shows the account's calendar on `day`, optionally with an event selected.
+    func showCalendar(accountID: String, day: Date = Date(), eventID: String? = nil) {
+        select(MailboxSelection(accountID: accountID, labelID: AccountSession.calendarID))
+        guard let view = calendarView else { return }
+        view.select(day: day)
+        view.selectedEventID = eventID
+        Task { await view.load() }
+    }
+
+    /// After a new event was added: show it if its calendar is on screen.
+    func eventCreated(_ event: CalendarEvent, accountID: String) {
+        guard let view = calendarView, view.account.id == accountID else { return }
+        view.select(day: event.startDate ?? Date())
+        view.selectedEventID = event.key
+    }
+
+    /// A new event, for the account and day currently shown.
+    func newEventDraft() -> EventDraft {
+        let accountID = selection?.accountID ?? accounts.first?.id ?? ""
+        return EventDraft.new(accountID: accountID, day: calendarView?.selectedDay)
+    }
+
+    /// A new event prefilled from the newest message of the open conversation.
+    func eventDraftFromSelectedMessage() -> EventDraft? {
+        guard let detail = threadDetail,
+              let message = detail.messages.last(where: { !$0.message.isDraft })?.message ?? detail.latestMessage else { return nil }
+        return EventDraft.from(message, account: detail.account)
+    }
+
+    /// Loads today's events of all accounts for the "Today" list in the sidebar.
+    func loadTodayEvents() async {
+        let start = Calendar.current.startOfDay(for: Date())
+        let end = Calendar.current.date(byAdding: .day, value: 1, to: start) ?? start
+        for account in accounts {
+            await account.calendar.ensureLoaded(DateInterval(start: start, end: end))
         }
     }
 

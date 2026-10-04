@@ -14,11 +14,22 @@ struct MailCommands: Commands {
             Button(tr("Neue E-Mail", "New Message")) { openWindow(value: model.newDraft()) }
                 .keyboardShortcut("n")
                 .disabled(model.accounts.isEmpty)
+            Button(tr("Neuer Termin …", "New Event…")) { openWindow(value: model.newEventDraft()) }
+                .keyboardShortcut("n", modifiers: [.command, .option])
+                .disabled(model.accounts.isEmpty)
         }
 
         CommandMenu(tr("Postfach", "Mailbox")) {
             Button(tr("Neue E-Mails abrufen", "Get New Mail")) { Task { await model.refreshAll() } }
                 .keyboardShortcut("n", modifiers: [.command, .shift])
+            Divider()
+            Button(tr("Kalender", "Calendar")) {
+                if let account = model.selection?.accountID ?? model.accounts.first?.id {
+                    model.showCalendar(accountID: account)
+                }
+            }
+            .keyboardShortcut("k", modifiers: [.command, .option])
+            .disabled(model.accounts.isEmpty)
             Divider()
             Button(tr("Konto hinzufügen …", "Add Account…")) { Task { await model.signIn() } }
         }
@@ -57,6 +68,12 @@ struct MailCommands: Commands {
             Button(tr("Nächste Konversation", "Next Conversation")) { model.selectAdjacentThread(1) }
                 .keyboardShortcut(.downArrow, modifiers: [.command, .option])
                 .disabled(model.mailbox?.threads.isEmpty ?? true)
+            Divider()
+            Button(tr("Termin aus E-Mail erstellen …", "Create Event from Email…")) {
+                if let draft = model.eventDraftFromSelectedMessage() { openWindow(value: draft) }
+            }
+            .keyboardShortcut("e", modifiers: [.command, .option])
+            .disabled(model.threadDetail == nil)
             Divider()
             Button(tr("Header anzeigen", "Show Headers")) { showSource(.headers) }
                 .keyboardShortcut("h", modifiers: [.command, .shift])

@@ -23,7 +23,7 @@ struct SidebarView: View {
                         }
                         .buttonStyle(.plain)
                     }
-                    ForEach(entries(account.systemItems, of: account), id: \.selection) { entry in
+                    ForEach(entries(account.systemItems + [account.calendarItem], of: account), id: \.selection) { entry in
                         row(entry)
                     }
                 } header: {
@@ -47,7 +47,12 @@ struct SidebarView: View {
         }
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)
-        .safeAreaInset(edge: .bottom, spacing: 0) { footer }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: 0) {
+                TodayAgendaView()
+                footer
+            }
+        }
         .glassBackground(.sidebar)
     }
 
@@ -118,7 +123,7 @@ struct SidebarView: View {
     private func tint(for item: SidebarItem) -> Color {
         if let hex = item.colorHex { return Color(hex: hex) }
         switch item.id {
-        case SystemLabel.inbox, SystemLabel.starred, SystemLabel.important: return .accentColor
+        case SystemLabel.inbox, SystemLabel.starred, SystemLabel.important, AccountSession.calendarID: return .accentColor
         default: return Palette.periwinkle
         }
     }

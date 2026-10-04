@@ -20,11 +20,13 @@ und nicht über IMAP und nicht über eine eingebettete gmail.com-Seite.
 - **Empfängerdetails** mit der genauen Zieladresse (auch bei „mich“), **Quelltext** (⌥⌘U) und **alle Header** (⇧⌘H) jeder E-Mail
 - **Abrufintervall** einstellbar (30 Sekunden bis 1 Stunde oder manuell)
 - **Design im Stil von Airmail** mit Glas-Oberflächen und runden Buttons, Avatare in der Liste optional
+- **Google Kalender**: Tages- und Wochenansicht mit Mini-Monat und Agenda, „Heute“ in der Seitenleiste,
+  Einladungen in E-Mails mit Zusagen/Vielleicht/Absagen, neue Termine – auch direkt aus einer E-Mail (⌥⌘E)
 - **Entwürfe** werden beim Schreiben automatisch in Gmail gesichert und lassen sich jederzeit weiterbearbeiten
 - **Verfassen, Antworten, Allen antworten, Weiterleiten** inklusive Anhängen. Antworten landen im richtigen Gmail-Thread (`threadId`, `In-Reply-To`, `References`).
 - **Neue Mails**: Polling über die History-API, Dock-Symbol mit Zähler ungelesener E-Mails
 - **Mitteilungen**: Klick öffnet die Konversation, Antworten, Als gelesen markieren und Archivieren direkt in der Mitteilung
-- **Tastaturkürzel** wie in Apple Mail: ⌘N, ⌘R, ⇧⌘R, ⇧⌘F, ⌃⌘A, ⌘⌫, ⇧⌘U, ⇧⌘L, ⇧⌘N, ⌥⌘U, ⇧⌘H, ⌥⌘↑/↓
+- **Tastaturkürzel** wie in Apple Mail: ⌘N, ⌘R, ⇧⌘R, ⇧⌘F, ⌃⌘A, ⌘⌫, ⇧⌘U, ⇧⌘L, ⇧⌘N, ⌥⌘U, ⇧⌘H, ⌥⌘↑/↓, ⌥⌘K (Kalender), ⌥⌘N (neuer Termin), ⌥⌘E (Termin aus E-Mail)
 
 ## Installation (fertige DMG, ohne Xcode)
 
@@ -57,11 +59,13 @@ Dann *Immer erlauben* wählen.
 Google erlaubt Gmail-Zugriff nur über einen registrierten OAuth-Client. Für die private Nutzung legst du ihn selbst an:
 
 1. Öffne die [Google Cloud Console](https://console.cloud.google.com/) und lege ein **neues Projekt** an, z. B. „MailMeG“.
-2. **Gmail API aktivieren**: *APIs & Dienste → Bibliothek → „Gmail API“ → Aktivieren*.
+2. **Gmail API und Google Calendar API aktivieren**: *APIs & Dienste → Bibliothek → „Gmail API“ → Aktivieren*,
+   danach genauso **„Google Calendar API“** (für den Kalender).
 3. **OAuth-Zustimmungsbildschirm** (*Google Auth Platform*):
    - *Branding*: App-Name „MailMeG“ und deine E-Mail-Adresse eintragen.
    - *Zielgruppe*: Nutzertyp **Extern** wählen. Unter *Testnutzer* deine Gmail-Adresse(n) hinzufügen.
-   - *Datenzugriff* (optional): Bereich `https://www.googleapis.com/auth/gmail.modify` hinzufügen.
+   - *Datenzugriff* (optional): die Bereiche `…/auth/gmail.modify`, `…/auth/calendar.readonly` und
+     `…/auth/calendar.events` hinzufügen.
 4. **OAuth-Client anlegen**: *Clients → Client erstellen*
    - Anwendungstyp: **iOS**. Google verwendet diesen Typ auch für macOS-Apps, er braucht kein Client-Secret.
    - Bundle-ID: `de.mailmeg.app`
@@ -139,14 +143,15 @@ MailMeG gibt es auf Deutsch und Englisch. Die App folgt der Reihenfolge unter
 MailMeG (“Mail Me Google Mail”) is a native Gmail client for macOS (SwiftUI) that talks to the Gmail REST API directly instead of
 wrapping the Gmail website. The interface is available in English and German and follows your macOS language
 order. Highlights: multiple accounts, Gmail aliases and signatures, drafts synced with Gmail, a rich text
-editor, message source and headers, configurable fetch interval and an Airmail-style glass design.
+editor, message source and headers, Google Calendar (day/week view, invitations with RSVP, events from emails),
+configurable fetch interval and an Airmail-style glass design.
 
 1. Download **[MailMeG.dmg](https://github.com/gummipunkt/mailmeg/releases/latest/download/MailMeG.dmg)**
    (universal, macOS 14 or later) and drag MailMeG into *Applications*.
 2. The app is not notarized: open it once, then choose *System Settings → Privacy & Security → Open Anyway*
    (or run `xattr -dr com.apple.quarantine /Applications/MailMeG.app`).
-3. Create your own Google Cloud OAuth client of type **iOS** (bundle ID `de.mailmeg.app`) with the Gmail API
-   enabled, paste the client ID on first launch and sign in. Section 1 above describes every step. Or try the
+3. Create your own Google Cloud OAuth client of type **iOS** (bundle ID `de.mailmeg.app`) with the Gmail API and the
+   Google Calendar API enabled, paste the client ID on first launch and sign in. Section 1 above describes every step. Or try the
    demo mailbox first.
 
 ## Impressum

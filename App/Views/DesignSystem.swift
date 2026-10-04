@@ -298,3 +298,91 @@ struct IconButton: View {
         .accessibilityLabel(help)
     }
 }
+
+/// Capsule switch between a few options, in the app's glass style.
+struct PillSwitch<Value: Hashable>: View {
+    struct Option {
+        let value: Value
+        let title: String
+        let systemImage: String?
+        let identifier: String
+    }
+
+    @Binding var selection: Value
+    let options: [Option]
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(options.indices, id: \.self) { index in
+                let option = options[index]
+                let selected = option.value == selection
+                Button {
+                    withAnimation(.snappy(duration: 0.18)) { selection = option.value }
+                } label: {
+                    Group {
+                        if let systemImage = option.systemImage {
+                            Label(option.title, systemImage: systemImage)
+                        } else {
+                            Text(option.title)
+                        }
+                    }
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(selected ? Color.white : Color.primary.opacity(0.75))
+                    .padding(.horizontal, 12)
+                    .frame(height: 26)
+                    .background {
+                        if selected {
+                            Capsule().fill(LinearGradient(colors: [Palette.periwinkle, Palette.violet], startPoint: .top, endPoint: .bottom))
+                        }
+                    }
+                    .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier(option.identifier)
+            }
+        }
+        .padding(3)
+        .background(.ultraThinMaterial, in: Capsule())
+        .background(Capsule().fill(Color.primary.opacity(0.05)))
+        .overlay(Capsule().strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8))
+        .fixedSize()
+    }
+}
+
+/// Small capsule button with text, matching the round glass buttons.
+struct GlassCapsuleButton: View {
+    let title: String
+    var systemImage: String? = nil
+    var isProminent = false
+    let action: () -> Void
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Group {
+                if let systemImage {
+                    Label(title, systemImage: systemImage)
+                } else {
+                    Text(title)
+                }
+            }
+            .font(.system(size: 12.5, weight: .semibold))
+            .foregroundStyle(isProminent ? Color.white : Color.primary.opacity(0.85))
+            .padding(.horizontal, 14)
+            .frame(height: 32)
+            .background {
+                if isProminent {
+                    Capsule().fill(LinearGradient(colors: [Palette.periwinkle, Palette.violet], startPoint: .top, endPoint: .bottom))
+                } else {
+                    Capsule().fill(.ultraThinMaterial)
+                    Capsule().fill(Color.primary.opacity(isHovering ? 0.12 : 0.05))
+                }
+            }
+            .overlay(Capsule().strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8))
+            .shadow(color: .black.opacity(0.08), radius: 3, y: 1)
+            .contentShape(Capsule())
+            .onHover { isHovering = $0 }
+        }
+        .buttonStyle(.plain)
+    }
+}

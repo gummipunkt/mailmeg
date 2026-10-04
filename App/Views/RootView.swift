@@ -11,7 +11,9 @@ struct RootView: View {
                 .navigationSplitViewColumnWidth(min: 200, ideal: 236, max: 320)
         } content: {
             Group {
-                if let mailbox = model.mailbox {
+                if let calendarView = model.calendarView {
+                    CalendarColumnView(view: calendarView)
+                } else if let mailbox = model.mailbox {
                     ThreadListView(mailbox: mailbox)
                 } else {
                     ContentUnavailableView(tr("Kein Postfach ausgewählt", "No Mailbox Selected"), systemImage: "tray")
@@ -20,7 +22,9 @@ struct RootView: View {
             }
             .navigationSplitViewColumnWidth(min: 300, ideal: 380, max: 560)
         } detail: {
-            if let detail = model.threadDetail {
+            if let calendarView = model.calendarView {
+                CalendarTimelineView(view: calendarView)
+            } else if let detail = model.threadDetail {
                 ThreadDetailView(detail: detail)
                     .id(detail.threadID)
             } else {

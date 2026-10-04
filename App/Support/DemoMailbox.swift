@@ -39,6 +39,8 @@ private struct DemoMessage {
     let text: String
     var html: String? = nil
     var attachments: [DemoAttachment] = []
+    /// iCalendar text of an invitation (sent as a text/calendar part).
+    var calendar: String? = nil
 }
 
 private struct DemoThread {
@@ -70,6 +72,12 @@ private enum DemoData {
 
     static func threads() -> [DemoThread] {
         [
+            DemoThread(id: "t-einladung", subject: tr("Einladung: Design-Review Q4", "Invitation: Q4 design review"), labels: ["INBOX", "UNREAD"], messages: [
+                DemoMessage(from: anna, to: [.me, lena], hoursAgo: 1.2, text: tr(
+                    "Hallo Alex,\n\nich lade dich zum Design-Review für Q4 ein. Wir gehen die neuen Entwürfe durch und legen die nächsten Schritte fest.\n\nBis dann\nAnna",
+                    "Hi Alex,\n\nI’m inviting you to the Q4 design review. We’ll go through the new designs and agree on next steps.\n\nSee you there,\nAnna"),
+                            calendar: DemoCalendar.designReviewInvitation()),
+            ]),
             DemoThread(id: "t-projektplan", subject: tr("Projektplan Q4", "Q4 project plan"), labels: ["INBOX", "UNREAD", "IMPORTANT", "Label_1"], messages: [
                 DemoMessage(from: .me, to: [anna], hoursAgo: 26, text: tr(
                     "Hi Anna,\n\nkannst du mir bis Freitag den aktuellen Stand zum Projektplan schicken?\n\nDanke!\nAlex",
@@ -200,6 +208,8 @@ private enum DemoData {
 private final class DemoTransport: HTTPTransport, @unchecked Sendable {
     private let lock = NSLock()
     private var threads = DemoData.threads()
+    private var calendarEvents = DemoCalendar.events()
+    private var eventCounter = 0
     private var draftCounter = 0
     private let now = Date()
 
@@ -214,6 +224,9 @@ private final class DemoTransport: HTTPTransport, @unchecked Sendable {
         guard let url = request.url else { return (400, [:]) }
         let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
         let query = components?.queryItems ?? []
+        if url.path.hasPrefix("/calendar/v3/") {
+            return routeCalendar(request, path: String(url.path.dropFirst("/calendar/v3/".count)), query: query)
+        }
         let path = url.path
             .replacingOccurrences(of: "/upload/gmail/v1/users/me/", with: "")
             .replacingOccurrences(of: "/gmail/v1/users/me/", with: "")
@@ -498,11 +511,14 @@ private final class DemoTransport: HTTPTransport, @unchecked Sendable {
         }
 
         var body: [String: Any]
-        if let html = message.html {
+        if message.html != nil || message.calendar != nil {
+            var alternatives = [textPart(message.text, subtype: "plain", partID: "0.0")]
+            if let html = message.html { alternatives.append(textPart(html, subtype: "html", partID: "0.1")) }
+            if let calendar = message.calendar { alternatives.append(textPart(calendar, subtype: "calendar", partID: "0.2")) }
             body = [
                 "partId": "0", "mimeType": "multipart/alternative", "filename": "",
                 "body": ["size": 0],
-                "parts": [textPart(message.text, subtype: "plain", partID: "0.0"), textPart(html, subtype: "html", partID: "0.1")],
+                "parts": alternatives,
             ]
         } else {
             body = textPart(message.text, subtype: "plain", partID: "0")
@@ -525,5 +541,206 @@ private final class DemoTransport: HTTPTransport, @unchecked Sendable {
             "body": ["size": 0],
             "parts": [body] + attachmentParts,
         ]
+    }
+
+    // MARK: - Fake Calendar API
+
+    private func routeCalendar(_ request: URLRequest, path: String, query: [URLQueryItem]) -> (Int, Any) {
+        let parts = path.split(separator: "/").map { $0.removingPercentEncoding ?? String($0) }
+        let method = request.httpMethod ?? "GET"
+        func value(_ name: String) -> String? { query.first { $0.name == name }?.value }
+        let body = (request.httpBody.flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: Any]) ?? [:]
+
+        switch (method, parts.count) {
+        case ("GET", 3) where parts[0] == "users" && parts[2] == "calendarList":
+            return (200, ["items": DemoCalendar.calendars])
+        case ("GET", 3) where parts[0] == "calendars" && parts[2] == "events":
+            let calendarID = parts[1] == "primary" ? DemoMailbox.email : parts[1]
+            if let uid = value("iCalUID") {
+                return (200, ["items": calendarEvents.filter { $0.uid == uid }.map(\.json)])
+            }
+            let from = value("timeMin").flatMap(CalendarDates.parseRFC3339) ?? .distantPast
+            let to = value("timeMax").flatMap(CalendarDates.parseRFC3339) ?? .distantFuture
+            let items = calendarEvents
+                .filter { $0.calendarID == calendarID && $0.start < to && $0.end > from }
+                .sorted { $0.start < $1.start }
+            return (200, ["items": items.map(\.json)])
+        case ("POST", 3) where parts[0] == "calendars" && parts[2] == "events":
+            eventCounter += 1
+            var event = DemoEvent(
+                id: "demo-new-\(eventCounter)",
+                calendarID: parts[1] == "primary" ? DemoMailbox.email : parts[1],
+                summary: body["summary"] as? String ?? "",
+                start: DemoCalendar.date(body["start"]) ?? Date(),
+                end: DemoCalendar.date(body["end"]) ?? Date().addingTimeInterval(3600),
+                allDay: (body["start"] as? [String: Any])?["date"] != nil
+            )
+            event.location = body["location"] as? String
+            event.attendees = ((body["attendees"] as? [[String: Any]]) ?? []).map {
+                DemoAttendee(email: $0["email"] as? String ?? "", name: nil, status: "needsAction")
+            }
+            if !event.attendees.isEmpty {
+                event.attendees.insert(DemoAttendee(email: DemoMailbox.email, name: DemoMailbox.displayName, status: "accepted", isSelf: true, organizer: true), at: 0)
+            }
+            calendarEvents.append(event)
+            return (200, event.json)
+        case ("PATCH", 4) where parts[0] == "calendars" && parts[2] == "events":
+            guard let index = calendarEvents.firstIndex(where: { $0.id == parts[3] }) else { return notFound() }
+            for attendee in (body["attendees"] as? [[String: Any]]) ?? [] {
+                guard let email = attendee["email"] as? String, let status = attendee["responseStatus"] as? String,
+                      let position = calendarEvents[index].attendees.firstIndex(where: { $0.email == email }) else { continue }
+                calendarEvents[index].attendees[position].status = status
+            }
+            return (200, calendarEvents[index].json)
+        default:
+            return notFound()
+        }
+    }
+}
+
+// MARK: - Demo calendar
+
+private struct DemoAttendee {
+    var email: String
+    var name: String?
+    var status: String
+    var isSelf = false
+    var organizer = false
+
+    var json: [String: Any] {
+        var result: [String: Any] = ["email": email, "responseStatus": status]
+        if let name { result["displayName"] = name }
+        if isSelf { result["self"] = true }
+        if organizer { result["organizer"] = true }
+        return result
+    }
+}
+
+private struct DemoEvent {
+    var id: String
+    var calendarID: String
+    var summary: String
+    var start: Date
+    var end: Date
+    var allDay = false
+    var location: String? = nil
+    var description: String? = nil
+    var attendees: [DemoAttendee] = []
+    var uid: String? = nil
+    var meetLink: String? = nil
+
+    var json: [String: Any] {
+        func time(_ date: Date) -> [String: Any] {
+            allDay ? ["date": CalendarDates.dayString(date)] : ["dateTime": CalendarDates.rfc3339(date)]
+        }
+        var result: [String: Any] = [
+            "id": id, "status": "confirmed", "summary": summary,
+            "start": time(start), "end": time(end),
+            "iCalUID": uid ?? "\(id)@demo.mailmeg",
+            "htmlLink": "https://calendar.google.com/calendar/event?eid=\(id)",
+        ]
+        if let location { result["location"] = location }
+        if let description { result["description"] = description }
+        if let meetLink { result["hangoutLink"] = meetLink }
+        if !attendees.isEmpty {
+            result["attendees"] = attendees.map(\.json)
+            if let organizer = attendees.first(where: \.organizer) {
+                result["organizer"] = ["email": organizer.email, "displayName": organizer.name ?? organizer.email]
+            }
+        }
+        return result
+    }
+}
+
+private enum DemoCalendar {
+    static let teamID = "team@group.calendar.google.com"
+    static let birthdaysID = "birthdays@group.v.calendar.google.com"
+    static let designReviewUID = "design-review-q4@demo.mailmeg"
+
+    static let calendars: [[String: Any]] = [
+        ["id": DemoMailbox.email, "summary": DemoMailbox.displayName, "backgroundColor": "#7971ea", "foregroundColor": "#ffffff",
+         "primary": true, "selected": true, "accessRole": "owner", "timeZone": TimeZone.current.identifier],
+        ["id": teamID, "summary": tr("Team Produkt", "Product Team"), "backgroundColor": "#33b679", "foregroundColor": "#ffffff",
+         "selected": true, "accessRole": "writer"],
+        ["id": birthdaysID, "summary": tr("Geburtstage", "Birthdays"), "backgroundColor": "#f6bf26", "foregroundColor": "#000000",
+         "selected": true, "accessRole": "reader"],
+    ]
+
+    /// Midnight `days` from today plus a time of day.
+    static func at(_ days: Int, _ hour: Int = 0, _ minute: Int = 0) -> Date {
+        let calendar = Calendar.current
+        let day = calendar.date(byAdding: .day, value: days, to: calendar.startOfDay(for: Date())) ?? Date()
+        return calendar.date(bySettingHour: hour, minute: minute, second: 0, of: day) ?? day
+    }
+
+    static func date(_ value: Any?) -> Date? {
+        guard let object = value as? [String: Any] else { return nil }
+        if let dateTime = object["dateTime"] as? String { return CalendarDates.parseRFC3339(dateTime) }
+        if let date = object["date"] as? String { return CalendarDates.parseDay(date) }
+        return nil
+    }
+
+    private static let me = DemoAttendee(email: DemoMailbox.email, name: DemoMailbox.displayName, status: "accepted", isSelf: true)
+    private static let anna = DemoAttendee(email: "anna.becker@example.com", name: "Anna Becker", status: "accepted")
+    private static let lena = DemoAttendee(email: "lena.hoffmann@example.com", name: "Lena Hoffmann", status: "accepted")
+
+    static func events() -> [DemoEvent] {
+        var events: [DemoEvent] = []
+        let calendar = Calendar.current
+        for day in -7...14 {
+            let weekday = calendar.component(.weekday, from: at(day))
+            guard weekday != 1 && weekday != 7 else { continue }
+            events.append(DemoEvent(id: "standup-\(day + 10)", calendarID: teamID, summary: "Standup", start: at(day, 9, 30), end: at(day, 9, 45),
+                                    location: tr("Teamraum", "Team room")))
+        }
+        var oneOnOne = DemoEvent(id: "one-on-one", calendarID: DemoMailbox.email, summary: tr("1:1 mit Anna", "1:1 with Anna"), start: at(0, 11), end: at(0, 11, 30))
+        oneOnOne.attendees = [me, DemoAttendee(email: anna.email, name: anna.name, status: "accepted", organizer: true)]
+        events.append(oneOnOne)
+        events.append(DemoEvent(id: "focus", calendarID: DemoMailbox.email, summary: tr("Fokuszeit: Projektplan", "Focus time: project plan"), start: at(0, 14), end: at(0, 16)))
+        events.append(DemoEvent(id: "sprint", calendarID: teamID, summary: tr("Sprint-Planung", "Sprint planning"), start: at(-1, 10), end: at(-1, 12),
+                                location: tr("Raum 3.14", "Room 3.14")))
+        events.append(DemoEvent(id: "lunch", calendarID: DemoMailbox.email, summary: tr("Mittagessen mit Mia", "Lunch with Mia"), start: at(1, 12, 30), end: at(1, 13, 30),
+                                location: tr("Kantine", "Canteen")))
+        events.append(DemoEvent(id: "coffee", calendarID: DemoMailbox.email, summary: tr("Kaffee mit Jonas", "Coffee with Jonas"), start: at(1, 15), end: at(1, 16),
+                                location: tr("Café am Park", "Café by the park")))
+        var review = DemoEvent(id: "design-review", calendarID: DemoMailbox.email, summary: tr("Design-Review Q4", "Q4 design review"), start: at(2, 10), end: at(2, 11, 30),
+                               location: tr("Raum 3.14", "Room 3.14"),
+                               description: tr("Neue Entwürfe durchgehen und nächste Schritte festlegen.", "Go through the new designs and agree on next steps."))
+        review.attendees = [
+            DemoAttendee(email: anna.email, name: anna.name, status: "accepted", organizer: true),
+            DemoAttendee(email: DemoMailbox.email, name: DemoMailbox.displayName, status: "needsAction", isSelf: true),
+            lena,
+        ]
+        review.uid = designReviewUID
+        review.meetLink = "https://meet.google.com/abc-defg-hij"
+        events.append(review)
+        events.append(DemoEvent(id: "lisbon", calendarID: DemoMailbox.email, summary: tr("Lissabon ✈︎", "Lisbon ✈︎"), start: at(3), end: at(6), allDay: true))
+        events.append(DemoEvent(id: "run", calendarID: DemoMailbox.email, summary: tr("Laufen mit dem Run Club", "Run with the Run Club"), start: at(-2, 18, 30), end: at(-2, 19, 30)))
+        events.append(DemoEvent(id: "birthday", calendarID: birthdaysID, summary: tr("Lenas Geburtstag 🎂", "Lena’s birthday 🎂"), start: at(4), end: at(5), allDay: true))
+        return events
+    }
+
+    /// The text/calendar part of the invitation email for the design review.
+    static func designReviewInvitation() -> String {
+        func stamp(_ date: Date) -> String {
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.timeZone = TimeZone(identifier: "UTC")
+            formatter.dateFormat = "yyyyMMdd'T'HHmmss'Z'"
+            return formatter.string(from: date)
+        }
+        let summary = tr("Design-Review Q4", "Q4 design review")
+        let location = tr("Raum 3.14", "Room 3.14")
+        return [
+            "BEGIN:VCALENDAR", "PRODID:-//Google Inc//Google Calendar 70.9054//EN", "VERSION:2.0", "METHOD:REQUEST",
+            "BEGIN:VEVENT",
+            "DTSTART:\(stamp(at(2, 10)))", "DTEND:\(stamp(at(2, 11, 30)))",
+            "ORGANIZER;CN=Anna Becker:mailto:anna.becker@example.com",
+            "UID:\(designReviewUID)",
+            "ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;CN=Alex Berger:mailto:\(DemoMailbox.email)",
+            "ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;CN=Lena Hoffmann:mailto:lena.hoffmann@example.com",
+            "SUMMARY:\(summary)", "LOCATION:\(location)",
+            "END:VEVENT", "END:VCALENDAR",
+        ].joined(separator: "\r\n")
     }
 }

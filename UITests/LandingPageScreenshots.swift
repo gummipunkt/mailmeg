@@ -109,4 +109,28 @@ final class LandingPageScreenshots: XCTestCase {
             app.terminate()
         }
     }
+
+    func testCalendar() {
+        for (language, dark) in [("de", false), ("de", true), ("en", false), ("en", true)] {
+            let app = launch(dark ? ["--dark"] : [], language: language)
+            XCTAssertTrue(element(app, "thread.t-projektplan").waitForExistence(timeout: 20))
+            if !dark {
+                element(app, "thread.t-einladung").click()
+                XCTAssertTrue(element(app, "invitation.accept").waitForExistence(timeout: 10))
+                sleep(1)
+                save("\(language)-invitation", app.windows.firstMatch.screenshot())
+            }
+            element(app, "sidebar.__CALENDAR__").click()
+            let day = Calendar.current.date(byAdding: .day, value: 2, to: Date())!
+            let parts = Calendar.current.dateComponents([.year, .month, .day], from: day)
+            let id = String(format: "calendar.day.%04d-%02d-%02d", parts.year!, parts.month!, parts.day!)
+            XCTAssertTrue(element(app, id).waitForExistence(timeout: 10))
+            element(app, id).click()
+            element(app, "calendar.mode.week").click()
+            XCTAssertTrue(element(app, "event.design-review").waitForExistence(timeout: 10))
+            sleep(2)
+            save("\(language)-calendar-\(dark ? "dark" : "light")", app.windows.firstMatch.screenshot())
+            app.terminate()
+        }
+    }
 }

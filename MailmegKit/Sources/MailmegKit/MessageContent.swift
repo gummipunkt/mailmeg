@@ -31,6 +31,8 @@ public struct MessageContent: Sendable {
     public var plainText: String?
     /// All parts with a filename or a Content-ID (attachments and inline images).
     public var parts: [AttachmentInfo]
+    /// The calendar invitation (`text/calendar` or an `.ics` file), if the message carries one.
+    public var calendar: AttachmentInfo?
 
     /// Attachments the user should see as files (excludes inline images referenced by the HTML).
     public var visibleAttachments: [AttachmentInfo] {
@@ -46,6 +48,7 @@ public struct MessageContent: Sendable {
         html = nil
         plainText = nil
         parts = []
+        calendar = nil
         if let payload = message.payload {
             visit(payload, messageID: message.id)
         }
@@ -65,6 +68,23 @@ public struct MessageContent: Sendable {
         let filename = part.filename ?? ""
         let contentID = part.header("Content-ID").map { $0.trimmingCharacters(in: CharacterSet(charactersIn: "<> ")) }
         let isAttachment = !filename.isEmpty || disposition?.value == "attachment"
+
+        let isCalendar = mimeType == "text/calendar" || mimeType == "application/ics"
+            || filename.lowercased().hasSuffix(".ics")
+        if isCalendar, calendar == nil || (calendar?.inlineData == nil && part.body?.attachmentId == nil) {
+            calendar = AttachmentInfo(
+                messageID: messageID,
+                partID: part.partId ?? UUID().uuidString,
+                filename: filename.isEmpty ? "invite.ics" : filename,
+                mimeType: mimeType,
+                size: part.body?.size ?? 0,
+                attachmentID: part.body?.attachmentId,
+                inlineData: part.body?.attachmentId == nil ? part.body?.decodedData : nil,
+                contentID: nil,
+                isInline: false
+            )
+        }
+        if isCalendar && !isAttachment { return }
 
         if !isAttachment, mimeType == "text/html" || mimeType == "text/plain" {
             let text = part.body?.decodedData.map { TextDecoding.body(from: $0, charset: contentType?["charset"]) } ?? ""

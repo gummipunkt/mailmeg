@@ -24,6 +24,13 @@ struct MailmegApp: App {
         .defaultSize(width: 700, height: 600)
         .windowToolbarStyle(.unified(showsTitle: true))
 
+        WindowGroup(tr("Neuer Termin", "New Event"), id: "event", for: EventDraft.self) { $draft in
+            EventEditorView(draft: draft ?? model.newEventDraft())
+                .environment(model)
+        }
+        .defaultSize(width: 560, height: 560)
+        .windowToolbarStyle(.unified(showsTitle: true))
+
         WindowGroup(tr("Quelltext", "Source"), id: "source", for: SourceRequest.self) { $request in
             if let request {
                 SourceView(request: request)

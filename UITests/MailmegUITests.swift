@@ -217,4 +217,81 @@ final class MailmegUITests: XCTestCase {
         snapshot("11-rich-text", of: XCUIScreen.main.screenshot())
         app.typeKey("w", modifierFlags: .command)
     }
+
+    /// yyyy-MM-dd of a day relative to today, as used in the mini calendar's identifiers.
+    private func dayID(_ offset: Int) -> String {
+        let day = Calendar.current.date(byAdding: .day, value: offset, to: Date())!
+        let parts = Calendar.current.dateComponents([.year, .month, .day], from: day)
+        return String(format: "%04d-%02d-%02d", parts.year!, parts.month!, parts.day!)
+    }
+
+    func testCalendarWeekDayAndAnswer() {
+        let app = launch(["--demo"])
+        XCTAssertTrue(element(app, "thread.t-projektplan").waitForExistence(timeout: 20))
+        XCTAssertTrue(element(app, "sidebar.today").waitForExistence(timeout: 10), "Today's events should be listed in the sidebar")
+
+        element(app, "sidebar.__CALENDAR__").click()
+        XCTAssertTrue(element(app, "calendar.title").waitForExistence(timeout: 10), "The calendar should open from the sidebar")
+        // The design review is two days from now.
+        let reviewDay = element(app, "calendar.day.\(dayID(2))")
+        XCTAssertTrue(reviewDay.waitForExistence(timeout: 10))
+        reviewDay.click()
+        element(app, "calendar.mode.week").click()
+        let review = element(app, "event.design-review")
+        XCTAssertTrue(review.waitForExistence(timeout: 10), "The week should show the demo events")
+        sleep(1)
+        snapshot("12-kalender-woche", of: app.windows.firstMatch.screenshot())
+
+        review.click()
+        XCTAssertTrue(element(app, "event.detail").waitForExistence(timeout: 5), "Clicking an event should show its details")
+        let accept = element(app, "invitation.accept")
+        XCTAssertTrue(accept.waitForExistence(timeout: 5), "Invited events can be answered")
+        accept.click()
+        sleep(1)
+        snapshot("13-kalender-termin", of: app.windows.firstMatch.screenshot())
+        app.typeKey(.escape, modifierFlags: [])
+
+        element(app, "calendar.mode.day").click()
+        XCTAssertTrue(element(app, "event.design-review").waitForExistence(timeout: 5))
+        sleep(1)
+        snapshot("14-kalender-tag", of: app.windows.firstMatch.screenshot())
+    }
+
+    func testInvitationCardInEmail() {
+        let app = launch(["--demo"])
+        let thread = element(app, "thread.t-einladung")
+        XCTAssertTrue(thread.waitForExistence(timeout: 20))
+        thread.click()
+        XCTAssertTrue(element(app, "invitation.card").waitForExistence(timeout: 10), "Invitations should be shown as a card")
+        let accept = element(app, "invitation.accept")
+        XCTAssertTrue(accept.waitForExistence(timeout: 10), "The answer buttons appear once the event is found in the calendar")
+        accept.click()
+        XCTAssertTrue(element(app, "invitation.status").waitForExistence(timeout: 10), "The answer should be shown on the card")
+        sleep(1)
+        snapshot("15-einladung", of: app.windows.firstMatch.screenshot())
+    }
+
+    func testCreateEventFromEmail() {
+        let app = launch(["--demo"])
+        let thread = element(app, "thread.t-projektplan")
+        XCTAssertTrue(thread.waitForExistence(timeout: 20))
+        thread.click()
+        XCTAssertTrue(element(app, "detail.subject").waitForExistence(timeout: 10))
+        sleep(1)
+
+        app.typeKey("e", modifierFlags: [.command, .option])
+        let title = element(app, "event.title")
+        XCTAssertTrue(title.waitForExistence(timeout: 10), "⌥⌘E should open a new event for the email")
+        XCTAssertEqual(title.value as? String, "Projektplan Q4")
+        XCTAssertTrue((element(app, "event.attendees").value as? String ?? "").contains("anna.becker@example.com"), "The people of the email are invited")
+        sleep(1)
+        snapshot("16-termin-aus-email", of: XCUIScreen.main.screenshot())
+        element(app, "event.save").click()
+        let closed = NSPredicate(format: "exists == false")
+        expectation(for: closed, evaluatedWith: title)
+        waitForExpectations(timeout: 10)
+
+        app.typeKey("k", modifierFlags: [.command, .option])
+        XCTAssertTrue(element(app, "agenda.demo-new-1").waitForExistence(timeout: 10), "The new event should be in the calendar")
+    }
 }

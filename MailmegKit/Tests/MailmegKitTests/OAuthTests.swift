@@ -47,7 +47,9 @@ final class OAuthTests: XCTestCase {
         XCTAssertEqual(value("code_challenge_method"), "S256")
         XCTAssertEqual(value("redirect_uri"), config.redirectURI)
         XCTAssertEqual(value("state"), "xyz")
-        XCTAssertEqual(value("scope"), "https://www.googleapis.com/auth/gmail.modify")
+        XCTAssertEqual(value("scope"), GoogleOAuthConfig.defaultScopes.joined(separator: " "))
+        XCTAssertTrue(value("scope")?.contains("calendar.events") == true)
+        XCTAssertEqual(value("include_granted_scopes"), "true")
     }
 
     func testAuthorizationCodeValidatesState() throws {

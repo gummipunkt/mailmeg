@@ -10,6 +10,9 @@ struct MessageItem: Identifiable {
     var displayHTML: String
     var isExpanded: Bool
     var allowsRemoteContent: Bool
+    /// A calendar invitation carried by the message, with its event in Google Calendar.
+    var invitation: CalendarInvitation?
+    var invitationEvent: CalendarEvent?
 
     var id: String { message.id }
 
@@ -66,6 +69,7 @@ final class ThreadDetailModel {
                 )
             }
             await resolveInlineImages()
+            await loadInvitations()
             await markReadIfNeeded()
         } catch {
             loadError = error.localizedDescription
@@ -83,6 +87,33 @@ final class ThreadDetailModel {
                 html = html.replacingOccurrences(of: "cid:\(contentID)", with: "data:\(part.mimeType);base64,\(data.base64EncodedString())")
             }
             messages[index].displayHTML = html
+        }
+    }
+
+    /// Parses invitations (text/calendar) and finds their events in the calendar.
+    private func loadInvitations() async {
+        for index in messages.indices {
+            guard let part = messages[index].content.calendar,
+                  let data = try? await data(for: part),
+                  let invitation = ICalendar.invitation(from: String(decoding: data, as: UTF8.self)) else { continue }
+            messages[index].invitation = invitation
+            if !invitation.isReply {
+                messages[index].invitationEvent = await account.calendar.event(forInvitation: invitation.uid)
+            }
+        }
+    }
+
+    /// Answers an invitation in Google Calendar; the organizer gets the answer by email.
+    func respond(to messageID: String, with status: RSVPStatus) async {
+        guard let index = messages.firstIndex(where: { $0.id == messageID }),
+              let event = messages[index].invitationEvent else { return }
+        do {
+            let updated = try await account.calendar.respond(to: event, with: status)
+            if let current = messages.firstIndex(where: { $0.id == messageID }) {
+                messages[current].invitationEvent = updated
+            }
+        } catch {
+            onError?(error)
         }
     }
 
