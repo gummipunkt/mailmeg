@@ -710,7 +710,7 @@ struct EventDetailView: View {
         }
         .font(.system(size: 12.5))
         .padding(16)
-        .frame(width: 320, alignment: .leading)
+        .frame(width: 380, alignment: .leading)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("event.detail")
     }
