@@ -475,10 +475,11 @@ struct CalendarTimelineView: View {
                     .frame(width: 1)
                 ForEach(positioned) { item in
                     let laneWidth = (proxy.size.width - 4) / CGFloat(item.lanes)
-                    EventBlock(event: item.event, color: store.color(for: item.event), isSelected: view.selectedEventID == item.event.key) {
+                    let height = max((item.end - item.start) / 60 * hourHeight - 2, 18)
+                    EventBlock(event: item.event, color: store.color(for: item.event), isSelected: view.selectedEventID == item.event.key, showsTime: height >= 34) {
                         view.selectedEventID = item.event.key
                     }
-                    .frame(width: max(laneWidth - 2, 10), height: max((item.end - item.start) / 60 * hourHeight - 2, 18))
+                    .frame(width: max(laneWidth - 2, 10), height: height)
                     .popover(isPresented: popoverBinding(for: item.event), arrowEdge: .trailing) {
                         EventDetailView(event: item.event, store: store, account: view.account)
                     }
@@ -560,6 +561,7 @@ private struct EventBlock: View {
     let event: CalendarEvent
     let color: Color
     let isSelected: Bool
+    var showsTime = true
     let action: () -> Void
 
     var body: some View {
@@ -568,17 +570,18 @@ private struct EventBlock: View {
                 Rectangle().fill(color).frame(width: 3)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(CalendarFormat.title(event))
-                        .font(.system(size: 11.5, weight: .semibold))
-                        .lineLimit(2)
-                    if let start = event.startDate {
+                        .font(.system(size: 11, weight: .semibold))
+                        .lineLimit(showsTime ? 2 : 1)
+                        .minimumScaleFactor(0.85)
+                    if showsTime, let start = event.startDate {
                         Text(start.formatted(date: .omitted, time: .shortened) + (event.location.map { " · \($0)" } ?? ""))
                             .font(.system(size: 10.5))
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
                 }
-                .padding(.horizontal, 5)
-                .padding(.vertical, 3)
+                .padding(.horizontal, 4)
+                .padding(.vertical, showsTime ? 3 : 1)
                 Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -708,6 +711,7 @@ struct EventDetailView: View {
         .font(.system(size: 12.5))
         .padding(16)
         .frame(width: 320, alignment: .leading)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("event.detail")
     }
 
