@@ -250,7 +250,7 @@ struct CalendarTimelineView: View {
     @Bindable var view: CalendarViewState
 
     private let hourHeight: CGFloat = 48
-    private let gutter: CGFloat = 52
+    private let gutter: CGFloat = 58
     private let calendar = Calendar.current
 
     private var store: CalendarStore { view.store }
@@ -315,7 +315,7 @@ struct CalendarTimelineView: View {
 
     private var dayHeader: some View {
         HStack(spacing: 0) {
-            Color.clear.frame(width: gutter)
+            Spacer().frame(width: gutter, height: 1)
             ForEach(view.visibleDays, id: \.self) { day in
                 let isToday = calendar.isDateInToday(day)
                 Button {
@@ -323,8 +323,10 @@ struct CalendarTimelineView: View {
                     view.mode = .day
                 } label: {
                     HStack(spacing: 4) {
-                        Text(day.formatted(.dateTime.weekday(.abbreviated)))
+                        Text(day.formatted(.dateTime.weekday(view.mode == .day ? .wide : .abbreviated)))
                             .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
                         Text("\(calendar.component(.day, from: day))")
                             .fontWeight(.bold)
                             .foregroundStyle(isToday ? Color.white : Color.primary)
@@ -335,6 +337,7 @@ struct CalendarTimelineView: View {
                     }
                     .font(.system(size: 12))
                     .frame(maxWidth: .infinity)
+                    .frame(height: 28)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -355,6 +358,8 @@ struct CalendarTimelineView: View {
                 Text(tr("ganztägig", "all-day"))
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
                     .frame(width: gutter - 6, alignment: .trailing)
                     .padding(.trailing, 6)
                     .padding(.top, 4)
@@ -407,8 +412,12 @@ struct CalendarTimelineView: View {
             .compactMap(\.startDate)
             .map { calendar.component(.hour, from: $0) }
             .min()
-        let hour = view.isShowingToday ? calendar.component(.hour, from: Date()) - 1 : (firstEvent ?? 8) - 1
-        proxy.scrollTo("hour-\(min(max(hour, 0), 18))", anchor: .top)
+        // Start the morning in view (or earlier events), like Calendar does.
+        var hour = min(firstEvent ?? 8, 8)
+        if view.isShowingToday {
+            hour = min(hour, calendar.component(.hour, from: Date()))
+        }
+        proxy.scrollTo("hour-\(min(max(hour - 1, 0), 18))", anchor: .top)
     }
 
     private var hourGrid: some View {
@@ -473,7 +482,9 @@ struct CalendarTimelineView: View {
                     .popover(isPresented: popoverBinding(for: item.event), arrowEdge: .trailing) {
                         EventDetailView(event: item.event, store: store, account: view.account)
                     }
-                    .offset(x: 3 + laneWidth * CGFloat(item.lane), y: item.start / 60 * hourHeight + 1)
+                    // Placed with padding (not offset), so the popover points at the block.
+                    .padding(.leading, 3 + laneWidth * CGFloat(item.lane))
+                    .padding(.top, item.start / 60 * hourHeight + 1)
                 }
             }
         }
