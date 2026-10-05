@@ -367,6 +367,8 @@ struct GlassCapsuleButton: View {
                 }
             }
             .font(.system(size: 12.5, weight: .semibold))
+            .lineLimit(1)
+            .fixedSize()
             .foregroundStyle(isProminent ? Color.white : Color.primary.opacity(0.85))
             .padding(.horizontal, 14)
             .frame(height: 32)

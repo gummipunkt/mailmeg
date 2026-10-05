@@ -309,9 +309,11 @@ struct CalendarTimelineView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
                 .accessibilityIdentifier("calendar.timelineTitle")
-            Text(view.weekSubtitle)
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
+            if view.mode != .month {
+                Text(view.weekSubtitle)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            }
             Spacer()
             if store.isLoading {
                 ProgressView().controlSize(.small)
@@ -596,7 +598,7 @@ private struct MonthGridView: View {
                             ForEach(0..<7, id: \.self) { column in
                                 let index = row * 7 + column
                                 if index < days.count {
-                                    cell(days[index], height: cellHeight)
+                                    cell(days[index], height: cellHeight, width: proxy.size.width / 7)
                                         .frame(width: proxy.size.width / 7, height: cellHeight)
                                 }
                             }
@@ -611,7 +613,7 @@ private struct MonthGridView: View {
         .accessibilityIdentifier("calendar.month")
     }
 
-    private func cell(_ day: Date, height: CGFloat) -> some View {
+    private func cell(_ day: Date, height: CGFloat, width: CGFloat) -> some View {
         let events = store.events(on: day)
         let capacity = max(Int((height - 26) / 17), 0)
         let shown = Array(events.prefix(events.count > capacity ? max(capacity - 1, 0) : capacity))
@@ -643,9 +645,14 @@ private struct MonthGridView: View {
                                 .background(store.color(for: event).opacity(0.28), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
                         } else {
                             Circle().fill(store.color(for: event)).frame(width: 6, height: 6)
-                            Text(event.startDate?.formatted(date: .omitted, time: .shortened) ?? "")
-                                .font(.system(size: 10).monospacedDigit())
-                                .foregroundStyle(.secondary)
+                            // Times only where there is room; narrow cells show the title.
+                            if width >= 130 {
+                                Text(event.startDate?.formatted(date: .omitted, time: .shortened) ?? "")
+                                    .font(.system(size: 10).monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                    .fixedSize()
+                            }
                             Text(CalendarFormat.title(event))
                                 .font(.system(size: 10.5, weight: .medium))
                                 .lineLimit(1)
