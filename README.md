@@ -6,30 +6,97 @@ und nicht über IMAP und nicht über eine eingebettete gmail.com-Seite.
 
 ## Funktionen
 
-- **Ohne Konto ausprobieren**: Im Willkommensbildschirm öffnet „Erst mal ohne Konto ausprobieren“ ein Demo-Postfach mit Beispiel-E-Mails.
+![MailMeG mit Posteingang und Konversation](Design/Screenshots/landing-de-inbox-light.png)
 
-- **Mehrere Gmail-Konten** gleichzeitig, mit Anmeldung per Google OAuth (PKCE) im System-Anmeldefenster
-- **Tokens im macOS-Schlüsselbund**, Passwörter sieht die App nie
-- **Seitenleiste** mit Posteingang, Markiert, Wichtig, Gesendet, Entwürfe, Alle Nachrichten, Spam, Papierkorb und eigenen Labels (verschachtelt), jeweils mit Ungelesen-Zählern
-- **Konversationsansicht** wie in Gmail, ältere gelesene Nachrichten werden eingeklappt
-- **Sichere HTML-Darstellung**: JavaScript ist aus und externe Inhalte (Tracking-Pixel) sind standardmäßig blockiert, per Klick oder Einstellung lassen sie sich nachladen. Links öffnen im Browser.
-- **Inline-Bilder** (`cid:`) und **Anhänge**: öffnen oder sichern
-- **Suche** mit der vollen Gmail-Syntax (`from:`, `has:attachment`, `older_than:` …)
-- **Aktionen**: Archivieren, Löschen, Wiederherstellen, Spam, Gelesen/Ungelesen, Stern
-- **Rich-Text-Editor**: Fett, Kursiv, Unterstrichen, Durchgestrichen, Listen, Links, Schriftgröße und Farbe – verschickt als HTML mit der Gmail-Signatur
-- **Empfängerdetails** mit der genauen Zieladresse (auch bei „mich“), **Quelltext** (⌥⌘U) und **alle Header** (⇧⌘H) jeder E-Mail
-- **Abrufintervall** einstellbar (30 Sekunden bis 1 Stunde oder manuell)
-- **Design im Stil von Airmail** mit Glas-Oberflächen und runden Buttons, Avatare in der Liste optional
-- **Google Kalender**: Tages-, Wochen- und Monatsansicht mit Mini-Monat und Agenda, „Heute“ in der Seitenleiste,
-  Einladungen in E-Mails mit Zusagen/Vielleicht/Absagen, Termine anlegen (auch direkt aus einer E-Mail, ⌥⌘E),
-  bearbeiten, löschen und per Drag & Drop verschieben
-- **Google Drive**: große Dateien, ZIPs und von Gmail gesperrte Dateitypen gehen als Drive-Link raus –
-  per Button oder automatisch, Freigabe für „Jeder mit dem Link“ oder „Nur Empfänger“
-- **Entwürfe** werden beim Schreiben automatisch in Gmail gesichert und lassen sich jederzeit weiterbearbeiten
-- **Verfassen, Antworten, Allen antworten, Weiterleiten** inklusive Anhängen. Antworten landen im richtigen Gmail-Thread (`threadId`, `In-Reply-To`, `References`).
-- **Neue Mails**: Polling über die History-API, Dock-Symbol mit Zähler ungelesener E-Mails
-- **Mitteilungen**: Klick öffnet die Konversation, Antworten, Als gelesen markieren und Archivieren direkt in der Mitteilung
-- **Tastaturkürzel** wie in Apple Mail: ⌘N, ⌘R, ⇧⌘R, ⇧⌘F, ⌃⌘A, ⌘⌫, ⇧⌘U, ⇧⌘L, ⇧⌘N, ⌥⌘U, ⇧⌘H, ⌥⌘↑/↓, ⌥⌘K (Kalender), ⌥⌘N (neuer Termin), ⌥⌘E (Termin aus E-Mail)
+**Ohne Konto ausprobieren:** Im Willkommensbildschirm öffnet „Erst mal ohne Konto ausprobieren“ ein Demo-Postfach
+mit Beispiel-E-Mails, Kalender und Einladung.
+
+### Postfach und Lesen
+
+- **Mehrere Gmail-Konten** gleichzeitig, jeweils mit allen Ordnern: Posteingang, Markiert, Wichtig, Gesendet,
+  Entwürfe, Alle Nachrichten, Spam, Papierkorb und eigene Labels (auch verschachtelt), mit Ungelesen-Zählern
+- **Konversationsansicht** wie in Gmail: ältere gelesene Nachrichten sind eingeklappt, Labels und
+  „Wichtig“ stehen als farbige Chips in Liste und Konversation
+- **Suche** mit der vollen Gmail-Syntax (`from:`, `has:attachment`, `older_than:` …) und Filter „Nur ungelesene“
+- **Aktionen**: Antworten, Allen antworten, Weiterleiten, Archivieren, Löschen, Wiederherstellen, Spam,
+  Gelesen/Ungelesen, Markieren, Labels zuweisen; per Hover direkt in der Liste, per Rechtsklick oder Tastatur
+- **Vorherige/nächste Konversation** mit ⌥⌘↑/↓ oder den Pfeil-Buttons
+- **Empfängerdetails**: die genaue Adresse, an die eine E-Mail ging (auch bei „mich“), plus Von, Antwort an,
+  An, Cc, Bcc, Zugestellt an und Datum
+- **Quelltext** (⌥⌘U) und **alle Header** (⇧⌘H) in einem eigenen Fenster, mit Filter, Kopieren und Sichern als `.eml`
+- **Anhänge und Inline-Bilder** öffnen oder sichern
+- **Umlaute und Sonderzeichen** werden richtig angezeigt, auch wenn der Absender einen falschen Zeichensatz angibt
+
+### Schreiben
+
+- **Rich-Text-Editor**: Fett, Kursiv, Unterstrichen, Durchgestrichen, Aufzählungen, nummerierte Listen, Links,
+  Schriftgröße und Farbe – verschickt als HTML mit Textalternative
+- **Absender wählen**: alle in Gmail unter „Senden als“ hinterlegten Adressen; Antworten gehen automatisch von der
+  Adresse raus, an die die E-Mail ging
+- **Signaturen aus Gmail**, auch bei Antworten, und beim Absenderwechsel automatisch getauscht
+- **Antwort über oder unter dem Zitat** (einstellbar), Antworten landen im richtigen Gmail-Thread
+- **Schnellantwort** direkt unter der Konversation (⌘↩ sendet)
+- **Entwürfe** werden beim Schreiben automatisch in Gmail gesichert (⌘S sofort) und lassen sich in MailMeG,
+  im Web oder auf dem Handy weiterbearbeiten
+- **Anhänge** per Button; Weiterleitungen übernehmen die Anhänge der Original-E-Mail
+
+### Google Drive
+
+- **Große Dateien und ZIPs als Drive-Link** über den Button „Google Drive“, mit Fortschrittsanzeige
+- **Automatisch über Drive**, wenn Anhänge die E-Mail über Gmails Größenlimit bringen würden oder Gmail den
+  Dateityp sperrt (z. B. `.dmg`, `.exe`, `.iso`)
+- **Freigabe** für „Jeder mit dem Link“ oder „Nur Empfänger“; die Dateien liegen im Drive-Ordner „MailMeG-Anhänge“
+- MailMeG nutzt nur die Berechtigung `drive.file` und sieht damit ausschließlich die Dateien, die es selbst hochlädt
+
+### Google Kalender
+
+![Kalender in der Wochenansicht](Design/Screenshots/landing-de-calendar-light.png)
+
+- **Kalender in der Seitenleiste** (⌥⌘K) mit Mini-Monat, Agenda der nächsten Tage und **Tages-, Wochen- und
+  Monatsansicht**, in den Farben deiner Google-Kalender; einzelne Kalender lassen sich ausblenden
+- **„Heute“** unten in der Seitenleiste: die restlichen Termine des Tages auf einen Blick
+- **Termine anlegen** (⌥⌘N), auch **direkt aus einer E-Mail** (⌥⌘E) mit Betreff und Beteiligten als Gäste
+- **Termine bearbeiten, löschen und per Drag & Drop verschieben** (15-Minuten-Schritte, in der Woche auch auf
+  andere Tage); Gäste werden auf Wunsch informiert
+- **Einladungen in E-Mails** als Karte mit Datum, Ort und Zusagen/Vielleicht/Absagen
+- **Termindetails** mit Ort, Google-Meet-Link, Teilnehmern und ihren Antworten
+
+### Mitteilungen und Abruf
+
+- **Neue E-Mails** über die Gmail-History-API; **Abrufintervall** einstellbar von 30 Sekunden bis 1 Stunde
+  oder nur manuell (⇧⌘N), letzte Abrufzeit in der Seitenleiste
+- **macOS-Mitteilungen**: Klick öffnet die Konversation; Antworten, Als gelesen markieren und Archivieren direkt
+  in der Mitteilung
+- **Dock-Symbol mit Zähler** ungelesener E-Mails, sofort aktualisiert (abschaltbar)
+
+### Design und Bedienung
+
+- **Native macOS-App** (SwiftUI, AppKit, WebKit) im Stil von Airmail: Glas-Oberflächen, runde Buttons,
+  aufgeräumte Liste (Avatare optional), Hell- und Dunkelmodus
+- **Deutsch und Englisch**, je nach Systemsprache
+- **Tastaturkürzel** wie in Apple Mail (siehe unten)
+
+### Datenschutz und Sicherheit
+
+- MailMeG spricht **direkt mit Google** – kein eigener Server, kein IMAP, keine eingebettete gmail.com-Seite
+- **Anmeldung per Google OAuth (PKCE)** im System-Anmeldefenster; MailMeG sieht dein Passwort nie
+- **Tokens im macOS-Schlüsselbund**, die App läuft in der macOS-Sandbox
+- **Sichere HTML-Darstellung**: JavaScript ist aus, externe Inhalte (Tracking-Pixel) sind blockiert und lassen
+  sich per Klick oder Einstellung laden; Links öffnen im Browser
+
+### Tastaturkürzel
+
+| Kürzel | Aktion | Kürzel | Aktion |
+|---|---|---|---|
+| ⌘N | Neue E-Mail | ⌥⌘N | Neuer Termin |
+| ⌘R | Antworten | ⇧⌘R | Allen antworten |
+| ⇧⌘F | Weiterleiten | ⌘↩ | Senden |
+| ⌃⌘A | Archivieren | ⌘⌫ | In den Papierkorb |
+| ⇧⌘U | Gelesen/Ungelesen | ⇧⌘L | Markieren |
+| ⇧⌘J | Als Spam melden | ⇧⌘N | Neue E-Mails abrufen |
+| ⌥⌘↑ / ⌥⌘↓ | Vorherige/nächste Konversation | ⌥⌘K | Kalender |
+| ⌥⌘E | Termin aus E-Mail | ⌥⌘U / ⇧⌘H | Quelltext / Header |
+| ⌘S | Entwurf sichern | ⌘B / ⌘I / ⌘U / ⌘K | Fett / Kursiv / Unterstrichen / Link |
 
 ## Installation (fertige DMG, ohne Xcode)
 
@@ -109,7 +176,8 @@ Jeder Push baut die App außerdem per GitHub Actions auf macOS, führt Unit- und
 
 ## Screenshots für die Website
 
-Beispielbilder des Demo-Postfachs (Deutsch/Englisch, hell/dunkel, Verfassen, Header, Einstellungen) liegen in
+Beispielbilder des Demo-Postfachs (Deutsch/Englisch, hell/dunkel: Posteingang, Kalender in Woche und Monat,
+Einladung, Verfassen, Header, Einstellungen) liegen in
 `Design/Screenshots/` und werden bei jedem Push von der CI unter
 `https://github.com/gummipunkt/mailmeg/releases/download/screenshots/landing-de-inbox-light.png` usw. aktualisiert.
 Die CI hat nur ein 1024×768-Display; Retina-Bilder in doppelter Auflösung erzeugt `make screenshots` auf dem eigenen Mac.
@@ -137,17 +205,27 @@ MailMeG gibt es auf Deutsch und Englisch. Die App folgt der Reihenfolge unter
 
 ## Roadmap
 
-- Offline-Cache (SwiftData) und Delta-Sync über `history.list`
-- Mehrfachauswahl in der Liste, Labels zuweisen per Drag & Drop
+- Fester OAuth-Client in der App, damit niemand ein eigenes Google-Cloud-Projekt braucht
+  (setzt Googles Prüfung der App voraus)
+- Signierung und Notarisierung mit einem Apple-Developer-Zertifikat
+- Offline-Cache und Delta-Sync über `history.list`
+- Mehrfachauswahl in der Liste, Labels per Drag & Drop
 - Gmail-Kategorien (Allgemein, Werbung, Soziale Netzwerke …)
 
 ## English
 
 MailMeG (“Mail Me Google Mail”) is a native Gmail client for macOS (SwiftUI) that talks to the Gmail REST API directly instead of
 wrapping the Gmail website. The interface is available in English and German and follows your macOS language
-order. Highlights: multiple accounts, Gmail aliases and signatures, drafts synced with Gmail, a rich text
-editor, message source and headers, Google Calendar (day/week/month view, invitations with RSVP, create, edit, move and delete events),
-large files via Google Drive links, configurable fetch interval and an Airmail-style glass design.
+order.
+
+**Features:** multiple Gmail accounts with all folders and labels · Gmail-style conversations with label chips ·
+full Gmail search syntax · archive, delete, spam, star, labels, read/unread · exact recipient details, message source
+and all headers · rich text editor · Gmail “Send mail as” addresses and signatures · reply above or below the quote ·
+quick reply · drafts synced with Gmail · large files, ZIPs and blocked file types sent as Google Drive links ·
+Google Calendar with day, week and month view, today list, invitations with Accept/Maybe/Decline, events created
+from emails, edited, deleted and moved by drag and drop · macOS notifications with actions · unread count on the Dock
+icon · configurable fetch interval · Airmail-style glass design with light and dark mode · Apple Mail keyboard shortcuts ·
+OAuth sign-in, tokens in the keychain, sandboxed app, remote content blocked by default.
 
 1. Download **[MailMeG.dmg](https://github.com/gummipunkt/mailmeg/releases/latest/download/MailMeG.dmg)**
    (universal, macOS 14 or later) and drag MailMeG into *Applications*.
