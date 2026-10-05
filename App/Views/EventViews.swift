@@ -132,6 +132,7 @@ struct EventEditorView: View {
     @State private var draft: EventDraft
     @State private var isSaving = false
     @State private var errorMessage: String?
+    @State private var confirmsDelete = false
 
     init(draft: EventDraft) {
         _draft = State(initialValue: draft)
@@ -142,6 +143,13 @@ struct EventEditorView: View {
     }
 
     private var store: CalendarStore? { account?.calendar }
+
+    /// The event being edited, as last loaded.
+    private var original: CalendarEvent? {
+        guard let eventID = draft.eventID else { return nil }
+        return store?.events.first { $0.id == eventID && $0.calendarID == draft.calendarID }
+            ?? store?.events.first { $0.id == eventID }
+    }
 
     private var canSave: Bool {
         !draft.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSaving && store?.isUsable == true
@@ -156,7 +164,7 @@ struct EventEditorView: View {
                         .font(.system(size: 13, weight: .semibold))
                         .accessibilityIdentifier("event.title")
                 }
-                if let store, store.writableCalendars.count > 1 {
+                if let store, store.writableCalendars.count > 1, !draft.isEditing {
                     row(tr("Kalender", "Calendar")) {
                         Picker("", selection: Binding(
                             get: { draft.calendarID ?? store.writableCalendars.first?.id ?? "primary" },
@@ -233,6 +241,10 @@ struct EventEditorView: View {
                         .foregroundStyle(.orange)
                 }
                 Spacer()
+                if draft.isEditing {
+                    Button(tr("Löschen …", "Delete…"), role: .destructive) { confirmsDelete = true }
+                        .accessibilityIdentifier("event.delete")
+                }
                 Button(tr("Abbrechen", "Cancel")) { dismiss() }
                     .keyboardShortcut(.cancelAction)
                 Button {
@@ -240,7 +252,7 @@ struct EventEditorView: View {
                 } label: {
                     HStack(spacing: 6) {
                         if isSaving { ProgressView().controlSize(.small) }
-                        Text(tr("Termin anlegen", "Add Event"))
+                        Text(draft.isEditing ? tr("Sichern", "Save") : tr("Termin anlegen", "Add Event"))
                     }
                 }
                 .buttonStyle(.borderedProminent)
@@ -251,9 +263,16 @@ struct EventEditorView: View {
         }
         .padding(14)
         .glassBackground(.canvas)
-        .navigationTitle(draft.title.isEmpty ? tr("Neuer Termin", "New Event") : draft.title)
+        .navigationTitle(draft.title.isEmpty ? (draft.isEditing ? tr("Termin bearbeiten", "Edit Event") : tr("Neuer Termin", "New Event")) : draft.title)
         .frame(minWidth: 480, minHeight: 470)
-        .alert(tr("Termin nicht angelegt", "Event Not Added"), isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
+        .confirmationDialog(tr("Termin löschen?", "Delete this event?"), isPresented: $confirmsDelete) {
+            Button(tr("Löschen", "Delete"), role: .destructive) { Task { await delete() } }
+        } message: {
+            Text(draft.attendeeAddresses.isEmpty
+                 ? tr("Der Termin wird aus deinem Google Kalender entfernt.", "The event is removed from your Google Calendar.")
+                 : tr("Die Gäste bekommen eine Absage per E-Mail.", "Guests get a cancellation by email."))
+        }
+        .alert(draft.isEditing ? tr("Termin nicht gesichert", "Event Not Saved") : tr("Termin nicht angelegt", "Event Not Added"), isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
             Button("OK", role: .cancel) {}
         } message: {
             Text(errorMessage ?? "")
@@ -290,8 +309,34 @@ struct EventEditorView: View {
         defer { isSaving = false }
         let calendarID = draft.calendarID ?? store.writableCalendars.first?.id ?? "primary"
         do {
-            let created = try await store.create(draft.newEvent, calendarID: calendarID, notifyAttendees: draft.notifyAttendees)
-            model.eventCreated(created, accountID: store.accountID)
+            if draft.isEditing, let eventID = draft.eventID {
+                let event = original ?? CalendarEvent(
+                    id: eventID, summary: draft.title,
+                    start: EventDateTime(draft.start, allDay: draft.isAllDay), end: EventDateTime(draft.end, allDay: draft.isAllDay),
+                    calendarID: calendarID
+                )
+                let updated = try await store.update(event, with: draft.patch(keeping: original), notifyAttendees: draft.notifyAttendees)
+                model.eventCreated(updated, accountID: store.accountID)
+            } else {
+                let created = try await store.create(draft.newEvent, calendarID: calendarID, notifyAttendees: draft.notifyAttendees)
+                model.eventCreated(created, accountID: store.accountID)
+            }
+            dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func delete() async {
+        guard let store, let event = original else {
+            dismiss()
+            return
+        }
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            try await store.delete(event, notifyAttendees: draft.notifyAttendees)
+            model.calendarView?.selectedEventID = nil
             dismiss()
         } catch {
             errorMessage = error.localizedDescription

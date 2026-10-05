@@ -294,4 +294,57 @@ final class MailmegUITests: XCTestCase {
         app.typeKey("k", modifierFlags: [.command, .option])
         XCTAssertTrue(element(app, "agenda.demo-new-1").waitForExistence(timeout: 10), "The new event should be in the calendar")
     }
+
+    func testEditDeleteEventAndMonthView() {
+        let app = launch(["--demo"])
+        XCTAssertTrue(element(app, "thread.t-projektplan").waitForExistence(timeout: 20))
+        element(app, "sidebar.__CALENDAR__").click()
+        // Lunch with Mia is tomorrow at 12:30.
+        let tomorrow = element(app, "calendar.day.\(dayID(1))")
+        XCTAssertTrue(tomorrow.waitForExistence(timeout: 10))
+        tomorrow.click()
+        element(app, "calendar.mode.day").click()
+        let lunch = element(app, "event.lunch")
+        XCTAssertTrue(lunch.waitForExistence(timeout: 10))
+        lunch.click()
+        let edit = element(app, "event.edit")
+        XCTAssertTrue(edit.waitForExistence(timeout: 5), "Own events can be edited")
+        edit.click()
+
+        let title = element(app, "event.title")
+        XCTAssertTrue(title.waitForExistence(timeout: 10))
+        XCTAssertEqual(title.value as? String, "Mittagessen mit Mia")
+        title.click()
+        app.typeKey("a", modifierFlags: .command)
+        title.typeText("Mittagessen mit Mia und Jonas")
+        sleep(1)
+        snapshot("17-termin-bearbeiten", of: XCUIScreen.main.screenshot())
+        element(app, "event.save").click()
+        let gone = NSPredicate(format: "exists == false")
+        expectation(for: gone, evaluatedWith: title)
+        waitForExpectations(timeout: 10)
+
+        // The change is kept: open the editor again.
+        let edited = element(app, "event.lunch")
+        XCTAssertTrue(edited.waitForExistence(timeout: 5))
+        if !element(app, "event.edit").exists { edited.click() }
+        XCTAssertTrue(element(app, "event.edit").waitForExistence(timeout: 5))
+        element(app, "event.edit").click()
+        XCTAssertTrue(element(app, "event.title").waitForExistence(timeout: 10))
+        XCTAssertEqual(element(app, "event.title").value as? String, "Mittagessen mit Mia und Jonas")
+
+        // Delete it.
+        element(app, "event.delete").click()
+        let confirm = app.buttons.matching(NSPredicate(format: "label == 'Löschen'")).firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        confirm.click()
+        expectation(for: gone, evaluatedWith: element(app, "event.lunch"))
+        waitForExpectations(timeout: 10)
+
+        element(app, "calendar.mode.month").click()
+        XCTAssertTrue(element(app, "calendar.month").waitForExistence(timeout: 5), "The month view should open")
+        sleep(1)
+        snapshot("18-kalender-monat", of: app.windows.firstMatch.screenshot())
+        element(app, "calendar.mode.week").click()
+    }
 }

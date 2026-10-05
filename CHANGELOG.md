@@ -3,6 +3,15 @@
 Alle nennenswerten Änderungen an MailMeG. Versionen folgen [Semantic Versioning](https://semver.org/lang/de/).
 All notable changes to MailMeG. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.7.0] – 2026-10-05
+
+- Termine bearbeiten und löschen: „Bearbeiten …“ im Termin oder per Rechtsklick; Titel, Zeit, Ort, Gäste und Notizen ändern, Gäste werden auf Wunsch informiert
+  · Edit and delete events: “Edit…” in the event or via right-click; change title, time, place, guests and notes, guests are notified if you like
+- Termine per Drag & Drop verschieben – in der Tagesansicht in 15-Minuten-Schritten, in der Wochenansicht auch auf einen anderen Tag
+  · Move events by drag and drop – in 15-minute steps in the day view, and to another day in the week view
+- Monatsansicht mit den Terminen jedes Tages; Doppelklick auf einen Tag öffnet die Tagesansicht
+  · Month view with each day’s events; double-click a day to open the day view
+
 ## [1.6.0] – 2026-10-04
 
 - **Google Kalender** in MailMeG: „Kalender“ in der Seitenleiste mit Mini-Monat, Agenda der nächsten Tage und Tages-/Wochenansicht (⌥⌘K); Termine in den Farben deiner Kalender, Kalender ein- und ausblendbar

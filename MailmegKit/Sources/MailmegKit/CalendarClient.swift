@@ -98,6 +98,31 @@ public final class CalendarClient: Sendable {
         return created
     }
 
+    /// Changes an event (title, time, place, guests …); `notifyAttendees` emails the guests.
+    public func update(_ event: CalendarEvent, with patch: CalendarEventPatch, notifyAttendees: Bool) async throws -> CalendarEvent {
+        let calendarID = event.calendarID ?? "primary"
+        var request = makeRequest(
+            "calendars/\(Self.escape(calendarID))/events/\(Self.escape(event.id))",
+            query: [URLQueryItem(name: "sendUpdates", value: notifyAttendees ? "all" : "none")]
+        )
+        request.httpMethod = "PATCH"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(patch)
+        var updated: CalendarEvent = try await api.perform(request)
+        updated.calendarID = calendarID
+        return updated
+    }
+
+    /// Deletes an event; with `notifyAttendees` the guests get a cancellation.
+    public func delete(_ event: CalendarEvent, notifyAttendees: Bool) async throws {
+        var request = makeRequest(
+            "calendars/\(Self.escape(event.calendarID ?? "primary"))/events/\(Self.escape(event.id))",
+            query: [URLQueryItem(name: "sendUpdates", value: notifyAttendees ? "all" : "none")]
+        )
+        request.httpMethod = "DELETE"
+        _ = try await api.performRaw(request)
+    }
+
     /// Answers an invitation: sets the user's own response and lets the organizer know.
     public func respond(to event: CalendarEvent, with status: RSVPStatus, calendarID: String = "primary") async throws -> CalendarEvent {
         struct Patch: Encodable { let attendees: [EventAttendee] }

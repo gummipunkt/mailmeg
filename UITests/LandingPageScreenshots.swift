@@ -130,6 +130,11 @@ final class LandingPageScreenshots: XCTestCase {
             XCTAssertTrue(element(app, "event.design-review").waitForExistence(timeout: 10))
             sleep(2)
             save("\(language)-calendar-\(dark ? "dark" : "light")", app.windows.firstMatch.screenshot())
+            element(app, "calendar.mode.month").click()
+            XCTAssertTrue(element(app, "calendar.month").waitForExistence(timeout: 5))
+            sleep(1)
+            save("\(language)-calendar-month-\(dark ? "dark" : "light")", app.windows.firstMatch.screenshot())
+            element(app, "calendar.mode.week").click()
             app.terminate()
         }
     }

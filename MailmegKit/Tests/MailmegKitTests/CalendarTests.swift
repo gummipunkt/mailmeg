@@ -176,4 +176,36 @@ final class CalendarTests: XCTestCase {
         XCTAssertTrue(GmailAPIError(status: 403, message: "Request had insufficient authentication scopes.", reason: "insufficientPermissions").isInsufficientScope)
         XCTAssertTrue(GmailAPIError(status: 403, message: "Google Calendar API has not been used in project 123 before or it is disabled.", reason: "accessNotConfigured").isAPIDisabled)
     }
+
+    func testUpdateAndDelete() async throws {
+        let api = MockTransport([
+            { request in
+                XCTAssertEqual(request.httpMethod, "PATCH")
+                XCTAssertTrue(request.url!.absoluteString.hasSuffix("/calendars/team%40group.calendar.google.com/events/e1?sendUpdates=none"))
+                let json = try JSONSerialization.jsonObject(with: request.httpBody ?? Data()) as? [String: Any]
+                XCTAssertEqual(json?["summary"] as? String, "Neu")
+                XCTAssertEqual((json?["start"] as? [String: Any])?["dateTime"] as? String, "2026-10-08T09:00:00Z")
+                XCTAssertNil(json?["location"], "Unset fields are not sent")
+                return (200, Data(#"{"id":"e1","summary":"Neu","start":{"dateTime":"2026-10-08T09:00:00Z"},"end":{"dateTime":"2026-10-08T10:00:00Z"}}"#.utf8))
+            },
+            { request in
+                XCTAssertEqual(request.httpMethod, "DELETE")
+                XCTAssertTrue(request.url!.absoluteString.hasSuffix("/events/e1?sendUpdates=all"))
+                return (204, Data())
+            },
+        ])
+        let client = makeClient(api)
+        let event = CalendarEvent(id: "e1", summary: "Alt", start: EventDateTime(dateTime: "2026-10-08T08:00:00Z"), end: EventDateTime(dateTime: "2026-10-08T09:00:00Z"),
+                                  calendarID: "team@group.calendar.google.com")
+        let start = CalendarDates.parseRFC3339("2026-10-08T09:00:00Z")!
+        let updated = try await client.update(event, with: CalendarEventPatch(
+            summary: "Neu",
+            start: EventDateTime(dateTime: CalendarDates.rfc3339(start)),
+            end: EventDateTime(dateTime: CalendarDates.rfc3339(start.addingTimeInterval(3600)))
+        ), notifyAttendees: false)
+        XCTAssertEqual(updated.title, "Neu")
+        XCTAssertEqual(updated.calendarID, "team@group.calendar.google.com")
+        try await client.delete(updated, notifyAttendees: true)
+        XCTAssertEqual(api.requestCount, 2)
+    }
 }

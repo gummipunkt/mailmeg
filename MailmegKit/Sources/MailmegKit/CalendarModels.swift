@@ -177,6 +177,26 @@ public struct CalendarEvent: Codable, Hashable, Identifiable, Sendable {
     }
 }
 
+/// Changes to an existing event; only the fields that are set are sent.
+public struct CalendarEventPatch: Encodable, Sendable {
+    public var summary: String?
+    public var description: String?
+    public var location: String?
+    public var start: EventDateTime?
+    public var end: EventDateTime?
+    public var attendees: [EventAttendee]?
+
+    public init(summary: String? = nil, description: String? = nil, location: String? = nil,
+                start: EventDateTime? = nil, end: EventDateTime? = nil, attendees: [EventAttendee]? = nil) {
+        self.summary = summary
+        self.description = description
+        self.location = location
+        self.start = start
+        self.end = end
+        self.attendees = attendees
+    }
+}
+
 /// A new event to insert (only the fields MailMeG sets).
 public struct NewCalendarEvent: Encodable, Sendable {
     public var summary: String

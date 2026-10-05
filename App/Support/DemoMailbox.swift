@@ -586,12 +586,30 @@ private final class DemoTransport: HTTPTransport, @unchecked Sendable {
             return (200, event.json)
         case ("PATCH", 4) where parts[0] == "calendars" && parts[2] == "events":
             guard let index = calendarEvents.firstIndex(where: { $0.id == parts[3] }) else { return notFound() }
-            for attendee in (body["attendees"] as? [[String: Any]]) ?? [] {
-                guard let email = attendee["email"] as? String, let status = attendee["responseStatus"] as? String,
-                      let position = calendarEvents[index].attendees.firstIndex(where: { $0.email == email }) else { continue }
-                calendarEvents[index].attendees[position].status = status
+            if let summary = body["summary"] as? String { calendarEvents[index].summary = summary }
+            if let location = body["location"] as? String { calendarEvents[index].location = location.isEmpty ? nil : location }
+            if let description = body["description"] as? String { calendarEvents[index].description = description.isEmpty ? nil : description }
+            if let start = DemoCalendar.date(body["start"]) {
+                calendarEvents[index].start = start
+                calendarEvents[index].allDay = (body["start"] as? [String: Any])?["date"] != nil
+            }
+            if let end = DemoCalendar.date(body["end"]) { calendarEvents[index].end = end }
+            if let attendees = body["attendees"] as? [[String: Any]] {
+                var updated: [DemoAttendee] = []
+                for attendee in attendees {
+                    guard let email = attendee["email"] as? String else { continue }
+                    var entry = calendarEvents[index].attendees.first { $0.email == email }
+                        ?? DemoAttendee(email: email, name: nil, status: "needsAction")
+                    if let status = attendee["responseStatus"] as? String { entry.status = status }
+                    updated.append(entry)
+                }
+                calendarEvents[index].attendees = updated
             }
             return (200, calendarEvents[index].json)
+        case ("DELETE", 4) where parts[0] == "calendars" && parts[2] == "events":
+            guard let index = calendarEvents.firstIndex(where: { $0.id == parts[3] }) else { return notFound() }
+            calendarEvents.remove(at: index)
+            return (204, [:])
         default:
             return notFound()
         }

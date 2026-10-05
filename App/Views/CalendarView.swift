@@ -249,6 +249,9 @@ struct CalendarTimelineView: View {
     @Environment(\.openWindow) private var openWindow
     @Bindable var view: CalendarViewState
 
+    /// The event being dragged to a new time, with the current drag distance.
+    @State private var dragging: (key: String, translation: CGSize)?
+
     private let hourHeight: CGFloat = 48
     private let gutter: CGFloat = 58
     private let calendar = Calendar.current
@@ -260,9 +263,13 @@ struct CalendarTimelineView: View {
             actionBar
             if store.isUsable {
                 titleRow
-                dayHeader
-                allDayRow
-                timeline
+                if view.mode == .month {
+                    MonthGridView(view: view)
+                } else {
+                    dayHeader
+                    allDayRow
+                    timeline
+                }
             } else {
                 CalendarAccessView(store: store, account: view.account)
             }
@@ -283,6 +290,7 @@ struct CalendarTimelineView: View {
             PillSwitch<CalendarViewState.Mode>(selection: $view.mode, options: [
                 .init(value: .day, title: tr("Tag", "Day"), systemImage: nil, identifier: "calendar.mode.day"),
                 .init(value: .week, title: tr("Woche", "Week"), systemImage: nil, identifier: "calendar.mode.week"),
+                .init(value: .month, title: tr("Monat", "Month"), systemImage: nil, identifier: "calendar.mode.month"),
             ])
             Spacer(minLength: 8)
             GlassCircleButton(systemImage: "plus", help: tr("Neuer Termin", "New Event")) {
@@ -486,10 +494,62 @@ struct CalendarTimelineView: View {
                     // Placed with padding (not offset), so the popover points at the block.
                     .padding(.leading, 3 + laneWidth * CGFloat(item.lane))
                     .padding(.top, item.start / 60 * hourHeight + 1)
+                    .offset(dragOffset(for: item.event, columnWidth: proxy.size.width))
+                    .zIndex(dragging?.key == item.event.key ? 1 : 0)
+                    .highPriorityGesture(dragGesture(for: item.event, columnWidth: proxy.size.width),
+                                         including: store.canEdit(item.event) ? .all : .subviews)
+                    .contextMenu { eventMenu(item.event) }
                 }
             }
         }
         .frame(maxWidth: .infinity)
+    }
+
+    // MARK: Moving events
+
+    /// Drag distance snapped to 15 minutes (and whole days in the week view).
+    private func snapped(_ translation: CGSize, columnWidth: CGFloat) -> (days: Int, minutes: Int) {
+        let days = view.mode == .week ? Int((translation.width / max(columnWidth, 1)).rounded()) : 0
+        let minutes = Int((translation.height / hourHeight * 60 / 15).rounded()) * 15
+        return (days, minutes)
+    }
+
+    private func dragOffset(for event: CalendarEvent, columnWidth: CGFloat) -> CGSize {
+        guard let dragging, dragging.key == event.key else { return .zero }
+        let delta = snapped(dragging.translation, columnWidth: columnWidth)
+        return CGSize(width: CGFloat(delta.days) * columnWidth, height: CGFloat(delta.minutes) / 60 * hourHeight)
+    }
+
+    private func dragGesture(for event: CalendarEvent, columnWidth: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 6)
+            .onChanged { value in
+                dragging = (event.key, value.translation)
+            }
+            .onEnded { value in
+                let delta = snapped(value.translation, columnWidth: columnWidth)
+                dragging = nil
+                let seconds = TimeInterval(delta.days * 86_400 + delta.minutes * 60)
+                guard seconds != 0 else { return }
+                Task {
+                    do {
+                        try await store.move(event, by: seconds)
+                    } catch {
+                        model.present(error, account: view.account)
+                    }
+                }
+            }
+    }
+
+    @ViewBuilder
+    private func eventMenu(_ event: CalendarEvent) -> some View {
+        if store.canEdit(event) {
+            Button(tr("Bearbeiten …", "Edit…")) {
+                openWindow(value: EventDraft.editing(event, accountID: view.account.id))
+            }
+        }
+        if let link = event.htmlLink, let url = URL(string: link) {
+            Button(tr("In Google Kalender öffnen", "Open in Google Calendar")) { NSWorkspace.shared.open(url) }
+        }
     }
 
     private func popoverBinding(for event: CalendarEvent) -> Binding<Bool> {
@@ -497,6 +557,144 @@ struct CalendarTimelineView: View {
             get: { view.selectedEventID == event.key },
             set: { if !$0, view.selectedEventID == event.key { view.selectedEventID = nil } }
         )
+    }
+}
+
+/// The month as a grid of days with the first events of each day.
+private struct MonthGridView: View {
+    @Environment(\.openWindow) private var openWindow
+    @Bindable var view: CalendarViewState
+    private let calendar = Calendar.current
+
+    private var store: CalendarStore { view.store }
+
+    private var weekdaySymbols: [String] {
+        let symbols = calendar.shortStandaloneWeekdaySymbols
+        let first = calendar.firstWeekday - 1
+        return Array(symbols[first...] + symbols[..<first])
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                ForEach(weekdaySymbols.indices, id: \.self) { index in
+                    Text(weekdaySymbols[index])
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .padding(.vertical, 4)
+            .overlay(alignment: .bottom) { Divider().opacity(0.5) }
+            GeometryReader { proxy in
+                let days = view.monthGrid
+                let rows = max(days.count / 7, 1)
+                let cellHeight = proxy.size.height / CGFloat(rows)
+                VStack(spacing: 0) {
+                    ForEach(0..<rows, id: \.self) { row in
+                        HStack(spacing: 0) {
+                            ForEach(0..<7, id: \.self) { column in
+                                let index = row * 7 + column
+                                if index < days.count {
+                                    cell(days[index], height: cellHeight)
+                                        .frame(width: proxy.size.width / 7, height: cellHeight)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.trailing, 12)
+            .padding(.leading, 12)
+            .padding(.bottom, 12)
+        }
+        .accessibilityIdentifier("calendar.month")
+    }
+
+    private func cell(_ day: Date, height: CGFloat) -> some View {
+        let events = store.events(on: day)
+        let capacity = max(Int((height - 26) / 17), 0)
+        let shown = Array(events.prefix(events.count > capacity ? max(capacity - 1, 0) : capacity))
+        let isToday = calendar.isDateInToday(day)
+        let isSelected = calendar.isDate(day, inSameDayAs: view.selectedDay)
+        return VStack(alignment: .leading, spacing: 2) {
+            HStack {
+                Spacer()
+                Text("\(calendar.component(.day, from: day))")
+                    .font(.system(size: 12, weight: isToday ? .bold : .medium))
+                    .foregroundStyle(isToday ? Color.white : view.isInDisplayedMonth(day) ? Color.primary : Color.secondary.opacity(0.6))
+                    .frame(minWidth: 22, minHeight: 22)
+                    .background {
+                        if isToday { Circle().fill(Color.accentColor) }
+                    }
+            }
+            ForEach(shown, id: \.key) { event in
+                Button {
+                    view.select(day: day)
+                    view.selectedEventID = event.key
+                } label: {
+                    HStack(spacing: 4) {
+                        if event.isAllDay {
+                            Text(CalendarFormat.title(event))
+                                .font(.system(size: 10.5, weight: .semibold))
+                                .lineLimit(1)
+                                .padding(.horizontal, 4)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(store.color(for: event).opacity(0.28), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                        } else {
+                            Circle().fill(store.color(for: event)).frame(width: 6, height: 6)
+                            Text(event.startDate?.formatted(date: .omitted, time: .shortened) ?? "")
+                                .font(.system(size: 10).monospacedDigit())
+                                .foregroundStyle(.secondary)
+                            Text(CalendarFormat.title(event))
+                                .font(.system(size: 10.5, weight: .medium))
+                                .lineLimit(1)
+                            Spacer(minLength: 0)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .popover(isPresented: Binding(
+                    get: { view.selectedEventID == event.key && calendar.isDate(day, inSameDayAs: view.selectedDay) },
+                    set: { if !$0, view.selectedEventID == event.key { view.selectedEventID = nil } }
+                ), arrowEdge: .trailing) {
+                    EventDetailView(event: event, store: store, account: view.account)
+                }
+                .contextMenu {
+                    if store.canEdit(event) {
+                        Button(tr("Bearbeiten …", "Edit…")) {
+                            openWindow(value: EventDraft.editing(event, accountID: view.account.id))
+                        }
+                    }
+                }
+                .accessibilityIdentifier("month.event.\(event.id)")
+            }
+            if events.count > shown.count {
+                Text(tr("+ \(events.count - shown.count) weitere", "+ \(events.count - shown.count) more"))
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(4)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(isSelected ? Color.accentColor.opacity(0.08) : view.isInDisplayedMonth(day) ? Color.clear : Color.primary.opacity(0.03))
+        .overlay(alignment: .topLeading) {
+            Rectangle().fill(Color.primary.opacity(0.07)).frame(height: 1)
+        }
+        .overlay(alignment: .leading) {
+            Rectangle().fill(Color.primary.opacity(0.07)).frame(width: 1)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture(count: 2) {
+            view.select(day: day)
+            view.mode = .day
+        }
+        .onTapGesture {
+            view.select(day: day)
+        }
+        .accessibilityIdentifier("month.day.\(CalendarDates.dayString(day))")
     }
 }
 
@@ -624,6 +822,7 @@ private struct EventChip: View {
 
 struct EventDetailView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.openWindow) private var openWindow
     let event: CalendarEvent
     let store: CalendarStore
     let account: AccountSession
@@ -701,10 +900,22 @@ struct EventDetailView: View {
                 }
             }
 
-            if let link = shown.htmlLink, let url = URL(string: link) {
-                Link(destination: url) {
-                    Label(tr("In Google Kalender öffnen", "Open in Google Calendar"), systemImage: "arrow.up.right.square")
-                        .font(.system(size: 12))
+            HStack(spacing: 12) {
+                if store.canEdit(shown) {
+                    Button {
+                        openWindow(value: EventDraft.editing(shown, accountID: account.id))
+                    } label: {
+                        Label(tr("Bearbeiten …", "Edit…"), systemImage: "pencil")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .buttonStyle(.link)
+                    .accessibilityIdentifier("event.edit")
+                }
+                if let link = shown.htmlLink, let url = URL(string: link) {
+                    Link(destination: url) {
+                        Label(tr("In Google Kalender öffnen", "Open in Google Calendar"), systemImage: "arrow.up.right.square")
+                            .font(.system(size: 12))
+                    }
                 }
             }
         }

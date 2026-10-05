@@ -227,6 +227,51 @@ final class CalendarStore {
         return created
     }
 
+    /// Whether MailMeG may change an event: the calendar must be writable, and invitations
+    /// from someone else can only be answered, not edited.
+    func canEdit(_ event: CalendarEvent) -> Bool {
+        guard let calendar = calendar(id: event.calendarID), calendar.isWritable else { return false }
+        if let organizer = event.organizer, organizer.isSelf != true, event.attendees?.isEmpty == false { return false }
+        return true
+    }
+
+    func update(_ event: CalendarEvent, with patch: CalendarEventPatch, notifyAttendees: Bool) async throws -> CalendarEvent {
+        let updated = try await client.update(event, with: patch, notifyAttendees: notifyAttendees)
+        replace(updated)
+        return updated
+    }
+
+    /// Moves an event by `seconds` (dragging it in the timeline), keeping its length.
+    func move(_ event: CalendarEvent, by seconds: TimeInterval) async throws {
+        guard seconds != 0, let start = event.startDate, let end = event.endDate else { return }
+        // Show the new time right away, undo if Google refuses.
+        var moved = event
+        moved.start = EventDateTime(start.addingTimeInterval(seconds), allDay: event.isAllDay)
+        moved.end = EventDateTime(end.addingTimeInterval(seconds), allDay: event.isAllDay)
+        replace(moved)
+        do {
+            let patch = CalendarEventPatch(start: moved.start, end: moved.end)
+            replace(try await client.update(event, with: patch, notifyAttendees: event.attendees?.isEmpty == false))
+        } catch {
+            replace(event)
+            throw error
+        }
+    }
+
+    func delete(_ event: CalendarEvent, notifyAttendees: Bool) async throws {
+        try await client.delete(event, notifyAttendees: notifyAttendees)
+        events.removeAll { $0.id == event.id && $0.calendarID == event.calendarID }
+    }
+
+    private func replace(_ event: CalendarEvent) {
+        if let index = events.firstIndex(where: { $0.id == event.id && $0.calendarID == event.calendarID }) {
+            events[index] = event
+        } else {
+            events.append(event)
+        }
+        events.sort { ($0.startDate ?? .distantPast) < ($1.startDate ?? .distantPast) }
+    }
+
     /// The event behind an invitation email, looked up in the primary calendar.
     func event(forInvitation uid: String) async -> CalendarEvent? {
         guard isUsable else { return nil }

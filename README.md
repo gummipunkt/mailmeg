@@ -20,8 +20,9 @@ und nicht über IMAP und nicht über eine eingebettete gmail.com-Seite.
 - **Empfängerdetails** mit der genauen Zieladresse (auch bei „mich“), **Quelltext** (⌥⌘U) und **alle Header** (⇧⌘H) jeder E-Mail
 - **Abrufintervall** einstellbar (30 Sekunden bis 1 Stunde oder manuell)
 - **Design im Stil von Airmail** mit Glas-Oberflächen und runden Buttons, Avatare in der Liste optional
-- **Google Kalender**: Tages- und Wochenansicht mit Mini-Monat und Agenda, „Heute“ in der Seitenleiste,
-  Einladungen in E-Mails mit Zusagen/Vielleicht/Absagen, neue Termine – auch direkt aus einer E-Mail (⌥⌘E)
+- **Google Kalender**: Tages-, Wochen- und Monatsansicht mit Mini-Monat und Agenda, „Heute“ in der Seitenleiste,
+  Einladungen in E-Mails mit Zusagen/Vielleicht/Absagen, Termine anlegen (auch direkt aus einer E-Mail, ⌥⌘E),
+  bearbeiten, löschen und per Drag & Drop verschieben
 - **Entwürfe** werden beim Schreiben automatisch in Gmail gesichert und lassen sich jederzeit weiterbearbeiten
 - **Verfassen, Antworten, Allen antworten, Weiterleiten** inklusive Anhängen. Antworten landen im richtigen Gmail-Thread (`threadId`, `In-Reply-To`, `References`).
 - **Neue Mails**: Polling über die History-API, Dock-Symbol mit Zähler ungelesener E-Mails
@@ -143,7 +144,7 @@ MailMeG gibt es auf Deutsch und Englisch. Die App folgt der Reihenfolge unter
 MailMeG (“Mail Me Google Mail”) is a native Gmail client for macOS (SwiftUI) that talks to the Gmail REST API directly instead of
 wrapping the Gmail website. The interface is available in English and German and follows your macOS language
 order. Highlights: multiple accounts, Gmail aliases and signatures, drafts synced with Gmail, a rich text
-editor, message source and headers, Google Calendar (day/week view, invitations with RSVP, events from emails),
+editor, message source and headers, Google Calendar (day/week/month view, invitations with RSVP, create, edit, move and delete events),
 configurable fetch interval and an Airmail-style glass design.
 
 1. Download **[MailMeG.dmg](https://github.com/gummipunkt/mailmeg/releases/latest/download/MailMeG.dmg)**

@@ -8,7 +8,7 @@ import Observation
 @Observable
 final class CalendarViewState {
     enum Mode: String, CaseIterable {
-        case day, week
+        case day, week, month
     }
 
     let account: AccountSession
@@ -47,7 +47,12 @@ final class CalendarViewState {
 
     /// One day or one week back (-1) or forward (+1).
     func step(_ direction: Int) {
-        let unit: Calendar.Component = mode == .day ? .day : .weekOfYear
+        let unit: Calendar.Component
+        switch mode {
+        case .day: unit = .day
+        case .week: unit = .weekOfYear
+        case .month: unit = .month
+        }
         select(day: calendar.date(byAdding: unit, value: direction, to: selectedDay) ?? selectedDay)
         Task { await load() }
     }
@@ -63,6 +68,7 @@ final class CalendarViewState {
 
     /// The days of the timeline: the selected day, or the week containing it.
     var visibleDays: [Date] {
+        if mode == .month { return monthGrid }
         guard mode == .week, let week = calendar.dateInterval(of: .weekOfYear, for: selectedDay) else {
             return [selectedDay]
         }
@@ -93,6 +99,7 @@ final class CalendarViewState {
     // MARK: - Labels
 
     var timelineTitle: String {
+        if mode == .month { return monthTitle }
         if mode == .day {
             return selectedDay.formatted(.dateTime.weekday(.wide).day().month(.wide))
         }
