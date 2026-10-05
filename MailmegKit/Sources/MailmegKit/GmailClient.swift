@@ -297,6 +297,12 @@ public final class GmailClient: Sendable {
 
     /// Sends a request with auth, token refresh and retries; returns the body of a 2xx response.
     func performRaw(_ baseRequest: URLRequest) async throws -> Data {
+        try await send(baseRequest).data
+    }
+
+    /// Like `performRaw`, but also returns the response (headers) and accepts extra status
+    /// codes as success (e.g. 308 for resumable uploads).
+    func send(_ baseRequest: URLRequest, accepting extraStatuses: Set<Int> = []) async throws -> (data: Data, response: HTTPURLResponse) {
         var attempt = 0
         var forceRefresh = false
         while true {
@@ -307,8 +313,8 @@ public final class GmailClient: Sendable {
             request.setValue("application/json", forHTTPHeaderField: "Accept")
 
             let (data, response) = try await transport.data(for: request)
-            if (200..<300).contains(response.statusCode) {
-                return data
+            if (200..<300).contains(response.statusCode) || extraStatuses.contains(response.statusCode) {
+                return (data, response)
             }
 
             let envelope = try? JSONDecoder().decode(ErrorEnvelope.self, from: data)

@@ -26,6 +26,25 @@ struct ComposeDraft: Codable, Hashable, Identifiable {
     var cursorOffset = 0
     /// ID of the saved Gmail draft, once the message has been saved.
     var gmailDraftID: String?
+    /// Files sent as Google Drive links instead of attachments.
+    var driveFiles: [DriveLink] = []
+    var driveSharing: DriveSharing = .anyoneWithLink
+}
+
+/// A file uploaded to Google Drive and sent as a link.
+struct DriveLink: Codable, Hashable, Identifiable {
+    let id: String
+    let name: String
+    let size: Int
+    let url: String
+}
+
+/// Who may open the Drive files of a message.
+enum DriveSharing: String, Codable, CaseIterable {
+    /// Anyone who has the link (works for every recipient).
+    case anyoneWithLink
+    /// Only the recipients of the message.
+    case recipients
 }
 
 /// One address a message can be sent from.
@@ -248,6 +267,8 @@ final class DraftAutosaver {
         hasher.combine(draft.richBody)
         hasher.combine(draft.fromAddress)
         hasher.combine(draft.forwardedAttachments.map(\.id))
+        hasher.combine(draft.driveFiles)
+        hasher.combine(draft.driveSharing)
         for attachment in attachments {
             hasher.combine(attachment.filename)
             hasher.combine(attachment.data.count)

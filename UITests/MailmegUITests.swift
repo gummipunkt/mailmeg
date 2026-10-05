@@ -347,4 +347,30 @@ final class MailmegUITests: XCTestCase {
         snapshot("18-kalender-monat", of: app.windows.firstMatch.screenshot())
         element(app, "calendar.mode.week").click()
     }
+
+    func testSendFileViaGoogleDrive() {
+        let app = launch(["--demo", "--drive-test-file"])
+        XCTAssertTrue(element(app, "thread.t-projektplan").waitForExistence(timeout: 20))
+        sleep(1)
+        element(app, "compose").click()
+        let to = element(app, "compose.to")
+        XCTAssertTrue(to.waitForExistence(timeout: 10))
+        to.click()
+        to.typeText("anna.becker@example.com")
+        let subject = element(app, "compose.subject")
+        subject.click()
+        subject.typeText("Unterlagen")
+
+        element(app, "compose.drive").click()
+        let file = element(app, "drive.file.Projektunterlagen.zip")
+        XCTAssertTrue(file.waitForExistence(timeout: 15), "The file should be uploaded to Google Drive and shown as a link")
+        XCTAssertTrue(element(app, "drive.sharing").exists, "The sharing choice should be offered")
+        sleep(1)
+        snapshot("19-google-drive", of: XCUIScreen.main.screenshot())
+
+        element(app, "compose.send").click()
+        let sent = NSPredicate(format: "exists == false")
+        expectation(for: sent, evaluatedWith: element(app, "compose.subject"))
+        waitForExpectations(timeout: 15)
+    }
 }

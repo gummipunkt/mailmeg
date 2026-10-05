@@ -522,6 +522,11 @@ enum LaunchOptions {
         ProcessInfo.processInfo.arguments.contains("--onboarding")
     }
 
+    /// UI tests: the Google Drive button uploads a generated file (demo mode only).
+    static var driveTestFile: Bool {
+        ProcessInfo.processInfo.arguments.contains("--drive-test-file")
+    }
+
     /// Clean screenshots for the website: no spell-check underlines.
     static var screenshots: Bool {
         ProcessInfo.processInfo.arguments.contains("--screenshots")

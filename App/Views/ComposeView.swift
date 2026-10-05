@@ -12,6 +12,10 @@ struct ComposeView: View {
     @State private var showsCcBcc: Bool
     @State private var isSending = false
     @State private var isImporting = false
+    /// The next file import goes to Google Drive instead of the message.
+    @State private var importsToDrive = false
+    @State private var uploads: [DriveUpload] = []
+    @State private var drivePrompt: String?
     @State private var errorMessage: String?
     @State private var autosaver: DraftAutosaver
     @State private var confirmsDiscard = false
@@ -107,7 +111,7 @@ struct ComposeView: View {
                 )
                 .padding(.horizontal, 2)
 
-                if !attachments.isEmpty || !draft.forwardedAttachments.isEmpty {
+                if !attachments.isEmpty || !draft.forwardedAttachments.isEmpty || !draft.driveFiles.isEmpty || !uploads.isEmpty {
                     Divider().overlay(Theme.hairline.opacity(0.5))
                     attachmentList
                 }
@@ -117,6 +121,7 @@ struct ComposeView: View {
             // Actions
             HStack(spacing: 10) {
                 Button {
+                    importsToDrive = false
                     isImporting = true
                 } label: {
                     Label(tr("Anhängen", "Attach"), systemImage: "paperclip")
@@ -127,7 +132,21 @@ struct ComposeView: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(Color.accentColor)
-                .help(tr("Dateien anhängen", "Attach files"))
+                .help(tr("Dateien anhängen (große Dateien gehen automatisch über Google Drive)", "Attach files (large files go via Google Drive automatically)"))
+
+                Button {
+                    startDriveImport()
+                } label: {
+                    Label("Google Drive", systemImage: "externaldrive.badge.icloud")
+                        .font(.system(size: 13, weight: .medium))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(Theme.tint, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.accentColor)
+                .help(tr("Dateien über Google Drive senden – für große Dateien, ZIPs und Dateitypen, die Gmail sperrt", "Send files via Google Drive – for large files, ZIPs and file types Gmail blocks"))
+                .accessibilityIdentifier("compose.drive")
 
                 IconButton(systemImage: "trash", help: tr("Entwurf verwerfen", "Discard draft")) {
                     confirmsDiscard = true
@@ -171,8 +190,8 @@ struct ComposeView: View {
                 }
                 .buttonStyle(.plain)
                 .keyboardShortcut(.return, modifiers: .command)
-                .disabled(isSending || account == nil)
-                .opacity(isSending || account == nil ? 0.6 : 1)
+                .disabled(isSending || account == nil || isUploading)
+                .opacity(isSending || account == nil || isUploading ? 0.6 : 1)
                 .help(tr("Senden (⌘↩)", "Send (⌘↩)"))
                 .accessibilityIdentifier("compose.send")
             }
@@ -182,6 +201,16 @@ struct ComposeView: View {
         .navigationTitle(draft.subject.isEmpty ? tr("Neue E-Mail", "New Message") : draft.subject)
         .fileImporter(isPresented: $isImporting, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
             addAttachments(result)
+        }
+        .alert(tr("Google Drive verbinden", "Connect Google Drive"), isPresented: Binding(get: { drivePrompt != nil }, set: { if !$0 { drivePrompt = nil } })) {
+            Button(tr("Verbinden …", "Connect…")) {
+                if let email = account?.email {
+                    Task { await model.signIn(loginHint: email) }
+                }
+            }
+            Button(tr("Abbrechen", "Cancel"), role: .cancel) {}
+        } message: {
+            Text(drivePrompt ?? "")
         }
         .alert(tr("E-Mail nicht gesendet", "Message Not Sent"), isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
             Button("OK", role: .cancel) {}
@@ -261,8 +290,129 @@ struct ComposeView: View {
                         draft.forwardedAttachments.removeAll { $0.id == attachment.id }
                     }
                 }
+                ForEach(uploads) { upload in
+                    driveChip(name: upload.name, size: upload.size, progress: upload.progress, error: upload.error) {
+                        uploads.removeAll { $0.id == upload.id }
+                    }
+                }
+                ForEach(draft.driveFiles) { file in
+                    driveChip(name: file.name, size: file.size, progress: nil, error: nil) {
+                        draft.driveFiles.removeAll { $0.id == file.id }
+                    }
+                    .accessibilityIdentifier("drive.file.\(file.name)")
+                }
+                if !draft.driveFiles.isEmpty || !uploads.isEmpty {
+                    Picker(tr("Freigabe", "Sharing"), selection: $draft.driveSharing) {
+                        Text(tr("Jeder mit dem Link", "Anyone with the link")).tag(DriveSharing.anyoneWithLink)
+                        Text(tr("Nur Empfänger", "Recipients only")).tag(DriveSharing.recipients)
+                    }
+                    .pickerStyle(.menu)
+                    .fixedSize()
+                    .font(.system(size: 12))
+                    .help(tr("Wer die Google-Drive-Dateien öffnen darf", "Who may open the Google Drive files"))
+                    .accessibilityIdentifier("drive.sharing")
+                }
             }
             .padding(12)
+        }
+    }
+
+    private func driveChip(name: String, size: Int, progress: Double?, error: String?, remove: @escaping () -> Void) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "externaldrive.badge.icloud")
+                .foregroundStyle(error == nil ? Color.accentColor : Color.red)
+            Text(name).lineLimit(1)
+            if let error {
+                Text(error).foregroundStyle(.red).lineLimit(1)
+            } else if let progress {
+                ProgressView(value: progress)
+                    .progressViewStyle(.linear)
+                    .frame(width: 60)
+                Text("\(Int(progress * 100)) %").foregroundStyle(.secondary).monospacedDigit()
+            } else {
+                Text("Drive · \(Formatting.byteCount(size))").foregroundStyle(.secondary)
+            }
+            Button(action: remove) {
+                Image(systemName: "xmark.circle.fill")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .help(tr("Entfernen (die Datei bleibt in Google Drive)", "Remove (the file stays in Google Drive)"))
+        }
+        .font(.system(size: 12))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Theme.tint, in: Capsule())
+        .overlay(Capsule().strokeBorder(Color.accentColor.opacity(0.35), lineWidth: 0.8))
+    }
+
+    // MARK: - Google Drive
+
+    /// Gmail refuses messages over 25 MB (attachments grow by a third when encoded).
+    private static let attachmentLimit = 18 * 1024 * 1024
+    /// File types Gmail blocks even inside archives; they can only be sent as Drive links.
+    private static let blockedExtensions: Set<String> = [
+        "ade", "adp", "apk", "appx", "appxbundle", "bat", "cab", "chm", "cmd", "com", "cpl", "dll", "dmg", "ex", "ex_", "exe",
+        "hta", "ins", "isp", "iso", "jar", "js", "jse", "lib", "lnk", "mde", "msc", "msi", "msix", "msixbundle", "msp", "mst",
+        "nsh", "pif", "ps1", "scr", "sct", "shb", "sys", "vb", "vbe", "vbs", "vxd", "wsc", "wsf", "wsh",
+    ]
+
+    private var isUploading: Bool { uploads.contains { $0.error == nil } }
+
+    private func startDriveImport() {
+        if model.isDemo, LaunchOptions.driveTestFile {
+            // UI tests: a generated file instead of the open panel.
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent(tr("Projektunterlagen.zip", "Project-files.zip"))
+            try? Data(repeating: 42, count: 3 * 1024 * 1024).write(to: url)
+            uploadToDrive(url, size: 3 * 1024 * 1024, isScoped: false)
+            return
+        }
+        importsToDrive = true
+        isImporting = true
+    }
+
+    private func needsDrive(_ url: URL, size: Int) -> Bool {
+        let total = attachments.reduce(0) { $0 + $1.data.count } + draft.forwardedAttachments.reduce(0) { $0 + $1.size }
+        return Self.blockedExtensions.contains(url.pathExtension.lowercased()) || total + size > Self.attachmentLimit
+    }
+
+    private func uploadToDrive(_ url: URL, size: Int, isScoped: Bool) {
+        guard let account else {
+            if isScoped { url.stopAccessingSecurityScopedResource() }
+            return
+        }
+        guard account.hasDriveAccess else {
+            if isScoped { url.stopAccessingSecurityScopedResource() }
+            drivePrompt = tr(
+                "„\(url.lastPathComponent)“ ist zu groß für eine E-Mail oder wird von Gmail gesperrt und muss über Google Drive verschickt werden. Dafür braucht MailMeG einmalig deine Erlaubnis – du meldest dich kurz neu bei Google an. MailMeG sieht dabei nur die Dateien, die es selbst hochlädt.",
+                "“\(url.lastPathComponent)” is too large for an email or blocked by Gmail and has to go via Google Drive. MailMeG needs your permission for that once – you’ll sign in to Google again briefly. MailMeG only sees the files it uploads itself."
+            )
+            return
+        }
+        let upload = DriveUpload(name: url.lastPathComponent, size: size)
+        uploads.append(upload)
+        let mimeType = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
+        Task {
+            defer { if isScoped { url.stopAccessingSecurityScopedResource() } }
+            do {
+                let folder = try await account.driveFolderID()
+                let file = try await account.drive.upload(fileAt: url, name: upload.name, mimeType: mimeType, parentID: folder) { fraction in
+                    Task { @MainActor in setProgress(fraction, for: upload.id) }
+                }
+                uploads.removeAll { $0.id == upload.id }
+                draft.driveFiles.append(DriveLink(id: file.id, name: file.name ?? upload.name, size: file.byteCount ?? size, url: file.link))
+            } catch {
+                if let index = uploads.firstIndex(where: { $0.id == upload.id }) {
+                    uploads[index].error = tr("Hochladen fehlgeschlagen", "Upload failed")
+                }
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private func setProgress(_ fraction: Double, for id: UUID) {
+        if let index = uploads.firstIndex(where: { $0.id == id }) {
+            uploads[index].progress = fraction
         }
     }
 
@@ -290,6 +440,12 @@ struct ComposeView: View {
         case .success(let urls):
             for url in urls {
                 let scoped = url.startAccessingSecurityScopedResource()
+                let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+                if importsToDrive || needsDrive(url, size: size) {
+                    // The upload keeps the file access open until it is done.
+                    uploadToDrive(url, size: size, isScoped: scoped)
+                    continue
+                }
                 defer { if scoped { url.stopAccessingSecurityScopedResource() } }
                 do {
                     let data = try Data(contentsOf: url)
@@ -338,4 +494,13 @@ struct ComposeView: View {
             errorMessage = error.localizedDescription
         }
     }
+}
+
+/// A file on its way to Google Drive.
+private struct DriveUpload: Identifiable {
+    let id = UUID()
+    let name: String
+    let size: Int
+    var progress: Double = 0
+    var error: String?
 }

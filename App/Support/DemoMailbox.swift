@@ -215,9 +215,68 @@ private final class DemoTransport: HTTPTransport, @unchecked Sendable {
 
     func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         try await Task.sleep(nanoseconds: 120_000_000) // feels like a network
-        let (status, body) = lock.withLock { route(request) }
-        let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
+        let (status, body, headers): (Int, Any, [String: String]) = lock.withLock {
+            if let path = request.url?.path, path.hasPrefix("/drive/v3/") || path.hasPrefix("/upload/drive/v3/") {
+                return routeDrive(request)
+            }
+            let (status, body) = route(request)
+            return (status, body, [:])
+        }
+        let response = HTTPURLResponse(
+            url: request.url!, statusCode: status, httpVersion: nil,
+            headerFields: ["Content-Type": "application/json"].merging(headers) { _, new in new }
+        )!
         return (try JSONSerialization.data(withJSONObject: body), response)
+    }
+
+    // MARK: - Fake Drive API
+
+    private var driveUploads: [String: (name: String, mimeType: String, size: Int)] = [:]
+    private var driveCounter = 0
+
+    private func routeDrive(_ request: URLRequest) -> (Int, Any, [String: String]) {
+        guard let url = request.url else { return (400, [:], [:]) }
+        let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        let method = request.httpMethod ?? "GET"
+        let body = (request.httpBody.flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: Any]) ?? [:]
+        let parts = url.path.split(separator: "/").map(String.init)
+
+        if url.path.hasPrefix("/upload/drive/v3/files") {
+            if method == "POST" {
+                driveCounter += 1
+                let id = "demo-upload-\(driveCounter)"
+                driveUploads[id] = (
+                    body["name"] as? String ?? "Datei",
+                    request.value(forHTTPHeaderField: "X-Upload-Content-Type") ?? "application/octet-stream",
+                    Int(request.value(forHTTPHeaderField: "X-Upload-Content-Length") ?? "") ?? 0
+                )
+                return (200, [:], ["Location": "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&upload_id=\(id)"])
+            }
+            guard method == "PUT", let id = query.first(where: { $0.name == "upload_id" })?.value, let upload = driveUploads[id] else {
+                return (404, ["error": ["code": 404, "message": "Upload not found"]], [:])
+            }
+            // "bytes 0-262143/3145728"
+            let range = request.value(forHTTPHeaderField: "Content-Range") ?? ""
+            let last = range.split(separator: " ").last?.split(separator: "/").first?.split(separator: "-").last.flatMap { Int($0) } ?? -1
+            if last + 1 < upload.size {
+                return (308, [:], ["Range": "bytes=0-\(last)"])
+            }
+            let fileID = "demo-file-\(id.split(separator: "-").last ?? "")"
+            return (200, [
+                "id": fileID, "name": upload.name, "mimeType": upload.mimeType, "size": String(upload.size),
+                "webViewLink": "https://drive.google.com/file/d/\(fileID)/view",
+            ], [:])
+        }
+        switch (method, parts.count) {
+        case ("POST", 3):
+            return (200, ["id": "demo-folder", "name": body["name"] as? String ?? "MailMeG"], [:])
+        case ("GET", 4):
+            return (200, ["id": parts[3], "name": "MailMeG", "trashed": false], [:])
+        case ("POST", 5) where parts[4] == "permissions":
+            return (200, ["id": "demo-permission"], [:])
+        default:
+            return (404, ["error": ["code": 404, "message": "Not found"]], [:])
+        }
     }
 
     private func route(_ request: URLRequest) -> (Int, Any) {

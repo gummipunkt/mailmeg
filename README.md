@@ -23,6 +23,8 @@ und nicht über IMAP und nicht über eine eingebettete gmail.com-Seite.
 - **Google Kalender**: Tages-, Wochen- und Monatsansicht mit Mini-Monat und Agenda, „Heute“ in der Seitenleiste,
   Einladungen in E-Mails mit Zusagen/Vielleicht/Absagen, Termine anlegen (auch direkt aus einer E-Mail, ⌥⌘E),
   bearbeiten, löschen und per Drag & Drop verschieben
+- **Google Drive**: große Dateien, ZIPs und von Gmail gesperrte Dateitypen gehen als Drive-Link raus –
+  per Button oder automatisch, Freigabe für „Jeder mit dem Link“ oder „Nur Empfänger“
 - **Entwürfe** werden beim Schreiben automatisch in Gmail gesichert und lassen sich jederzeit weiterbearbeiten
 - **Verfassen, Antworten, Allen antworten, Weiterleiten** inklusive Anhängen. Antworten landen im richtigen Gmail-Thread (`threadId`, `In-Reply-To`, `References`).
 - **Neue Mails**: Polling über die History-API, Dock-Symbol mit Zähler ungelesener E-Mails
@@ -60,13 +62,13 @@ Dann *Immer erlauben* wählen.
 Google erlaubt Gmail-Zugriff nur über einen registrierten OAuth-Client. Für die private Nutzung legst du ihn selbst an:
 
 1. Öffne die [Google Cloud Console](https://console.cloud.google.com/) und lege ein **neues Projekt** an, z. B. „MailMeG“.
-2. **Gmail API und Google Calendar API aktivieren**: *APIs & Dienste → Bibliothek → „Gmail API“ → Aktivieren*,
-   danach genauso **„Google Calendar API“** (für den Kalender).
+2. **APIs aktivieren**: *APIs & Dienste → Bibliothek → „Gmail API“ → Aktivieren*, danach genauso
+   **„Google Calendar API“** (Kalender) und **„Google Drive API“** (große Dateien als Drive-Link senden).
 3. **OAuth-Zustimmungsbildschirm** (*Google Auth Platform*):
    - *Branding*: App-Name „MailMeG“ und deine E-Mail-Adresse eintragen.
    - *Zielgruppe*: Nutzertyp **Extern** wählen. Unter *Testnutzer* deine Gmail-Adresse(n) hinzufügen.
-   - *Datenzugriff* (optional): die Bereiche `…/auth/gmail.modify`, `…/auth/calendar.readonly` und
-     `…/auth/calendar.events` hinzufügen.
+   - *Datenzugriff* (optional): die Bereiche `…/auth/gmail.modify`, `…/auth/calendar.readonly`,
+     `…/auth/calendar.events` und `…/auth/drive.file` hinzufügen.
 4. **OAuth-Client anlegen**: *Clients → Client erstellen*
    - Anwendungstyp: **iOS**. Google verwendet diesen Typ auch für macOS-Apps, er braucht kein Client-Secret.
    - Bundle-ID: `de.mailmeg.app`
@@ -145,14 +147,14 @@ MailMeG (“Mail Me Google Mail”) is a native Gmail client for macOS (SwiftUI)
 wrapping the Gmail website. The interface is available in English and German and follows your macOS language
 order. Highlights: multiple accounts, Gmail aliases and signatures, drafts synced with Gmail, a rich text
 editor, message source and headers, Google Calendar (day/week/month view, invitations with RSVP, create, edit, move and delete events),
-configurable fetch interval and an Airmail-style glass design.
+large files via Google Drive links, configurable fetch interval and an Airmail-style glass design.
 
 1. Download **[MailMeG.dmg](https://github.com/gummipunkt/mailmeg/releases/latest/download/MailMeG.dmg)**
    (universal, macOS 14 or later) and drag MailMeG into *Applications*.
 2. The app is not notarized: open it once, then choose *System Settings → Privacy & Security → Open Anyway*
    (or run `xattr -dr com.apple.quarantine /Applications/MailMeG.app`).
-3. Create your own Google Cloud OAuth client of type **iOS** (bundle ID `de.mailmeg.app`) with the Gmail API and the
-   Google Calendar API enabled, paste the client ID on first launch and sign in. Section 1 above describes every step. Or try the
+3. Create your own Google Cloud OAuth client of type **iOS** (bundle ID `de.mailmeg.app`) with the Gmail API, the
+   Google Calendar API and the Google Drive API enabled, paste the client ID on first launch and sign in. Section 1 above describes every step. Or try the
    demo mailbox first.
 
 ## Impressum

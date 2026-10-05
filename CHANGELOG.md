@@ -3,6 +3,17 @@
 Alle nennenswerten Änderungen an MailMeG. Versionen folgen [Semantic Versioning](https://semver.org/lang/de/).
 All notable changes to MailMeG. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.8.0] – 2026-10-05
+
+- Dateien über Google Drive senden: der neue Button „Google Drive“ lädt Dateien hoch und fügt einen Link in die E-Mail ein – ideal für ZIPs und große Dateien; mit Fortschrittsanzeige
+  · Send files via Google Drive: the new “Google Drive” button uploads files and puts a link into the email – ideal for ZIPs and large files; with progress display
+- Automatisch über Drive: Anhänge, die die E-Mail über das Gmail-Limit bringen würden, und Dateitypen, die Gmail sperrt (z. B. .dmg, .exe, .iso), gehen als Drive-Link raus
+  · Automatically via Drive: attachments that would push the email over Gmail’s limit and file types Gmail blocks (e.g. .dmg, .exe, .iso) are sent as Drive links
+- Freigabe wählbar: „Jeder mit dem Link“ oder „Nur Empfänger“; die Dateien liegen in Drive im Ordner „MailMeG-Anhänge“. MailMeG sieht nur Dateien, die es selbst hochgeladen hat
+  · Choose the sharing: “Anyone with the link” or “Recipients only”; the files live in the “MailMeG attachments” folder in Drive. MailMeG only sees files it uploaded itself
+- Einmalig nötig: „Google Drive API“ im Google-Cloud-Projekt aktivieren und Drive-Zugriff erlauben (MailMeG fragt beim ersten Mal)
+  · Needed once: enable the “Google Drive API” in the Google Cloud project and allow Drive access (MailMeG asks the first time)
+
 ## [1.7.0] – 2026-10-05
 
 - Termine bearbeiten und löschen: „Bearbeiten …“ im Termin oder per Rechtsklick; Titel, Zeit, Ort, Gäste und Notizen ändern, Gäste werden auf Wunsch informiert

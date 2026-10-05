@@ -27,6 +27,10 @@ final class AccountSession: Identifiable {
     let client: GmailClient
     /// The account's Google Calendar.
     let calendar: CalendarStore
+    /// Google Drive, for sending large files as links.
+    let drive: DriveClient
+    /// The scopes the tokens were granted with (nil for the demo account).
+    let grantedScope: String?
     private let tokenManager: TokenManager
 
     var labels: [GmailLabel] = []
@@ -54,6 +58,26 @@ final class AccountSession: Identifiable {
         let gmail = GmailClient(tokens: tokenManager, transport: transport)
         client = gmail
         calendar = CalendarStore(accountID: email, client: CalendarClient(api: gmail), grantedScope: tokens.scope)
+        drive = DriveClient(api: gmail)
+        grantedScope = tokens.scope
+    }
+
+    /// False for accounts signed in before MailMeG asked for Google Drive access.
+    var hasDriveAccess: Bool {
+        grantedScope == nil || DriveClient.isGranted(scope: grantedScope)
+    }
+
+    private var driveFolderKey: String { "drive.folder.\(id)" }
+
+    /// The "MailMeG" folder in Drive that holds sent files; created on first use.
+    func driveFolderID() async throws -> String {
+        if let stored = UserDefaults.standard.string(forKey: driveFolderKey),
+           (try? await drive.file(id: stored)) != nil {
+            return stored
+        }
+        let folder = try await drive.createFolder(named: tr("MailMeG-Anhänge", "MailMeG attachments"))
+        UserDefaults.standard.set(folder.id, forKey: driveFolderKey)
+        return folder.id
     }
 
     var sender: EmailAddress { EmailAddress(name: displayName, address: email) }

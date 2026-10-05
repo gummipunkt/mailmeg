@@ -165,7 +165,7 @@ public enum RichTextHTML {
     }
 
     /// Splits runs at a UTF-16 offset into the joined text.
-    static func split(_ runs: [RichTextRun], atUTF16 offset: Int) -> ([RichTextRun], [RichTextRun]) {
+    public static func split(_ runs: [RichTextRun], atUTF16 offset: Int) -> ([RichTextRun], [RichTextRun]) {
         var before: [RichTextRun] = []
         var after: [RichTextRun] = []
         var position = 0
