@@ -220,6 +220,22 @@ extension View {
     }
 }
 
+extension View {
+    /// Frosted backing for bars that float above scrolling content (list header, action bar),
+    /// so rows passing underneath are blurred instead of mixing with the controls.
+    func frostedBar(tint: Color) -> some View {
+        background {
+            ZStack {
+                Rectangle().fill(.regularMaterial)
+                tint.opacity(0.55)
+            }
+        }
+        .overlay(alignment: .bottom) {
+            Divider().opacity(0.6)
+        }
+    }
+}
+
 /// Round frosted button, as in Airmail's toolbar.
 struct GlassCircleButton: View {
     let systemImage: String

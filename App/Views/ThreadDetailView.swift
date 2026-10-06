@@ -57,6 +57,7 @@ struct ThreadDetailView: View {
         .padding(.horizontal, 18)
         .padding(.top, 8)
         .padding(.bottom, 8)
+        .frostedBar(tint: Theme.canvas)
     }
 
     private func actionButtons(compact: Bool) -> some View {

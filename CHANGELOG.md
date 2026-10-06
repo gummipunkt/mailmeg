@@ -3,6 +3,11 @@
 Alle nennenswerten Änderungen an MailMeG. Versionen folgen [Semantic Versioning](https://semver.org/lang/de/).
 All notable changes to MailMeG. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.8.1] – 2026-10-06
+
+- Suchfeld und Kopfzeile der Nachrichtenliste sowie die Buttonleiste über der Konversation haben jetzt einen Milchglas-Hintergrund; beim Scrollen vermischen sich E-Mails nicht mehr mit den Bedienelementen
+  · The message list header with the search field and the button bar above the conversation now have a frosted background; scrolling emails no longer mix with the controls
+
 ## [1.8.0] – 2026-10-05
 
 - Dateien über Google Drive senden: der neue Button „Google Drive“ lädt Dateien hoch und fügt einen Link in die E-Mail ein – ideal für ZIPs und große Dateien; mit Fortschrittsanzeige

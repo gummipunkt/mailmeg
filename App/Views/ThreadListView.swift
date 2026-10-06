@@ -109,6 +109,7 @@ struct ThreadListView: View {
         .padding(.horizontal, 14)
         .padding(.top, 8)
         .padding(.bottom, 10)
+        .frostedBar(tint: Theme.listBackground)
     }
 
     private var subtitle: String {
