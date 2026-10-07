@@ -11,6 +11,8 @@ All notable changes to MailMeG. Versions follow [Semantic Versioning](https://se
   · All accounts in one calendar: the sidebar shows the month, each account’s calendars to show or hide (read-only ones with a lock) and “Waiting for your answer” with open invitations
 - Neue Agenda-Ansicht und Terminsuche (⌘F); ganztägige Termine laufen über mehrere Tage, offene Einladungen sind gestrichelt, Abwesenheiten schraffiert, Fokuszeit markiert, der Arbeitsort steht neben dem Datum
   · New agenda view and event search (⌘F); all-day events span several days, open invitations are dashed, out-of-office time is striped, focus time is marked, the working location is shown next to the date
+- **Mehrere E-Mails auswählen**: ⌘A in der Liste, ⇧/⌘-Klick oder „Alle auswählen“ unter der Suche – auf Wunsch über alle Seiten der Suchergebnisse; dann gemeinsam archivieren, löschen, als (un)gelesen oder Spam markieren, per Button, Rechtsklick oder Tastenkürzel
+  · **Select several emails**: ⌘A in the list, ⇧/⌘-click or “Select All” below the search – across all pages of search results if you like; then archive, delete, mark as (un)read or spam together, via button, right-click or shortcut
 
 ## [1.8.1] – 2026-10-06
 

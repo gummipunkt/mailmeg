@@ -202,7 +202,7 @@ private struct CalendarWeekView: View {
     @State private var dragging: (id: String, translation: CGSize)?
 
     private let hourHeight: CGFloat = 52
-    private let gutter: CGFloat = 62
+    private let gutter: CGFloat = 72
     private let trailing: CGFloat = 10
     private let calendar = Calendar.current
 
@@ -243,7 +243,7 @@ private struct CalendarWeekView: View {
                     .foregroundStyle(isToday ? Color.accentColor : Color.primary)
                 if let location = view.workingLocation(on: day) {
                     Text(location)
-                        .font(.system(size: 10.5, weight: .medium))
+                        .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(isToday ? Color.accentColor.opacity(0.85) : Color.secondary)
                         .lineLimit(1)
                 }
@@ -251,7 +251,7 @@ private struct CalendarWeekView: View {
             .foregroundStyle(isToday ? Color.accentColor : Color.secondary)
             .lineLimit(1)
             .minimumScaleFactor(0.75)
-            .padding(.horizontal, 10)
+            .padding(.horizontal, 8)
             .frame(height: 26)
             .background {
                 if isToday { Capsule().fill(Color.accentColor.opacity(0.14)) }
@@ -915,32 +915,35 @@ private struct EventBlock: View {
             .font(.system(size: 11.5, weight: .semibold))
             .strikethrough(event.myResponse == .declined)
         if height < 34 {
-            HStack(spacing: 5) {
-                title.lineLimit(1)
-                if let start = event.startDate {
-                    Text(start.formatted(date: .omitted, time: .shortened))
-                        .font(.system(size: 10.5).monospacedDigit())
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .layoutPriority(-1)
+            // Title and start time when both fit, otherwise just the title.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 5) {
+                    title.lineLimit(1).fixedSize()
+                    if let start = event.startDate {
+                        Text(start.formatted(date: .omitted, time: .shortened))
+                            .font(.system(size: 10.5).monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .fixedSize()
+                    }
                 }
+                title.lineLimit(1)
             }
             .padding(.horizontal, 6)
             .frame(maxHeight: .infinity)
         } else {
             VStack(alignment: .leading, spacing: 2) {
+                title.lineLimit(height >= 60 ? 2 : 1)
                 HStack(spacing: 4) {
                     if event.isFocusTime {
                         Image(systemName: "scope")
-                            .font(.system(size: 10, weight: .semibold))
+                            .font(.system(size: 9.5, weight: .semibold))
                             .foregroundStyle(color)
                     }
-                    title.lineLimit(height >= 60 ? 2 : 1)
+                    Text(CalendarFormat.shortTimeRange(event))
+                        .font(.system(size: 10.5).monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
-                Text(CalendarFormat.shortTimeRange(event))
-                    .font(.system(size: 10.5).monospacedDigit())
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
                 if height >= 74, let location = event.location, !location.isEmpty {
                     Text(location)
                         .font(.system(size: 10.5))

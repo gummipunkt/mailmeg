@@ -96,6 +96,19 @@ final class MailboxModel {
         Task { await loadMore() }
     }
 
+    /// Loads further pages until the list is complete or holds `limit` conversations.
+    func loadAll(limit: Int) async {
+        while nextPageToken != nil, threads.count < limit {
+            if isLoadingMore || isLoading {
+                try? await Task.sleep(for: .milliseconds(100))
+                continue
+            }
+            let before = threads.count
+            await loadMore()
+            if threads.count == before { break }
+        }
+    }
+
     func loadMore() async {
         guard let token = nextPageToken, !isLoadingMore else { return }
         let current = generation

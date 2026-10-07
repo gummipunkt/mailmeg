@@ -7,7 +7,7 @@ struct ThreadListView: View {
     @Bindable var mailbox: MailboxModel
 
     var body: some View {
-        List(selection: Binding(get: { model.selectedThreadID }, set: { model.selectThread($0) })) {
+        List(selection: Binding(get: { model.selectedThreadIDs }, set: { model.setThreadSelection($0) })) {
             ForEach(mailbox.threads) { thread in
                 ThreadRow(
                     thread: thread,
@@ -31,11 +31,13 @@ struct ThreadListView: View {
         }
         // Right-click menu, and double-click (or Return) on a draft to keep writing it.
         .contextMenu(forSelectionType: String.self) { ids in
-            if let id = ids.first, let thread = mailbox.thread(id: id) {
+            if ids.count > 1 {
+                bulkContextMenu(for: ids)
+            } else if let id = ids.first, let thread = mailbox.thread(id: id) {
                 contextMenu(for: thread)
             }
         } primaryAction: { ids in
-            guard let id = ids.first, let thread = mailbox.thread(id: id),
+            guard ids.count == 1, let id = ids.first, let thread = mailbox.thread(id: id),
                   thread.labelIDs.contains(SystemLabel.draft) else { return }
             openDraft(thread)
         }
@@ -83,6 +85,9 @@ struct ThreadListView: View {
                         Label(tr("Nur ungelesene", "Unread Only"), systemImage: "envelope.badge").tag(true)
                     }
                     .pickerStyle(.inline)
+                    Divider()
+                    Button(tr("Alle auswählen", "Select All")) { model.selectAllThreads() }
+                        .disabled(mailbox.threads.isEmpty)
                 }
                 .accessibilityIdentifier("mailbox.filter")
 
@@ -105,11 +110,65 @@ struct ThreadListView: View {
                 .accessibilityIdentifier("compose")
             }
             SearchField(text: $mailbox.searchText) { mailbox.submitSearch() }
+            if !mailbox.activeQuery.isEmpty || model.isMultipleSelection {
+                selectionBar
+            }
         }
         .padding(.horizontal, 14)
         .padding(.top, 8)
         .padding(.bottom, 10)
         .frostedBar(tint: Theme.listBackground)
+    }
+
+    /// Result count and selection buttons, shown for searches and when several
+    /// conversations are selected.
+    private var selectionBar: some View {
+        HStack(spacing: 8) {
+            Text(selectionSummary)
+                .font(.system(size: 11.5, weight: .medium))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .accessibilityIdentifier("list.selectionSummary")
+            if model.isSelectingAll {
+                ProgressView().controlSize(.mini)
+            }
+            Spacer(minLength: 4)
+            if model.isMultipleSelection {
+                if mailbox.nextPageToken != nil, model.selectedThreadIDs.count >= mailbox.threads.count {
+                    selectionButton(tr("Alle Ergebnisse", "All Results"), identifier: "list.selectAllResults") { model.selectAllThreads() }
+                }
+                selectionButton(tr("Auswahl aufheben", "Deselect"), identifier: "list.clearSelection") { model.clearThreadSelection() }
+            } else if !mailbox.threads.isEmpty {
+                selectionButton(tr("Alle auswählen", "Select All"), identifier: "list.selectAll") { model.selectAllThreads() }
+            }
+        }
+        .padding(.horizontal, 4)
+        .frame(height: 22)
+    }
+
+    private func selectionButton(_ title: String, identifier: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 11.5, weight: .semibold))
+                .foregroundStyle(Color.accentColor)
+                .padding(.horizontal, 9)
+                .frame(height: 22)
+                .background(Capsule().fill(Color.accentColor.opacity(0.12)))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(model.isSelectingAll)
+        .accessibilityIdentifier(identifier)
+    }
+
+    private var selectionSummary: String {
+        let selected = model.selectedThreadIDs.count
+        if selected > 1 {
+            return tr("\(selected) ausgewählt", "\(selected) selected")
+        }
+        let count = mailbox.threads.count
+        let total = "\(count)\(mailbox.nextPageToken != nil ? "+" : "")"
+        return count == 1 ? tr("1 Ergebnis", "1 result") : tr("\(total) Ergebnisse", "\(total) results")
     }
 
     private var subtitle: String {
@@ -134,6 +193,32 @@ struct ThreadListView: View {
                 ContentUnavailableView(tr("Keine E-Mails", "No Email"), systemImage: "tray", description: Text(tr("Dieser Ordner ist leer.", "This folder is empty.")))
             }
         }
+    }
+
+    /// Right-click on several selected conversations.
+    @ViewBuilder
+    private func bulkContextMenu(for ids: Set<String>) -> some View {
+        let threads = mailbox.threads.filter { ids.contains($0.id) }
+        Button(tr("\(threads.count) als gelesen markieren", "Mark \(threads.count) as Read")) { bulk(.markRead, ids) }
+        Button(tr("\(threads.count) als ungelesen markieren", "Mark \(threads.count) as Unread")) { bulk(.markUnread, ids) }
+        Button(threads.allSatisfy(\.isStarred) ? tr("Markierungen entfernen", "Remove Stars") : tr("Alle markieren", "Star All")) {
+            bulk(threads.allSatisfy(\.isStarred) ? .unstar : .star, ids)
+        }
+        Divider()
+        if mailbox.labelID == SystemLabel.trash {
+            Button(tr("Wiederherstellen", "Restore")) { bulk(.untrash, ids) }
+        } else if mailbox.labelID == SystemLabel.spam {
+            Button(tr("Kein Spam", "Not Spam")) { bulk(.notSpam, ids) }
+        } else {
+            Button(tr("Archivieren", "Archive")) { bulk(.archive, ids) }
+            Button(tr("Als Spam melden", "Report Spam")) { bulk(.reportSpam, ids) }
+            Button(tr("In den Papierkorb", "Move to Trash")) { bulk(.trash, ids) }
+        }
+    }
+
+    private func bulk(_ action: ThreadAction, _ ids: Set<String>) {
+        model.setThreadSelection(ids)
+        model.performOnSelection(action)
     }
 
     @ViewBuilder

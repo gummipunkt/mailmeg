@@ -46,20 +46,24 @@ struct MailCommands: Commands {
             Divider()
             Button(tr("Archivieren", "Archive")) { model.perform(.archive) }
                 .keyboardShortcut("a", modifiers: [.command, .control])
-                .disabled(model.selectedThreadID == nil)
+                .disabled(!model.hasThreadSelection)
             Button(tr("In den Papierkorb", "Move to Trash")) { model.perform(.trash) }
                 .keyboardShortcut(.delete, modifiers: .command)
-                .disabled(model.selectedThreadID == nil)
+                .disabled(!model.hasThreadSelection)
             Button(tr("Als Spam melden", "Report Spam")) { model.perform(.reportSpam) }
                 .keyboardShortcut("j", modifiers: [.command, .shift])
-                .disabled(model.selectedThreadID == nil)
+                .disabled(!model.hasThreadSelection)
             Divider()
-            Button(model.selectedThread?.isUnread == true ? tr("Als gelesen markieren", "Mark as Read") : tr("Als ungelesen markieren", "Mark as Unread")) { model.toggleRead() }
+            Button(model.selectedThreads.contains(where: \.isUnread) ? tr("Als gelesen markieren", "Mark as Read") : tr("Als ungelesen markieren", "Mark as Unread")) { model.toggleRead() }
                 .keyboardShortcut("u", modifiers: [.command, .shift])
-                .disabled(model.selectedThreadID == nil)
-            Button(model.selectedThread?.isStarred == true ? tr("Markierung entfernen", "Remove Star") : tr("Markieren", "Star")) { model.toggleStar() }
+                .disabled(!model.hasThreadSelection)
+            Button(!model.selectedThreads.isEmpty && model.selectedThreads.allSatisfy(\.isStarred) ? tr("Markierung entfernen", "Remove Star") : tr("Markieren", "Star")) { model.toggleStar() }
                 .keyboardShortcut("l", modifiers: [.command, .shift])
-                .disabled(model.selectedThreadID == nil)
+                .disabled(!model.hasThreadSelection)
+            Divider()
+            Button(tr("Alle Konversationen auswählen", "Select All Conversations")) { model.selectAllThreads() }
+                .keyboardShortcut("a", modifiers: [.command, .option])
+                .disabled(model.mailbox?.threads.isEmpty ?? true)
             Divider()
             Button(tr("Vorherige Konversation", "Previous Conversation")) { model.selectAdjacentThread(-1) }
                 .keyboardShortcut(.upArrow, modifiers: [.command, .option])

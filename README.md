@@ -18,6 +18,8 @@ mit Beispiel-E-Mails, Kalender und Einladung.
 - **Konversationsansicht** wie in Gmail: ältere gelesene Nachrichten sind eingeklappt, Labels und
   „Wichtig“ stehen als farbige Chips in Liste und Konversation
 - **Suche** mit der vollen Gmail-Syntax (`from:`, `has:attachment`, `older_than:` …) und Filter „Nur ungelesene“
+- **Mehrfachauswahl**: ⌘A, ⇧/⌘-Klick oder „Alle auswählen“ (auch über alle Suchergebnisse) und dann gemeinsam
+  archivieren, löschen, als gelesen/ungelesen, markiert oder Spam kennzeichnen
 - **Aktionen**: Antworten, Allen antworten, Weiterleiten, Archivieren, Löschen, Wiederherstellen, Spam,
   Gelesen/Ungelesen, Markieren, Labels zuweisen; per Hover direkt in der Liste, per Rechtsklick oder Tastatur
 - **Vorherige/nächste Konversation** mit ⌥⌘↑/↓ oder den Pfeil-Buttons
@@ -100,6 +102,7 @@ mit Beispiel-E-Mails, Kalender und Einladung.
 | ⇧⌘J | Als Spam melden | ⇧⌘N | Neue E-Mails abrufen |
 | ⌥⌘↑ / ⌥⌘↓ | Vorherige/nächste Konversation | ⌘1 / ⌘2 | Mail / Kalender |
 | ⌥⌘E | Termin aus E-Mail | ⌥⌘U / ⇧⌘H | Quelltext / Header |
+| ⌘A | Alle in der Liste auswählen | ⌥⌘A | Alle Ergebnisse auswählen |
 | ⌘S | Entwurf sichern | ⌘B / ⌘I / ⌘U / ⌘K | Fett / Kursiv / Unterstrichen / Link |
 
 ## Installation (fertige DMG, ohne Xcode)

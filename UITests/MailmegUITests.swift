@@ -274,6 +274,48 @@ final class MailmegUITests: XCTestCase {
         element(app, "calendar.mode.week").click()
     }
 
+    func testSelectSearchResultsAndBulkActions() {
+        let app = launch(["--demo"])
+        XCTAssertTrue(element(app, "thread.t-projektplan").waitForExistence(timeout: 20))
+        let search = element(app, "mailbox.search")
+        search.click()
+        search.typeText("Q4\r")
+        let gone = NSPredicate(format: "exists == false")
+        expectation(for: gone, evaluatedWith: element(app, "thread.t-kaffee"))
+        waitForExpectations(timeout: 10)
+
+        // Select all results with the button under the search field.
+        let selectAll = element(app, "list.selectAll")
+        XCTAssertTrue(selectAll.waitForExistence(timeout: 10), "Search results offer “Select All”")
+        selectAll.click()
+        let count = element(app, "selection.count")
+        XCTAssertTrue(count.waitForExistence(timeout: 10), "Several selected conversations show the bulk actions")
+        XCTAssertTrue(((count.value as? String) ?? count.label).contains("2"), "Both Q4 conversations are selected")
+        sleep(1)
+        snapshot("20-auswahl", of: app.windows.firstMatch.screenshot())
+
+        element(app, "selection.archive").click()
+        expectation(for: gone, evaluatedWith: element(app, "thread.t-projektplan"))
+        expectation(for: gone, evaluatedWith: element(app, "thread.t-einladung"))
+        waitForExpectations(timeout: 10)
+
+        // Back to the inbox, then ⌘A in the list.
+        search.click()
+        app.typeKey("a", modifierFlags: .command)
+        app.typeKey(.delete, modifierFlags: [])
+        let coffee = element(app, "thread.t-kaffee")
+        XCTAssertTrue(coffee.waitForExistence(timeout: 10))
+        coffee.click()
+        XCTAssertTrue(element(app, "detail.subject").waitForExistence(timeout: 10))
+        coffee.click()
+        app.typeKey("a", modifierFlags: .command)
+        XCTAssertTrue(element(app, "selection.count").waitForExistence(timeout: 10), "⌘A selects all conversations of the list")
+        XCTAssertTrue(element(app, "list.clearSelection").exists)
+        element(app, "list.clearSelection").click()
+        expectation(for: gone, evaluatedWith: element(app, "selection.count"))
+        waitForExpectations(timeout: 10)
+    }
+
     func testInvitationCardInEmail() {
         let app = launch(["--demo"])
         let thread = element(app, "thread.t-einladung")

@@ -27,6 +27,10 @@ final class AppModel {
     private(set) var calendarView: CalendarViewState?
     private(set) var selection: MailboxSelection?
     private(set) var selectedThreadID: String?
+    /// All selected conversations; more than one shows the bulk actions instead of a conversation.
+    private(set) var selectedThreadIDs: Set<String> = []
+    /// True while "Select All" loads the remaining pages of the list.
+    private(set) var isSelectingAll = false
     private(set) var isSigningIn = false
     private(set) var isDemo = false
     /// True while the saved accounts are being read from the keychain at launch.
@@ -267,7 +271,44 @@ final class AppModel {
         Task { await mailbox.reload() }
     }
 
+    /// Selection from the list: one conversation opens it, several show the bulk actions.
+    func setThreadSelection(_ ids: Set<String>) {
+        guard ids.count > 1 else {
+            selectThread(ids.first)
+            return
+        }
+        selectedThreadIDs = ids
+        selectedThreadID = nil
+        threadDetail = nil
+    }
+
+    /// Selects every conversation of the list (all results of a search), loading the
+    /// remaining pages first – up to `limit` conversations.
+    func selectAllThreads(limit: Int = 1000) {
+        guard let mailbox, !isSelectingAll else { return }
+        isSelectingAll = true
+        Task {
+            await mailbox.loadAll(limit: limit)
+            isSelectingAll = false
+            guard self.mailbox === mailbox else { return }
+            setThreadSelection(Set(mailbox.threads.map(\.id)))
+        }
+    }
+
+    func clearThreadSelection() {
+        selectThread(nil)
+    }
+
+    var hasThreadSelection: Bool { !selectedThreadIDs.isEmpty }
+    var isMultipleSelection: Bool { selectedThreadIDs.count > 1 }
+
+    /// The selected conversations, in list order.
+    var selectedThreads: [ThreadSummary] {
+        mailbox?.threads.filter { selectedThreadIDs.contains($0.id) } ?? []
+    }
+
     func selectThread(_ threadID: String?) {
+        selectedThreadIDs = threadID.map { [$0] } ?? []
         guard threadID != selectedThreadID || (threadID != nil && threadDetail == nil) else { return }
         selectedThreadID = threadID
         guard let mailbox, let threadID else {
@@ -300,6 +341,10 @@ final class AppModel {
     var selectedThread: ThreadSummary? { mailbox?.thread(id: selectedThreadID) }
 
     func perform(_ action: ThreadAction, threadID: String? = nil) {
+        if threadID == nil, isMultipleSelection {
+            performOnSelection(action)
+            return
+        }
         guard let mailbox, let id = threadID ?? selectedThreadID else { return }
         let position = mailbox.threads.firstIndex { $0.id == id }
         Task {
@@ -314,6 +359,31 @@ final class AppModel {
                 }
             } else if id == selectedThreadID, Self.reloadsDetail(action) {
                 await threadDetail?.load()
+            }
+            updateDockBadge()
+        }
+    }
+
+    /// Applies an action to all selected conversations, a few at a time.
+    func performOnSelection(_ action: ThreadAction) {
+        guard let mailbox else { return }
+        let ids = selectedThreads.map(\.id)
+        guard !ids.isEmpty else { return }
+        Task {
+            var removed = 0
+            var start = 0
+            while start < ids.count {
+                let chunk = ids[start..<min(start + 5, ids.count)]
+                start += chunk.count
+                await withTaskGroup(of: Bool.self) { group in
+                    for id in chunk {
+                        group.addTask { await mailbox.perform(action, on: id) }
+                    }
+                    for await gone in group where gone { removed += 1 }
+                }
+            }
+            if removed > 0, self.mailbox === mailbox {
+                setThreadSelection(selectedThreadIDs.filter { id in mailbox.thread(id: id) != nil })
             }
             updateDockBadge()
         }
@@ -344,14 +414,18 @@ final class AppModel {
         return threads.indices.contains(index + offset)
     }
 
+    /// Marks as read if anything selected is unread, otherwise as unread.
     func toggleRead() {
-        guard let thread = selectedThread else { return }
-        perform(thread.isUnread ? .markRead : .markUnread)
+        let threads = selectedThreads
+        guard !threads.isEmpty else { return }
+        perform(threads.contains(where: \.isUnread) ? .markRead : .markUnread)
     }
 
+    /// Stars everything selected unless it is all starred already.
     func toggleStar() {
-        guard let thread = selectedThread else { return }
-        perform(thread.isStarred ? .unstar : .star)
+        let threads = selectedThreads
+        guard !threads.isEmpty else { return }
+        perform(threads.allSatisfy(\.isStarred) ? .unstar : .star)
     }
 
     // MARK: - Compose
