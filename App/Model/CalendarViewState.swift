@@ -5,12 +5,13 @@ import SwiftUI
 
 /// One event together with the account it belongs to. The calendar shows the events
 /// of all accounts side by side.
+@MainActor
 struct CalendarEntry: Identifiable {
     let account: AccountSession
     let event: CalendarEvent
 
-    var id: String { Self.id(accountID: account.id, eventKey: event.key) }
-    static func id(accountID: String, eventKey: String) -> String { "\(accountID)#\(eventKey)" }
+    nonisolated var id: String { Self.id(accountID: account.id, eventKey: event.key) }
+    nonisolated static func id(accountID: String, eventKey: String) -> String { "\(accountID)#\(eventKey)" }
 
     var store: CalendarStore { account.calendar }
     var color: Color { store.color(for: event) }

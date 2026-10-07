@@ -818,6 +818,7 @@ private struct AgendaRow: View {
 // MARK: - Layout
 
 /// Places overlapping events side by side.
+@MainActor
 enum TimelineLayout {
     struct Item: Identifiable {
         let entry: CalendarEntry
