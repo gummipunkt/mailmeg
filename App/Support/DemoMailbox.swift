@@ -705,6 +705,7 @@ private struct DemoEvent {
     var attendees: [DemoAttendee] = []
     var uid: String? = nil
     var meetLink: String? = nil
+    var eventType: String? = nil
 
     var json: [String: Any] {
         func time(_ date: Date) -> [String: Any] {
@@ -719,6 +720,7 @@ private struct DemoEvent {
         if let location { result["location"] = location }
         if let description { result["description"] = description }
         if let meetLink { result["hangoutLink"] = meetLink }
+        if let eventType { result["eventType"] = eventType }
         if !attendees.isEmpty {
             result["attendees"] = attendees.map(\.json)
             if let organizer = attendees.first(where: \.organizer) {
@@ -769,11 +771,26 @@ private enum DemoCalendar {
             guard weekday != 1 && weekday != 7 else { continue }
             events.append(DemoEvent(id: "standup-\(day + 10)", calendarID: teamID, summary: "Standup", start: at(day, 9, 30), end: at(day, 9, 45),
                                     location: tr("Teamraum", "Team room")))
+            // Where Alex works that day, shown next to the date.
+            let home = weekday == 2 || weekday == 4
+            events.append(DemoEvent(id: "where-\(day + 10)", calendarID: DemoMailbox.email,
+                                    summary: home ? tr("Homeoffice", "Home") : tr("Büro", "Office"),
+                                    start: at(day), end: at(day + 1), allDay: true, eventType: "workingLocation"))
         }
         var oneOnOne = DemoEvent(id: "one-on-one", calendarID: DemoMailbox.email, summary: tr("1:1 mit Anna", "1:1 with Anna"), start: at(0, 11), end: at(0, 11, 30))
         oneOnOne.attendees = [me, DemoAttendee(email: anna.email, name: anna.name, status: "accepted", organizer: true)]
         events.append(oneOnOne)
-        events.append(DemoEvent(id: "focus", calendarID: DemoMailbox.email, summary: tr("Fokuszeit: Projektplan", "Focus time: project plan"), start: at(0, 14), end: at(0, 16)))
+        events.append(DemoEvent(id: "focus", calendarID: DemoMailbox.email, summary: tr("Fokuszeit: Projektplan", "Focus time: project plan"), start: at(0, 14), end: at(0, 16),
+                                eventType: "focusTime"))
+        events.append(DemoEvent(id: "away", calendarID: DemoMailbox.email, summary: tr("Abwesend", "Out of office"), start: at(2, 14), end: at(2, 17),
+                                eventType: "outOfOffice"))
+        var quarterly = DemoEvent(id: "quarterly", calendarID: DemoMailbox.email, summary: tr("Quartalsrückblick", "Quarterly review"),
+                                  start: at(1, 16, 30), end: at(1, 17, 30), location: tr("Raum 2.01", "Room 2.01"))
+        quarterly.attendees = [
+            DemoAttendee(email: lena.email, name: lena.name, status: "accepted", organizer: true),
+            DemoAttendee(email: DemoMailbox.email, name: DemoMailbox.displayName, status: "needsAction", isSelf: true),
+        ]
+        events.append(quarterly)
         events.append(DemoEvent(id: "sprint", calendarID: teamID, summary: tr("Sprint-Planung", "Sprint planning"), start: at(-1, 10), end: at(-1, 12),
                                 location: tr("Raum 3.14", "Room 3.14")))
         events.append(DemoEvent(id: "lunch", calendarID: DemoMailbox.email, summary: tr("Mittagessen mit Mia", "Lunch with Mia"), start: at(1, 12, 30), end: at(1, 13, 30),

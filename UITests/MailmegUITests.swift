@@ -230,8 +230,9 @@ final class MailmegUITests: XCTestCase {
         XCTAssertTrue(element(app, "thread.t-projektplan").waitForExistence(timeout: 20))
         XCTAssertTrue(element(app, "sidebar.today").waitForExistence(timeout: 10), "Today's events should be listed in the sidebar")
 
-        element(app, "sidebar.__CALENDAR__").click()
-        XCTAssertTrue(element(app, "calendar.title").waitForExistence(timeout: 10), "The calendar should open from the sidebar")
+        element(app, "section.calendar").click()
+        XCTAssertTrue(element(app, "calendar.title").waitForExistence(timeout: 10), "The calendar tab should open")
+        XCTAssertTrue(element(app, "waiting.design-review").waitForExistence(timeout: 10), "Unanswered invitations are listed in the sidebar")
         // The design review is two days from now.
         let reviewDay = element(app, "calendar.day.\(dayID(2))")
         XCTAssertTrue(reviewDay.waitForExistence(timeout: 10))
@@ -255,6 +256,22 @@ final class MailmegUITests: XCTestCase {
         XCTAssertTrue(element(app, "event.design-review").waitForExistence(timeout: 5))
         sleep(1)
         snapshot("14-kalender-tag", of: app.windows.firstMatch.screenshot())
+
+        // The other open invitation, from the sidebar.
+        element(app, "waiting.quarterly").click()
+        XCTAssertTrue(element(app, "event.detail").waitForExistence(timeout: 5), "A waiting invitation opens its details")
+        app.typeKey(.escape, modifierFlags: [])
+
+        element(app, "calendar.mode.agenda").click()
+        XCTAssertTrue(element(app, "agenda.quarterly").waitForExistence(timeout: 5), "The agenda lists the coming days")
+        sleep(1)
+        snapshot("19-kalender-agenda", of: app.windows.firstMatch.screenshot())
+
+        // Back to mail with the tab.
+        element(app, "section.mail").click()
+        XCTAssertTrue(element(app, "thread.t-projektplan").waitForExistence(timeout: 10), "The mail tab keeps the mailbox")
+        element(app, "section.calendar").click()
+        element(app, "calendar.mode.week").click()
     }
 
     func testInvitationCardInEmail() {
@@ -291,14 +308,17 @@ final class MailmegUITests: XCTestCase {
         expectation(for: closed, evaluatedWith: title)
         waitForExpectations(timeout: 10)
 
-        app.typeKey("k", modifierFlags: [.command, .option])
+        app.typeKey("2", modifierFlags: .command)
+        XCTAssertTrue(element(app, "calendar.mode.agenda").waitForExistence(timeout: 10), "⌘2 should open the calendar")
+        element(app, "calendar.mode.agenda").click()
         XCTAssertTrue(element(app, "agenda.demo-new-1").waitForExistence(timeout: 10), "The new event should be in the calendar")
+        element(app, "calendar.mode.week").click()
     }
 
     func testEditDeleteEventAndMonthView() {
         let app = launch(["--demo"])
         XCTAssertTrue(element(app, "thread.t-projektplan").waitForExistence(timeout: 20))
-        element(app, "sidebar.__CALENDAR__").click()
+        element(app, "section.calendar").click()
         // Lunch with Mia is tomorrow at 12:30.
         let tomorrow = element(app, "calendar.day.\(dayID(1))")
         XCTAssertTrue(tomorrow.waitForExistence(timeout: 10))

@@ -127,12 +127,14 @@ public struct CalendarEvent: Codable, Hashable, Identifiable, Sendable {
     public var organizer: EventPerson?
     public var iCalUID: String?
     public var recurringEventId: String?
+    /// `default`, `outOfOffice`, `focusTime`, `workingLocation` …
+    public var eventType: String?
     /// Not part of the API: the calendar the event was loaded from.
     public var calendarID: String?
 
     public init(id: String, summary: String?, start: EventDateTime, end: EventDateTime, location: String? = nil, description: String? = nil,
                 attendees: [EventAttendee]? = nil, organizer: EventPerson? = nil, iCalUID: String? = nil, htmlLink: String? = nil,
-                hangoutLink: String? = nil, status: String? = "confirmed", calendarID: String? = nil) {
+                hangoutLink: String? = nil, status: String? = "confirmed", eventType: String? = nil, calendarID: String? = nil) {
         self.id = id
         self.summary = summary
         self.start = start
@@ -145,6 +147,7 @@ public struct CalendarEvent: Codable, Hashable, Identifiable, Sendable {
         self.htmlLink = htmlLink
         self.hangoutLink = hangoutLink
         self.status = status
+        self.eventType = eventType
         self.calendarID = calendarID
     }
 
@@ -155,6 +158,10 @@ public struct CalendarEvent: Codable, Hashable, Identifiable, Sendable {
 
     public var isAllDay: Bool { start.isAllDay }
     public var isCancelled: Bool { status == "cancelled" }
+    public var isOutOfOffice: Bool { eventType == "outOfOffice" }
+    public var isFocusTime: Bool { eventType == "focusTime" }
+    /// Working-location entries ("Home", "Office") are not shown as events.
+    public var isWorkingLocation: Bool { eventType == "workingLocation" }
     public var startDate: Date? { start.resolved() }
 
     /// End of the event; all-day ends are exclusive (the day after the last day).

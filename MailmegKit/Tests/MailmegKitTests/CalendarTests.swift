@@ -56,6 +56,18 @@ final class CalendarTests: XCTestCase {
         XCTAssertNil(ICalendar.invitation(from: "BEGIN:VEVENT\nSUMMARY:no uid\nEND:VEVENT"))
     }
 
+    func testEventTypes() throws {
+        let json = #"""
+        [{"id":"a","summary":"Urlaub","eventType":"outOfOffice","start":{"dateTime":"2026-10-08T13:00:00Z"},"end":{"dateTime":"2026-10-08T16:00:00Z"}},
+         {"id":"b","summary":"Home","eventType":"workingLocation","start":{"date":"2026-10-08"},"end":{"date":"2026-10-09"}},
+         {"id":"c","summary":"Meeting","start":{"dateTime":"2026-10-08T09:00:00Z"},"end":{"dateTime":"2026-10-08T10:00:00Z"}}]
+        """#
+        let events = try JSONDecoder().decode([CalendarEvent].self, from: Data(json.utf8))
+        XCTAssertTrue(events[0].isOutOfOffice)
+        XCTAssertTrue(events[1].isWorkingLocation)
+        XCTAssertFalse(events[2].isOutOfOffice || events[2].isWorkingLocation || events[2].isFocusTime)
+    }
+
     func testDateHelpers() {
         XCTAssertEqual(CalendarDates.parseRFC3339("2026-10-08T10:00:00+02:00"), CalendarDates.parseRFC3339("2026-10-08T08:00:00Z"))
         XCTAssertEqual(CalendarDates.parseRFC3339("2026-10-08T08:00:00.000Z"), CalendarDates.parseRFC3339("2026-10-08T08:00:00Z"))

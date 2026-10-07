@@ -23,13 +23,12 @@ struct MailCommands: Commands {
             Button(tr("Neue E-Mails abrufen", "Get New Mail")) { Task { await model.refreshAll() } }
                 .keyboardShortcut("n", modifiers: [.command, .shift])
             Divider()
-            Button(tr("Kalender", "Calendar")) {
-                if let account = model.selection?.accountID ?? model.accounts.first?.id {
-                    model.showCalendar(accountID: account)
-                }
-            }
-            .keyboardShortcut("k", modifiers: [.command, .option])
-            .disabled(model.accounts.isEmpty)
+            Button(tr("Mail", "Mail")) { model.show(.mail) }
+                .keyboardShortcut("1")
+                .disabled(model.accounts.isEmpty)
+            Button(tr("Kalender", "Calendar")) { model.show(.calendar) }
+                .keyboardShortcut("2")
+                .disabled(model.accounts.isEmpty)
             Divider()
             Button(tr("Konto hinzufügen …", "Add Account…")) { Task { await model.signIn() } }
         }

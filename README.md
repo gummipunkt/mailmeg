@@ -52,8 +52,12 @@ mit Beispiel-E-Mails, Kalender und Einladung.
 
 ![Kalender in der Wochenansicht](Design/Screenshots/landing-de-calendar-light.png)
 
-- **Kalender in der Seitenleiste** (⌥⌘K) mit Mini-Monat, Agenda der nächsten Tage und **Tages-, Wochen- und
-  Monatsansicht**, in den Farben deiner Google-Kalender; einzelne Kalender lassen sich ausblenden
+- **Kalender als eigener Tab** neben „Mail“ (⌘1 / ⌘2) über die ganze Fensterbreite, mit **Tages-, Wochen-,
+  Monats- und Agenda-Ansicht** in den Farben deiner Google-Kalender und **Terminsuche** (⌘F)
+- **Alle Konten in einem Kalender**: Mini-Monat, Kalender jedes Kontos zum Ein- und Ausblenden und
+  **„Wartet auf deine Antwort“** mit offenen Einladungen
+- Mehrtägige Termine über mehrere Tage, offene Einladungen gestrichelt, Abwesenheiten schraffiert, Arbeitsort
+  (z. B. Homeoffice) neben dem Datum
 - **„Heute“** unten in der Seitenleiste: die restlichen Termine des Tages auf einen Blick
 - **Termine anlegen** (⌥⌘N), auch **direkt aus einer E-Mail** (⌥⌘E) mit Betreff und Beteiligten als Gäste
 - **Termine bearbeiten, löschen und per Drag & Drop verschieben** (15-Minuten-Schritte, in der Woche auch auf
@@ -94,7 +98,7 @@ mit Beispiel-E-Mails, Kalender und Einladung.
 | ⌃⌘A | Archivieren | ⌘⌫ | In den Papierkorb |
 | ⇧⌘U | Gelesen/Ungelesen | ⇧⌘L | Markieren |
 | ⇧⌘J | Als Spam melden | ⇧⌘N | Neue E-Mails abrufen |
-| ⌥⌘↑ / ⌥⌘↓ | Vorherige/nächste Konversation | ⌥⌘K | Kalender |
+| ⌥⌘↑ / ⌥⌘↓ | Vorherige/nächste Konversation | ⌘1 / ⌘2 | Mail / Kalender |
 | ⌥⌘E | Termin aus E-Mail | ⌥⌘U / ⇧⌘H | Quelltext / Header |
 | ⌘S | Entwurf sichern | ⌘B / ⌘I / ⌘U / ⌘K | Fett / Kursiv / Unterstrichen / Link |
 

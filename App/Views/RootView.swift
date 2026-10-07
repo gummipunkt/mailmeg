@@ -6,14 +6,26 @@ struct RootView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
+        if model.section == .calendar, let calendarView = model.calendarView {
+            // The calendar takes the whole width next to the sidebar.
+            NavigationSplitView {
+                CalendarSidebarView(view: calendarView)
+                    .navigationSplitViewColumnWidth(min: 220, ideal: 256, max: 340)
+            } detail: {
+                CalendarMainView(view: calendarView)
+            }
+        } else {
+            mail
+        }
+    }
+
+    private var mail: some View {
         NavigationSplitView {
             SidebarView()
                 .navigationSplitViewColumnWidth(min: 200, ideal: 236, max: 320)
         } content: {
             Group {
-                if let calendarView = model.calendarView {
-                    CalendarColumnView(view: calendarView)
-                } else if let mailbox = model.mailbox {
+                if let mailbox = model.mailbox {
                     ThreadListView(mailbox: mailbox)
                 } else {
                     ContentUnavailableView(tr("Kein Postfach ausgewählt", "No Mailbox Selected"), systemImage: "tray")
@@ -22,9 +34,7 @@ struct RootView: View {
             }
             .navigationSplitViewColumnWidth(min: 300, ideal: 380, max: 560)
         } detail: {
-            if let calendarView = model.calendarView {
-                CalendarTimelineView(view: calendarView)
-            } else if let detail = model.threadDetail {
+            if let detail = model.threadDetail {
                 ThreadDetailView(detail: detail)
                     .id(detail.threadID)
             } else {

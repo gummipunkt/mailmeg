@@ -23,7 +23,7 @@ struct SidebarView: View {
                         }
                         .buttonStyle(.plain)
                     }
-                    ForEach(entries(account.systemItems + [account.calendarItem], of: account), id: \.selection) { entry in
+                    ForEach(entries(account.systemItems, of: account), id: \.selection) { entry in
                         row(entry)
                     }
                 } header: {
@@ -47,17 +47,115 @@ struct SidebarView: View {
         }
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            SectionSwitch()
+        }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: 0) {
                 TodayAgendaView()
-                footer
+                SidebarFooter()
             }
         }
         .glassBackground(.sidebar)
     }
 
-    /// Fetch status and quick access to refresh and settings, at the foot of the sidebar.
-    private var footer: some View {
+    /// Rows are identified by their full selection value. List matches a row's tag
+    /// against the selection type, so a plain label ID would make rows unselectable.
+    private func entries(_ items: [SidebarItem], of account: AccountSession) -> [SidebarEntry] {
+        items.map { SidebarEntry(selection: MailboxSelection(accountID: account.id, labelID: $0.id), item: $0) }
+    }
+
+    private func row(_ entry: SidebarEntry) -> some View {
+        let item = entry.item
+        return Label {
+            Text(item.title)
+        } icon: {
+            Image(systemName: item.systemImage)
+                .foregroundStyle(tint(for: item))
+        }
+        .padding(.leading, CGFloat(item.indent) * 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        // The whole row reacts to clicks, independent of List's own selection handling.
+        .simultaneousGesture(TapGesture().onEnded {
+            DebugLog.log("sidebar row tapped: \(item.id)")
+            model.select(entry.selection)
+        })
+        .badge(item.unread)
+        .tag(entry.selection)
+        .accessibilityIdentifier("sidebar.\(item.id)")
+    }
+
+    private func tint(for item: SidebarItem) -> Color {
+        if let hex = item.colorHex { return Color(hex: hex) }
+        switch item.id {
+        case SystemLabel.inbox, SystemLabel.starred, SystemLabel.important: return .accentColor
+        default: return Palette.periwinkle
+        }
+    }
+}
+
+/// Mail and Calendar as two tabs at the top of the sidebar.
+struct SectionSwitch: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        HStack(spacing: 2) {
+            tab(.mail, title: tr("Mail", "Mail"), systemImage: "envelope", badge: model.totalInboxUnread, identifier: "section.mail")
+            tab(.calendar, title: tr("Kalender", "Calendar"), systemImage: "calendar", badge: 0, identifier: "section.calendar")
+        }
+        .padding(3)
+        .background(Capsule().fill(Color.primary.opacity(0.07)))
+        .overlay(Capsule().strokeBorder(Color.primary.opacity(0.05), lineWidth: 0.8))
+        .padding(.horizontal, 12)
+        .padding(.top, 4)
+        .padding(.bottom, 8)
+    }
+
+    private func tab(_ section: AppSection, title: String, systemImage: String, badge: Int, identifier: String) -> some View {
+        let selected = model.section == section
+        return Button {
+            withAnimation(.snappy(duration: 0.18)) { model.show(section) }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 11.5, weight: .semibold))
+                Text(title)
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .lineLimit(1)
+                if badge > 0 {
+                    Text(badge > 999 ? "999+" : "\(badge)")
+                        .font(.system(size: 9.5, weight: .bold).monospacedDigit())
+                        .foregroundStyle(Color.accentColor)
+                        .padding(.horizontal, 5)
+                        .frame(minWidth: 16, minHeight: 15)
+                        .background(Capsule().fill(Color.accentColor.opacity(0.16)))
+                }
+            }
+            .foregroundStyle(selected ? Color.primary : Color.secondary)
+            .frame(maxWidth: .infinity)
+            .frame(height: 26)
+            .background {
+                if selected {
+                    Capsule()
+                        .fill(Theme.cardFill)
+                        .shadow(color: .black.opacity(0.12), radius: 2, y: 1)
+                }
+            }
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(identifier)
+        .accessibilityValue(selected ? "selected" : "")
+        .help(section == .mail ? tr("Mail (⌘1)", "Mail (⌘1)") : tr("Kalender (⌘2)", "Calendar (⌘2)"))
+    }
+}
+
+/// Fetch status and quick access to refresh and settings, at the foot of the sidebar.
+struct SidebarFooter: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
         HStack(spacing: 8) {
             if model.isRefreshing {
                 ProgressView().controlSize(.mini)
@@ -91,41 +189,6 @@ struct SidebarView: View {
         guard let date = model.lastRefresh else { return "" }
         let time = date.formatted(date: .omitted, time: .shortened)
         return tr("Abgerufen \(time)", "Fetched \(time)")
-    }
-
-    /// Rows are identified by their full selection value. List matches a row's tag
-    /// against the selection type, so a plain label ID would make rows unselectable.
-    private func entries(_ items: [SidebarItem], of account: AccountSession) -> [SidebarEntry] {
-        items.map { SidebarEntry(selection: MailboxSelection(accountID: account.id, labelID: $0.id), item: $0) }
-    }
-
-    private func row(_ entry: SidebarEntry) -> some View {
-        let item = entry.item
-        return Label {
-            Text(item.title)
-        } icon: {
-            Image(systemName: item.systemImage)
-                .foregroundStyle(tint(for: item))
-        }
-        .padding(.leading, CGFloat(item.indent) * 14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
-        // The whole row reacts to clicks, independent of List's own selection handling.
-        .simultaneousGesture(TapGesture().onEnded {
-            DebugLog.log("sidebar row tapped: \(item.id)")
-            model.select(entry.selection)
-        })
-        .badge(item.unread)
-        .tag(entry.selection)
-        .accessibilityIdentifier("sidebar.\(item.id)")
-    }
-
-    private func tint(for item: SidebarItem) -> Color {
-        if let hex = item.colorHex { return Color(hex: hex) }
-        switch item.id {
-        case SystemLabel.inbox, SystemLabel.starred, SystemLabel.important, AccountSession.calendarID: return .accentColor
-        default: return Palette.periwinkle
-        }
     }
 }
 

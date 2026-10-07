@@ -3,6 +3,15 @@
 Alle nennenswerten Änderungen an MailMeG. Versionen folgen [Semantic Versioning](https://semver.org/lang/de/).
 All notable changes to MailMeG. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.9.0] – 2026-10-07
+
+- **Kalender als eigener Tab**: oben in der Seitenleiste zwischen „Mail“ und „Kalender“ wechseln (⌘1 / ⌘2); der Kalender nutzt die ganze Fensterbreite, das Postfach bleibt beim Zurückwechseln erhalten
+  · **Calendar as its own tab**: switch between “Mail” and “Calendar” at the top of the sidebar (⌘1 / ⌘2); the calendar uses the full window width, the mailbox stays as it was when you switch back
+- Alle Konten in einem Kalender: die Seitenleiste zeigt den Monat, die Kalender jedes Kontos zum Ein- und Ausblenden (schreibgeschützte mit Schloss) und „Wartet auf deine Antwort“ mit offenen Einladungen
+  · All accounts in one calendar: the sidebar shows the month, each account’s calendars to show or hide (read-only ones with a lock) and “Waiting for your answer” with open invitations
+- Neue Agenda-Ansicht und Terminsuche (⌘F); ganztägige Termine laufen über mehrere Tage, offene Einladungen sind gestrichelt, Abwesenheiten schraffiert, Fokuszeit markiert, der Arbeitsort steht neben dem Datum
+  · New agenda view and event search (⌘F); all-day events span several days, open invitations are dashed, out-of-office time is striped, focus time is marked, the working location is shown next to the date
+
 ## [1.8.1] – 2026-10-06
 
 - Suchfeld und Kopfzeile der Nachrichtenliste sowie die Buttonleiste über der Konversation haben jetzt einen Milchglas-Hintergrund; beim Scrollen vermischen sich E-Mails nicht mehr mit den Bedienelementen

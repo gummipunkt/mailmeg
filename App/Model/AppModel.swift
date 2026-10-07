@@ -9,6 +9,11 @@ struct MailboxSelection: Hashable {
     var labelID: String
 }
 
+/// The two tabs of the main window.
+enum AppSection: Hashable {
+    case mail, calendar
+}
+
 /// Root state of the app: accounts, current mailbox and selected conversation.
 @MainActor
 @Observable
@@ -16,7 +21,9 @@ final class AppModel {
     private(set) var accounts: [AccountSession] = []
     private(set) var mailbox: MailboxModel?
     private(set) var threadDetail: ThreadDetailModel?
-    /// Set while a calendar is shown instead of a mailbox.
+    /// Mail or calendar, switched with the tabs at the top of the sidebar.
+    private(set) var section: AppSection = .mail
+    /// The calendar tab; created the first time it is opened, then kept.
     private(set) var calendarView: CalendarViewState?
     private(set) var selection: MailboxSelection?
     private(set) var selectedThreadID: String?
@@ -252,17 +259,8 @@ final class AppModel {
         selectThread(nil)
         guard let newSelection, let account = account(id: newSelection.accountID) else {
             mailbox = nil
-            calendarView = nil
             return
         }
-        if newSelection.labelID == AccountSession.calendarID {
-            mailbox = nil
-            let view = CalendarViewState(account: account)
-            calendarView = view
-            Task { await view.load() }
-            return
-        }
-        calendarView = nil
         let mailbox = MailboxModel(account: account, labelID: newSelection.labelID)
         mailbox.onError = { [weak self] error in self?.present(error, account: account) }
         self.mailbox = mailbox
@@ -408,26 +406,44 @@ final class AppModel {
 
     // MARK: - Calendar
 
-    /// Shows the account's calendar on `day`, optionally with an event selected.
-    func showCalendar(accountID: String, day: Date = Date(), eventID: String? = nil) {
-        select(MailboxSelection(accountID: accountID, labelID: AccountSession.calendarID))
-        guard let view = calendarView else { return }
-        view.select(day: day)
-        view.selectedEventID = eventID
+    /// Switches to the mail or calendar tab.
+    func show(_ section: AppSection) {
+        if section == .calendar {
+            showCalendar()
+        } else {
+            self.section = .mail
+        }
+    }
+
+    /// Opens the calendar tab, optionally on `day` with an event (`CalendarEvent.key`) selected.
+    func showCalendar(accountID: String? = nil, day: Date? = nil, eventID: String? = nil) {
+        let view = calendarView ?? CalendarViewState { [weak self] in self?.accounts ?? [] }
+        calendarView = view
+        section = .calendar
+        if let day {
+            view.select(day: day)
+        }
+        if let eventID, let accountID = accountID ?? selection?.accountID {
+            view.selectedEventID = CalendarEntry.id(accountID: accountID, eventKey: eventID)
+            view.revealSelectedEvent()
+        } else if day != nil {
+            view.selectedEventID = nil
+        }
         Task { await view.load() }
     }
 
-    /// After a new event was added: show it if its calendar is on screen.
+    /// After a new event was added: show it if the calendar is on screen.
     func eventCreated(_ event: CalendarEvent, accountID: String) {
-        guard let view = calendarView, view.account.id == accountID else { return }
+        guard let view = calendarView, section == .calendar else { return }
         view.select(day: event.startDate ?? Date())
-        view.selectedEventID = event.key
+        view.selectedEventID = CalendarEntry.id(accountID: accountID, eventKey: event.key)
+        view.revealSelectedEvent()
     }
 
-    /// A new event, for the account and day currently shown.
+    /// A new event, for the account of the open mailbox and the day currently shown.
     func newEventDraft() -> EventDraft {
         let accountID = selection?.accountID ?? accounts.first?.id ?? ""
-        return EventDraft.new(accountID: accountID, day: calendarView?.selectedDay)
+        return EventDraft.new(accountID: accountID, day: section == .calendar ? calendarView?.selectedDay : nil)
     }
 
     /// A new event prefilled from the newest message of the open conversation.
@@ -453,6 +469,7 @@ final class AppModel {
         NSApp.activate(ignoringOtherApps: true)
         NSApp.windows.first { $0.identifier?.rawValue.hasPrefix("main") == true }?.makeKeyAndOrderFront(nil)
         guard account(id: accountID) != nil else { return }
+        section = .mail
         if selection?.accountID != accountID || mailbox?.thread(id: threadID) == nil {
             select(MailboxSelection(accountID: accountID, labelID: SystemLabel.inbox))
         }

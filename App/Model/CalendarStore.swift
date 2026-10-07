@@ -190,7 +190,7 @@ final class CalendarStore {
     func events(from start: Date, to end: Date) -> [CalendarEvent] {
         events
             .filter { event in
-                !hiddenCalendarIDs.contains(event.calendarID ?? "") && event.overlaps(from: start, to: end)
+                !event.isWorkingLocation && !hiddenCalendarIDs.contains(event.calendarID ?? "") && event.overlaps(from: start, to: end)
             }
             .sorted { lhs, rhs in
                 if lhs.isAllDay != rhs.isAllDay { return lhs.isAllDay }
@@ -202,6 +202,13 @@ final class CalendarStore {
         let start = Calendar.current.startOfDay(for: day)
         let end = Calendar.current.date(byAdding: .day, value: 1, to: start) ?? start
         return events(from: start, to: end)
+    }
+
+    /// Where the user works on `day` ("Home", "Office"), from Google's working-location entries.
+    func workingLocation(on day: Date) -> String? {
+        let start = Calendar.current.startOfDay(for: day)
+        let end = Calendar.current.date(byAdding: .day, value: 1, to: start) ?? start
+        return events.first { $0.isWorkingLocation && $0.overlaps(from: start, to: end) && !$0.title.isEmpty }?.title
     }
 
     /// The rest of today: events that have not ended yet.

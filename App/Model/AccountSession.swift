@@ -18,8 +18,6 @@ struct SidebarItem: Identifiable, Hashable {
 @Observable
 final class AccountSession: Identifiable {
     static let allMailID = "__ALL_MAIL__"
-    /// Sidebar selection for the account's Google Calendar.
-    static let calendarID = "__CALENDAR__"
 
     let email: String
     nonisolated var id: String { email }
@@ -323,10 +321,6 @@ final class AccountSession: Identifiable {
                 indent: 0
             )
         }
-    }
-
-    var calendarItem: SidebarItem {
-        SidebarItem(id: Self.calendarID, title: tr("Kalender", "Calendar"), systemImage: "calendar", unread: 0, indent: 0)
     }
 
     var userItems: [SidebarItem] {

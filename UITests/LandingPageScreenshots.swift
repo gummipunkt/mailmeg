@@ -120,7 +120,7 @@ final class LandingPageScreenshots: XCTestCase {
                 sleep(1)
                 save("\(language)-invitation", app.windows.firstMatch.screenshot())
             }
-            element(app, "sidebar.__CALENDAR__").click()
+            element(app, "section.calendar").click()
             let day = Calendar.current.date(byAdding: .day, value: 2, to: Date())!
             let parts = Calendar.current.dateComponents([.year, .month, .day], from: day)
             let id = String(format: "calendar.day.%04d-%02d-%02d", parts.year!, parts.month!, parts.day!)
