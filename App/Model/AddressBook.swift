@@ -24,9 +24,12 @@ final class AddressBook {
 
         /// Addresses you write to come first, then frequent and recent senders, then contacts.
         var score: Double {
-            let days = max(Date().timeIntervalSince(lastSeen) / 86_400, 0)
-            let recency = lastSeen == .distantPast ? 0 : max(0, 30 - days) / 10
-            return Double(sent) * 6 + Double(min(received, 20)) + recency + (isContact ? 4 : 0)
+            let days: Double = max(Date().timeIntervalSince(lastSeen) / 86_400, 0)
+            let recency: Double = lastSeen == .distantPast ? 0 : max(0, 30 - days) / 10
+            let written: Double = Double(sent) * 6
+            let got: Double = Double(min(received, 20))
+            let contact: Double = isContact ? 4 : 0
+            return written + got + recency + contact
         }
     }
 
@@ -107,12 +110,19 @@ final class AddressBook {
                 merged[key] = entry
             }
         }
-        return merged
-            .filter { key, entry in !excluding.contains(key) && Self.matches(entry, query) }
-            .map(\.value)
-            .sorted { $0.score == $1.score ? $0.address < $1.address : $0.score > $1.score }
-            .prefix(limit)
-            .map { $0 }
+        var matching: [Entry] = []
+        for (key, entry) in merged where !excluding.contains(key) && Self.matches(entry, query) {
+            matching.append(entry)
+        }
+        matching.sort(by: Self.ranks)
+        return Array(matching.prefix(limit))
+    }
+
+    private static func ranks(_ lhs: Entry, _ rhs: Entry) -> Bool {
+        let left = lhs.score
+        let right = rhs.score
+        if left == right { return lhs.address < rhs.address }
+        return left > right
     }
 
     private static func matches(_ entry: Entry, _ query: String) -> Bool {
