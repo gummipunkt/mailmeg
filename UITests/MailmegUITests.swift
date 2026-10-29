@@ -204,6 +204,7 @@ final class MailmegUITests: XCTestCase {
         body.click()
         app.typeKey(.upArrow, modifierFlags: .command)
         app.typeKey("b", modifierFlags: .command)
+        XCTAssertEqual(element(app, "format.bold").value as? String, "on", "The bar shows that bold is on")
         body.typeText("Fett ")
         app.typeKey("b", modifierFlags: .command)
         app.typeKey("i", modifierFlags: .command)
@@ -213,6 +214,13 @@ final class MailmegUITests: XCTestCase {
         element(app, "format.bullets").click()
         body.typeText("Punkt eins\nPunkt zwei\n")
         XCTAssertTrue((body.value as? String ?? "").contains("• Punkt eins\n• Punkt zwei"), "Lists should continue on Return")
+        // Another font for what comes next.
+        element(app, "format.bullets").click()
+        element(app, "format.font").click()
+        let georgia = app.menuItems["Georgia"]
+        XCTAssertTrue(georgia.waitForExistence(timeout: 5), "The font menu lists fonts")
+        georgia.click()
+        body.typeText("In Georgia gesetzt")
         sleep(1)
         snapshot("11-rich-text", of: XCUIScreen.main.screenshot())
         app.typeKey("w", modifierFlags: .command)
@@ -272,6 +280,29 @@ final class MailmegUITests: XCTestCase {
         XCTAssertTrue(element(app, "thread.t-projektplan").waitForExistence(timeout: 10), "The mail tab keeps the mailbox")
         element(app, "section.calendar").click()
         element(app, "calendar.mode.week").click()
+    }
+
+    func testAddressSuggestions() {
+        let app = launch(["--demo"])
+        XCTAssertTrue(element(app, "thread.t-projektplan").waitForExistence(timeout: 20))
+        sleep(1)
+        element(app, "compose").click()
+        let to = element(app, "compose.to")
+        XCTAssertTrue(to.waitForExistence(timeout: 10))
+        to.click()
+        to.typeText("ann")
+        let anna = element(app, "suggestion.anna.becker@example.com")
+        XCTAssertTrue(anna.waitForExistence(timeout: 5), "People from the mailbox are suggested")
+        sleep(1)
+        snapshot("21-adressvorschlaege", of: XCUIScreen.main.screenshot())
+        anna.click()
+        XCTAssertTrue((to.value as? String ?? "").contains("Anna Becker <anna.becker@example.com>, "), "Clicking a suggestion fills in the address")
+
+        to.typeText("jon")
+        XCTAssertTrue(element(app, "suggestion.jonas@example.org").waitForExistence(timeout: 5))
+        app.typeKey(.return, modifierFlags: [])
+        XCTAssertTrue((to.value as? String ?? "").contains("jonas@example.org"), "Return takes the highlighted suggestion")
+        app.typeKey("w", modifierFlags: .command)
     }
 
     func testSelectSearchResultsAndBulkActions() {

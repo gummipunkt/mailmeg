@@ -56,6 +56,7 @@ final class ThreadDetailModel {
         do {
             let thread = try await account.client.thread(id: threadID, format: .full)
             let gmailMessages = thread.messages ?? []
+            AddressBook.shared.note(gmailMessages, ownAddresses: Set(account.ownAddresses))
             subject = gmailMessages.first?.subject ?? ""
             let allowRemote = UserDefaults.standard.bool(forKey: AppSettings.loadRemoteContentKey)
             messages = gmailMessages.enumerated().map { index, message in

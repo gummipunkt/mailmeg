@@ -32,6 +32,16 @@ final class RichTextTests: XCTestCase {
         XCTAssertTrue(html.contains("<div><span style=\"font-size:22px\">Groß</span></div><div><span style=\"font-size:22px\">klein</span></div>"), html)
     }
 
+    func testFontFamily() throws {
+        let html = RichTextHTML.render(runs: [RichTextRun(text: "Serif", fontFamily: "Georgia"), RichTextRun(text: " Mono", fontFamily: "Courier New")])
+        XCTAssertTrue(html.contains("<span style=\"font-family:&#39;Georgia&#39;, serif\">Serif</span>"), html)
+        XCTAssertTrue(html.contains("font-family:&#39;Courier New&#39;, monospace"), html)
+        // Drafts saved before fonts existed still decode.
+        let old = try JSONDecoder().decode(RichTextRun.self, from: Data(#"{"text":"a","isBold":true,"isItalic":false,"isUnderlined":false,"isStruck":false}"#.utf8))
+        XCTAssertNil(old.fontFamily)
+        XCTAssertTrue(old.isBold)
+    }
+
     func testSignatureIsReplacedByHTML() {
         let html = RichTextHTML.render(
             runs: [RichTextRun(text: "Hi "), RichTextRun(text: "du", isBold: true), RichTextRun(text: "\n\n-- \nAlex")],

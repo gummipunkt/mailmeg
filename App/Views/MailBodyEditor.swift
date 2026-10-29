@@ -15,11 +15,19 @@ struct MailBodyEditor: NSViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
     func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSTextView.scrollableTextView()
+        let scrollView = NSScrollView()
         scrollView.drawsBackground = false
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
-        guard let textView = scrollView.documentView as? NSTextView else { return scrollView }
+        let textView = MailTextView(frame: NSRect(origin: .zero, size: scrollView.contentSize))
+        textView.minSize = NSSize(width: 0, height: 0)
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
+        textView.textContainer?.widthTracksTextView = true
+        textView.textContainer?.containerSize = NSSize(width: scrollView.contentSize.width, height: CGFloat.greatestFiniteMagnitude)
+        scrollView.documentView = textView
         textView.delegate = context.coordinator
         textView.isRichText = true
         textView.importsGraphics = false
@@ -44,6 +52,7 @@ struct MailBodyEditor: NSViewRepresentable {
         textView.setAccessibilityIdentifier("compose.body")
         controller.textView = textView
         controller.onChange = { [weak coordinator = context.coordinator] in coordinator?.publish() }
+        textView.onPaste = { [weak coordinator = context.coordinator] in coordinator?.publish() }
 
         let cursor = min(max(initialCursor, 0), (text as NSString).length)
         DispatchQueue.main.async {
@@ -89,7 +98,12 @@ struct MailBodyEditor: NSViewRepresentable {
             publish()
         }
 
+        func textViewDidChangeSelection(_ notification: Notification) {
+            parent.controller.updateState()
+        }
+
         func publish() {
+            parent.controller.updateState()
             guard let textView = parent.controller.textView, let storage = textView.textStorage else { return }
             if parent.text != textView.string {
                 parent.text = textView.string
@@ -109,8 +123,74 @@ struct MailBodyEditor: NSViewRepresentable {
     }
 }
 
+/// The body's text view. Pasted text takes the editor's font: bold, italics, underlines and
+/// links are kept, while fonts, sizes, colours and layout from websites or documents are not.
+final class MailTextView: NSTextView {
+    var onPaste: (() -> Void)?
+
+    override func paste(_ sender: Any?) {
+        guard let pasted = Self.normalizedPaste(from: .general) else {
+            super.paste(sender)
+            return
+        }
+        insertText(pasted, replacementRange: selectedRange())
+        onPaste?()
+    }
+
+    /// Rich text on the pasteboard, reduced to the formatting a mail keeps.
+    static func normalizedPaste(from pasteboard: NSPasteboard) -> NSAttributedString? {
+        let richTypes: [NSPasteboard.PasteboardType] = [.rtf, .rtfd, .html]
+        guard pasteboard.availableType(from: richTypes) != nil,
+              let source = pasteboard.readObjects(forClasses: [NSAttributedString.self])?.first as? NSAttributedString else {
+            return nil
+        }
+        let manager = NSFontManager.shared
+        let result = NSMutableAttributedString()
+        // Non-breaking spaces and the object replacement character of images make odd text.
+        let text = source.string
+            .replacingOccurrences(of: "\u{00A0}", with: " ")
+            .replacingOccurrences(of: "\u{FFFC}", with: "")
+        guard (text as NSString).length == source.length else {
+            return NSAttributedString(string: text, attributes: RichTextController.baseAttributes)
+        }
+        source.enumerateAttributes(in: NSRange(location: 0, length: source.length)) { attributes, range, _ in
+            var clean = RichTextController.baseAttributes
+            var font = RichTextController.baseFont
+            if let original = attributes[.font] as? NSFont {
+                let traits = manager.traits(of: original)
+                if traits.contains(.boldFontMask) { font = manager.convert(font, toHaveTrait: .boldFontMask) }
+                if traits.contains(.italicFontMask) { font = manager.convert(font, toHaveTrait: .italicFontMask) }
+            }
+            clean[.font] = font
+            if ((attributes[.underlineStyle] as? Int) ?? 0) != 0 { clean[.underlineStyle] = NSUnderlineStyle.single.rawValue }
+            if ((attributes[.strikethroughStyle] as? Int) ?? 0) != 0 { clean[.strikethroughStyle] = NSUnderlineStyle.single.rawValue }
+            if let link = attributes[.link] {
+                clean[.link] = link
+                clean.removeValue(forKey: .underlineStyle)
+            }
+            result.append(NSAttributedString(string: (text as NSString).substring(with: range), attributes: clean))
+        }
+        // Web pages often end with a line break that the selection did not mean to include.
+        while result.string.hasSuffix("\n"), result.length > 1, !(pasteboard.string(forType: .string) ?? "").hasSuffix("\n") {
+            result.deleteCharacters(in: NSRange(location: result.length - 1, length: 1))
+        }
+        return result
+    }
+}
+
+/// What the format bar shows as active for the selection (or for typing).
+struct FormatState: Equatable {
+    var isBold = false
+    var isItalic = false
+    var isUnderlined = false
+    var isStruck = false
+    var fontFamily: String?
+    var fontSize: CGFloat = RichTextController.baseSize
+}
+
 /// Applies formatting to the editor's text view (used by the format bar and shortcuts).
 @MainActor
+@Observable
 final class RichTextController {
     static let baseSize: CGFloat = 13.5
     static var baseFont: NSFont { .systemFont(ofSize: baseSize) }
@@ -123,8 +203,63 @@ final class RichTextController {
         [.font: baseFont, .foregroundColor: NSColor.textColor, .paragraphStyle: paragraphStyle]
     }
 
-    weak var textView: NSTextView?
-    var onChange: (() -> Void)?
+    @ObservationIgnored weak var textView: NSTextView?
+    @ObservationIgnored var onChange: (() -> Void)?
+    private(set) var state = FormatState()
+
+    /// Fonts offered in the format bar; nil is the standard font.
+    struct FontChoice: Hashable {
+        let name: String
+        let family: String?
+    }
+
+    static let fontFamilies: [FontChoice] = [
+        FontChoice(name: tr("Standard", "Default"), family: nil),
+        FontChoice(name: "Helvetica", family: "Helvetica"),
+        FontChoice(name: "Arial", family: "Arial"),
+        FontChoice(name: "Verdana", family: "Verdana"),
+        FontChoice(name: "Georgia", family: "Georgia"),
+        FontChoice(name: "Times New Roman", family: "Times New Roman"),
+        FontChoice(name: "Courier New", family: "Courier New"),
+    ]
+
+    /// Reads the formatting at the cursor or of the selection's start.
+    func updateState() {
+        guard let textView, let storage = textView.textStorage else { return }
+        let range = textView.selectedRange()
+        let attributes: [NSAttributedString.Key: Any]
+        if range.length > 0, range.location < storage.length {
+            attributes = storage.attributes(at: range.location, effectiveRange: nil)
+        } else {
+            attributes = textView.typingAttributes
+        }
+        let font = (attributes[.font] as? NSFont) ?? Self.baseFont
+        let traits = NSFontManager.shared.traits(of: font)
+        let family = font.familyName.flatMap { $0 == Self.baseFont.familyName ? nil : $0 }
+        let new = FormatState(
+            isBold: traits.contains(.boldFontMask),
+            isItalic: traits.contains(.italicFontMask),
+            isUnderlined: ((attributes[.underlineStyle] as? Int) ?? 0) != 0,
+            isStruck: ((attributes[.strikethroughStyle] as? Int) ?? 0) != 0,
+            fontFamily: family,
+            fontSize: font.pointSize
+        )
+        if new != state { state = new }
+    }
+
+    /// Switches the selection (or what is typed next) to another font, keeping size and style.
+    func setFamily(_ family: String?) {
+        let manager = NSFontManager.shared
+        apply(.font) { value in
+            let current = (value as? NSFont) ?? Self.baseFont
+            let traits = manager.traits(of: current)
+            var font = family.map { manager.convert(Self.baseFont, toFamily: $0) } ?? Self.baseFont
+            font = manager.convert(font, toSize: current.pointSize)
+            if traits.contains(.boldFontMask) { font = manager.convert(font, toHaveTrait: .boldFontMask) }
+            if traits.contains(.italicFontMask) { font = manager.convert(font, toHaveTrait: .italicFontMask) }
+            return font
+        }
+    }
 
     // MARK: Inline styles
 
@@ -162,6 +297,7 @@ final class RichTextController {
         let range = textView.selectedRange()
         guard range.length > 0 else {
             textView.typingAttributes = Self.baseAttributes
+            updateState()
             return
         }
         guard textView.shouldChangeText(in: range, replacementString: nil) else { return }
@@ -333,6 +469,7 @@ final class RichTextController {
         let range = textView.selectedRange()
         if range.length == 0 {
             textView.typingAttributes[key] = transform(textView.typingAttributes[key])
+            updateState()
             return
         }
         guard textView.shouldChangeText(in: range, replacementString: nil) else { return }
@@ -371,6 +508,9 @@ final class RichTextController {
             if abs(font.pointSize - baseSize) > 0.5 {
                 run.fontSize = Double(font.pointSize)
             }
+            if let family = font.familyName, family != baseFont.familyName {
+                run.fontFamily = family
+            }
             if let last = runs.last, last.with(text: "") == run.with(text: "") {
                 runs[runs.count - 1].text += run.text
             } else {
@@ -386,6 +526,7 @@ final class RichTextController {
         for run in runs {
             var attributes = baseAttributes
             var font = baseFont
+            if let family = run.fontFamily { font = manager.convert(font, toFamily: family) }
             if let size = run.fontSize { font = manager.convert(font, toSize: CGFloat(size)) }
             if run.isBold { font = manager.convert(font, toHaveTrait: .boldFontMask) }
             if run.isItalic { font = manager.convert(font, toHaveTrait: .italicFontMask) }
@@ -431,15 +572,19 @@ struct FormatBar: View {
         TextColor(name: tr("Grau", "Gray"), hex: "#5f6368"),
     ]
 
+    private var state: FormatState { controller.state }
+
     var body: some View {
         HStack(spacing: 2) {
-            formatButton("bold", tr("Fett (⌘B)", "Bold (⌘B)"), id: "format.bold") { controller.toggleTrait(.boldFontMask) }
+            fontMenu
+            separator
+            formatButton("bold", tr("Fett (⌘B)", "Bold (⌘B)"), id: "format.bold", isActive: state.isBold) { controller.toggleTrait(.boldFontMask) }
                 .keyboardShortcut("b")
-            formatButton("italic", tr("Kursiv (⌘I)", "Italic (⌘I)"), id: "format.italic") { controller.toggleTrait(.italicFontMask) }
+            formatButton("italic", tr("Kursiv (⌘I)", "Italic (⌘I)"), id: "format.italic", isActive: state.isItalic) { controller.toggleTrait(.italicFontMask) }
                 .keyboardShortcut("i")
-            formatButton("underline", tr("Unterstrichen (⌘U)", "Underline (⌘U)"), id: "format.underline") { controller.toggleUnderline() }
+            formatButton("underline", tr("Unterstrichen (⌘U)", "Underline (⌘U)"), id: "format.underline", isActive: state.isUnderlined) { controller.toggleUnderline() }
                 .keyboardShortcut("u")
-            formatButton("strikethrough", tr("Durchgestrichen", "Strikethrough"), id: "format.strikethrough") { controller.toggleStrikethrough() }
+            formatButton("strikethrough", tr("Durchgestrichen", "Strikethrough"), id: "format.strikethrough", isActive: state.isStruck) { controller.toggleStrikethrough() }
             separator
             formatButton("list.bullet", tr("Aufzählung", "Bulleted List"), id: "format.bullets") { controller.toggleList(.bullet) }
                 .keyboardShortcut("7", modifiers: [.command, .shift])
@@ -449,18 +594,19 @@ struct FormatBar: View {
             formatButton("link", tr("Link einfügen (⌘K)", "Add Link (⌘K)"), id: "format.link") { controller.addLink() }
                 .keyboardShortcut("k")
             Menu {
-                Button(tr("Klein", "Small")) { controller.setSize(11) }
-                Button(tr("Normal", "Normal")) { controller.setSize(RichTextController.baseSize) }
-                Button(tr("Groß", "Large")) { controller.setSize(17) }
-                Button(tr("Sehr groß", "Huge")) { controller.setSize(22) }
+                sizeButton(tr("Klein", "Small"), 11)
+                sizeButton(tr("Normal", "Normal"), RichTextController.baseSize)
+                sizeButton(tr("Groß", "Large"), 17)
+                sizeButton(tr("Sehr groß", "Huge"), 22)
             } label: {
-                formatLabel("textformat.size")
+                formatLabel("textformat.size", isActive: abs(state.fontSize - RichTextController.baseSize) > 0.5)
             }
             .menuStyle(.button)
             .buttonStyle(.borderless)
             .menuIndicator(.hidden)
             .fixedSize()
             .help(tr("Schriftgröße", "Text Size"))
+            .accessibilityIdentifier("format.size")
             Menu {
                 ForEach(colors) { color in
                     Button {
@@ -481,6 +627,7 @@ struct FormatBar: View {
             .menuIndicator(.hidden)
             .fixedSize()
             .help(tr("Textfarbe", "Text Color"))
+            .accessibilityIdentifier("format.color")
             separator
             formatButton("eraser", tr("Formatierung entfernen", "Clear Formatting"), id: "format.clear") { controller.clearFormatting() }
             Spacer(minLength: 0)
@@ -489,24 +636,84 @@ struct FormatBar: View {
         .padding(.vertical, 5)
     }
 
+    /// Font family, showing the current one.
+    private var fontMenu: some View {
+        Menu {
+            ForEach(RichTextController.fontFamilies, id: \.name) { font in
+                Button {
+                    controller.setFamily(font.family)
+                } label: {
+                    if font.family == state.fontFamily {
+                        Label(font.name, systemImage: "checkmark")
+                    } else {
+                        Text(font.name)
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Text(currentFontName)
+                    .font(.system(size: 12, weight: .medium))
+                    .lineLimit(1)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(.secondary)
+            }
+            .foregroundStyle(Color.primary.opacity(0.85))
+            .padding(.horizontal, 8)
+            .frame(height: 24)
+            .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Color.primary.opacity(0.06)))
+            .contentShape(Rectangle())
+        }
+        .menuStyle(.button)
+        .buttonStyle(.borderless)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help(tr("Schriftart", "Font"))
+        .accessibilityIdentifier("format.font")
+    }
+
+    private var currentFontName: String {
+        guard let family = state.fontFamily else { return tr("Standard", "Default") }
+        return RichTextController.fontFamilies.first { $0.family == family }?.name ?? family
+    }
+
+    private func sizeButton(_ title: String, _ size: CGFloat) -> some View {
+        Button {
+            controller.setSize(size)
+        } label: {
+            if abs(state.fontSize - size) < 0.5 {
+                Label(title, systemImage: "checkmark")
+            } else {
+                Text(title)
+            }
+        }
+    }
+
     private var separator: some View {
         Divider().frame(height: 16).padding(.horizontal, 4)
     }
 
-    private func formatLabel(_ systemImage: String) -> some View {
+    private func formatLabel(_ systemImage: String, isActive: Bool = false) -> some View {
         Image(systemName: systemImage)
-            .font(.system(size: 12.5, weight: .medium))
-            .foregroundStyle(.secondary)
-            .frame(width: 26, height: 24)
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(isActive ? Color.accentColor : Color.primary.opacity(0.78))
+            .frame(width: 28, height: 24)
+            .background {
+                if isActive {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Color.accentColor.opacity(0.16))
+                }
+            }
             .contentShape(Rectangle())
     }
 
-    private func formatButton(_ systemImage: String, _ help: String, id: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) { formatLabel(systemImage) }
+    private func formatButton(_ systemImage: String, _ help: String, id: String, isActive: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) { formatLabel(systemImage, isActive: isActive) }
             .buttonStyle(.borderless)
             .help(help)
             .accessibilityLabel(help)
             .accessibilityIdentifier(id)
+            .accessibilityValue(isActive ? "on" : "off")
     }
 
     private func swatch(_ hex: String?) -> NSImage {

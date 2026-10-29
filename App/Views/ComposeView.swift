@@ -21,6 +21,10 @@ struct ComposeView: View {
     @State private var confirmsDiscard = false
     @State private var formatter = RichTextController()
     @FocusState private var focusedField: Field?
+    /// Highlighted entry of the address suggestions.
+    @State private var suggestionIndex = 0
+    /// The typed text whose suggestions were dismissed with Esc.
+    @State private var dismissedToken: String?
 
     private enum Field { case to, cc, bcc, subject, body }
 
@@ -69,10 +73,7 @@ struct ComposeView: View {
                     }
                 }
                 fieldRow(tr("An", "To")) {
-                    TextField("", text: $draft.to, prompt: Text(tr("name@beispiel.de", "name@example.com")))
-                        .textFieldStyle(.plain)
-                        .focused($focusedField, equals: .to)
-                        .accessibilityIdentifier("compose.to")
+                    addressField(.to, prompt: tr("name@beispiel.de", "name@example.com"), identifier: "compose.to")
                     Button(showsCcBcc ? tr("Cc/Bcc ausblenden", "Hide Cc/Bcc") : "Cc/Bcc") {
                         withAnimation(.snappy(duration: 0.15)) { showsCcBcc.toggle() }
                     }
@@ -80,13 +81,16 @@ struct ComposeView: View {
                     .foregroundStyle(Color.accentColor)
                     .font(.system(size: 11.5, weight: .medium))
                 }
+                suggestionList(for: .to)
                 if showsCcBcc {
                     fieldRow("Cc") {
-                        TextField("", text: $draft.cc).textFieldStyle(.plain).focused($focusedField, equals: .cc)
+                        addressField(.cc, prompt: nil, identifier: "compose.cc")
                     }
+                    suggestionList(for: .cc)
                     fieldRow("Bcc") {
-                        TextField("", text: $draft.bcc).textFieldStyle(.plain).focused($focusedField, equals: .bcc)
+                        addressField(.bcc, prompt: nil, identifier: "compose.bcc")
                     }
+                    suggestionList(for: .bcc)
                 }
                 fieldRow(tr("Betreff", "Subject"), showsDivider: false) {
                     TextField("", text: $draft.subject, prompt: Text(tr("Worum geht es?", "What’s it about?")))
@@ -256,7 +260,138 @@ struct ComposeView: View {
                 focusedField = .to
             }
         }
+        .onChange(of: focusedField) { _, field in
+            suggestionIndex = 0
+            if field == .to || field == .cc || field == .bcc {
+                Task { await AddressBook.shared.loadContactsIfNeeded() }
+            }
+        }
+        .onChange(of: draft.to) { suggestionIndex = 0 }
+        .onChange(of: draft.cc) { suggestionIndex = 0 }
+        .onChange(of: draft.bcc) { suggestionIndex = 0 }
         .frame(minWidth: 520, minHeight: 400)
+    }
+
+    // MARK: - Address suggestions
+
+    private func addressText(_ field: Field) -> Binding<String> {
+        switch field {
+        case .cc: return $draft.cc
+        case .bcc: return $draft.bcc
+        default: return $draft.to
+        }
+    }
+
+    private func addressField(_ field: Field, prompt: String?, identifier: String) -> some View {
+        TextField("", text: addressText(field), prompt: prompt.map { Text($0) })
+            .textFieldStyle(.plain)
+            .focused($focusedField, equals: field)
+            .onKeyPress(.downArrow) { moveSuggestion(1, in: field) }
+            .onKeyPress(.upArrow) { moveSuggestion(-1, in: field) }
+            .onKeyPress(.return) { acceptSuggestion(in: field) }
+            .onKeyPress(.tab) { acceptSuggestion(in: field) }
+            .onKeyPress(.escape) {
+                guard !suggestions(for: field).isEmpty else { return .ignored }
+                dismissedToken = Self.currentToken(addressText(field).wrappedValue)
+                return .handled
+            }
+            .accessibilityIdentifier(identifier)
+    }
+
+    /// The address being typed: whatever follows the last comma or semicolon.
+    private static func currentToken(_ text: String) -> String {
+        let start = text.lastIndex(where: { $0 == "," || $0 == ";" }).map { text.index(after: $0) } ?? text.startIndex
+        return text[start...].trimmingCharacters(in: .whitespaces)
+    }
+
+    private func suggestions(for field: Field) -> [AddressBook.Entry] {
+        guard focusedField == field else { return [] }
+        let text = addressText(field).wrappedValue
+        let token = Self.currentToken(text)
+        guard !token.isEmpty, token != dismissedToken, !token.contains("<") else { return [] }
+        let chosen = Set(EmailAddress.parseList(text).map { $0.address.lowercased() }).subtracting([token.lowercased()])
+        let results = AddressBook.shared.suggestions(for: token, excluding: chosen)
+        // A complete address was typed: nothing left to suggest.
+        if results.contains(where: { $0.address.lowercased() == token.lowercased() }) { return [] }
+        return results
+    }
+
+    private func moveSuggestion(_ delta: Int, in field: Field) -> KeyPress.Result {
+        let count = suggestions(for: field).count
+        guard count > 0 else { return .ignored }
+        suggestionIndex = (suggestionIndex + delta + count) % count
+        return .handled
+    }
+
+    private func acceptSuggestion(in field: Field) -> KeyPress.Result {
+        let items = suggestions(for: field)
+        guard !items.isEmpty else { return .ignored }
+        accept(items[min(suggestionIndex, items.count - 1)], in: field)
+        return .handled
+    }
+
+    /// Replaces what is being typed with the chosen address, ready for the next one.
+    private func accept(_ entry: AddressBook.Entry, in field: Field) {
+        let binding = addressText(field)
+        let text = binding.wrappedValue
+        let end = text.lastIndex(where: { $0 == "," || $0 == ";" }).map { text.index(after: $0) } ?? text.startIndex
+        let before = String(text[..<end]).trimmingCharacters(in: .whitespaces)
+        binding.wrappedValue = (before.isEmpty ? "" : before + " ") + entry.emailAddress.formatted + ", "
+        suggestionIndex = 0
+        dismissedToken = nil
+    }
+
+    @ViewBuilder
+    private func suggestionList(for field: Field) -> some View {
+        let items = suggestions(for: field)
+        if !items.isEmpty {
+            VStack(spacing: 2) {
+                ForEach(Array(items.enumerated()), id: \.element.address) { index, entry in
+                    Button {
+                        accept(entry, in: field)
+                    } label: {
+                        HStack(spacing: 10) {
+                            AvatarView(name: entry.name ?? entry.address, size: 24)
+                            VStack(alignment: .leading, spacing: 0) {
+                                Text(entry.name ?? entry.address)
+                                    .font(.system(size: 12.5, weight: .semibold))
+                                    .lineLimit(1)
+                                if entry.name != nil {
+                                    Text(entry.address)
+                                        .font(.system(size: 11.5))
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                }
+                            }
+                            Spacer(minLength: 6)
+                            if entry.isContact {
+                                Image(systemName: "person.crop.circle")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.tertiary)
+                                    .help(tr("Aus deinen Kontakten", "From your contacts"))
+                            }
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(index == suggestionIndex ? Color.accentColor.opacity(0.15) : Color.clear)
+                        )
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .onHover { if $0 { suggestionIndex = index } }
+                    .accessibilityIdentifier("suggestion.\(entry.address.lowercased())")
+                }
+            }
+            .padding(.leading, 78)
+            .padding(.trailing, 16)
+            .padding(.vertical, 6)
+            .background(Theme.tint.opacity(0.35))
+            .overlay(alignment: .bottom) { Divider().overlay(Theme.hairline.opacity(0.5)) }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("compose.suggestions")
+        }
     }
 
     private func fieldRow<Content: View>(_ title: String, showsDivider: Bool = true, @ViewBuilder content: () -> Content) -> some View {

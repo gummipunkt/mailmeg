@@ -14,9 +14,11 @@ public struct RichTextRun: Codable, Hashable, Sendable {
     public var colorHex: String?
     /// Point size, or nil for the default size.
     public var fontSize: Double?
+    /// Font family ("Georgia"), or nil for the default font.
+    public var fontFamily: String?
 
     public init(text: String, isBold: Bool = false, isItalic: Bool = false, isUnderlined: Bool = false, isStruck: Bool = false,
-                link: String? = nil, colorHex: String? = nil, fontSize: Double? = nil) {
+                link: String? = nil, colorHex: String? = nil, fontSize: Double? = nil, fontFamily: String? = nil) {
         self.text = text
         self.isBold = isBold
         self.isItalic = isItalic
@@ -25,11 +27,12 @@ public struct RichTextRun: Codable, Hashable, Sendable {
         self.link = link
         self.colorHex = colorHex
         self.fontSize = fontSize
+        self.fontFamily = fontFamily
     }
 
     /// True if the run carries any formatting at all.
     public var isFormatted: Bool {
-        isBold || isItalic || isUnderlined || isStruck || link != nil || colorHex != nil || fontSize != nil
+        isBold || isItalic || isUnderlined || isStruck || link != nil || colorHex != nil || fontSize != nil || fontFamily != nil
     }
 
     public func with(text: String) -> RichTextRun {
@@ -144,9 +147,25 @@ public enum RichTextHTML {
             var styles: [String] = []
             if let color = run.colorHex { styles.append("color:\(HTMLText.escape(color))") }
             if let size = run.fontSize { styles.append("font-size:\(Int(size.rounded()))px") }
+            if let family = run.fontFamily { styles.append("font-family:\(fontStack(family))") }
             if !styles.isEmpty { html = "<span style=\"\(styles.joined(separator: ";"))\">\(html)</span>" }
             return html
         }.joined()
+    }
+
+    /// A CSS font stack for a family, with a generic fallback.
+    static func fontStack(_ family: String) -> String {
+        let name = family.replacingOccurrences(of: "'", with: "").replacingOccurrences(of: "\"", with: "")
+        let lower = name.lowercased()
+        let generic: String
+        if lower.contains("courier") || lower.contains("mono") || lower.contains("menlo") {
+            generic = "monospace"
+        } else if ["georgia", "times", "palatino", "baskerville", "garamond"].contains(where: lower.contains) {
+            generic = "serif"
+        } else {
+            generic = "sans-serif"
+        }
+        return "&#39;\(HTMLText.escape(name))&#39;, \(generic)"
     }
 
     // MARK: - Splitting

@@ -32,12 +32,14 @@ targets:
         LSMinimumSystemVersion: "14.0"
         GoogleClientID: $(GOOGLE_CLIENT_ID)
         NSHumanReadableCopyright: "© 2026 Patrick Walter"
+        NSContactsUsageDescription: "MailMeG schlägt beim Schreiben Adressen aus deinen Kontakten vor. · MailMeG suggests addresses from your contacts while you write."
     entitlements:
       path: App/Mailmeg.entitlements
       properties:
         com.apple.security.app-sandbox: true
         com.apple.security.network.client: true
         com.apple.security.files.user-selected.read-write: true
+        com.apple.security.personal-information.addressbook: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: de.mailmeg.app

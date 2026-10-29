@@ -27,6 +27,7 @@ enum MailSender {
         var cache: [String: Data] = [:]
         let raw = try await rfc822(for: draft, attachments: attachments, account: account, cache: &cache)
         try await account.client.send(rfc822: raw, threadID: draft.threadID)
+        AddressBook.shared.noteSent(to: everyone, ownAddresses: Set(account.ownAddresses))
         // The message is out; the saved Gmail draft is no longer needed.
         if let draftID = draft.gmailDraftID {
             try? await account.client.deleteDraft(id: draftID)

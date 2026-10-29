@@ -31,8 +31,10 @@ mit Beispiel-E-Mails, Kalender und Einladung.
 
 ### Schreiben
 
-- **Rich-Text-Editor**: Fett, Kursiv, Unterstrichen, Durchgestrichen, Aufzählungen, nummerierte Listen, Links,
-  Schriftgröße und Farbe – verschickt als HTML mit Textalternative
+- **Rich-Text-Editor**: Schriftart, Fett, Kursiv, Unterstrichen, Durchgestrichen, Aufzählungen, nummerierte
+  Listen, Links, Schriftgröße und Farbe – verschickt als HTML mit Textalternative; eingefügter Text übernimmt
+  die Standardschrift
+- **Adressvorschläge** in An, Cc und Bcc aus deinen E-Mails (gesendet und empfangen) und den macOS-Kontakten
 - **Absender wählen**: alle in Gmail unter „Senden als“ hinterlegten Adressen; Antworten gehen automatisch von der
   Adresse raus, an die die E-Mail ging
 - **Signaturen aus Gmail**, auch bei Antworten, und beim Absenderwechsel automatisch getauscht

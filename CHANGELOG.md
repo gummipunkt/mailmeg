@@ -3,6 +3,17 @@
 Alle nennenswerten Änderungen an MailMeG. Versionen folgen [Semantic Versioning](https://semver.org/lang/de/).
 All notable changes to MailMeG. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.10.0] – 2026-10-29
+
+- **Adressvorschläge** beim Tippen in An, Cc und Bcc: Personen, denen du schreibst oder von denen du E-Mails bekommst, und – nach deiner Erlaubnis – deine macOS-Kontakte; mit ↑/↓ wählen, ↩ oder ⇥ übernimmt, Esc blendet aus
+  · **Address suggestions** while typing in To, Cc and Bcc: people you write to or get mail from and – with your permission – your macOS contacts; ↑/↓ to pick, ↩ or ⇥ to take one, Esc hides them
+- Eingefügter Text übernimmt die Standardschrift der E-Mail; Fett, Kursiv, Unterstreichungen und Links bleiben erhalten, fremde Schriften, Größen und Farben nicht
+  · Pasted text takes the email’s standard font; bold, italics, underlines and links are kept, other fonts, sizes and colours are not
+- Formatleiste überarbeitet: neue Schriftart-Auswahl (Helvetica, Arial, Verdana, Georgia, Times New Roman, Courier New), deutlichere Symbole, und aktive Formatierungen sind hervorgehoben
+  · Format bar reworked: new font menu (Helvetica, Arial, Verdana, Georgia, Times New Roman, Courier New), clearer icons, and active formatting is highlighted
+- README zeigt die aktuellen Screenshots mit dem Kalender-Tab
+  · The README shows the current screenshots with the calendar tab
+
 ## [1.9.0] – 2026-10-07
 
 - **Kalender als eigener Tab**: oben in der Seitenleiste zwischen „Mail“ und „Kalender“ wechseln (⌘1 / ⌘2); der Kalender nutzt die ganze Fensterbreite, das Postfach bleibt beim Zurückwechseln erhalten

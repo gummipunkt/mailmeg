@@ -120,6 +120,7 @@ final class AppModel {
         } catch {
             present(error, account: account)
         }
+        Task { await account.harvestAddresses() }
     }
 
     func startPolling() {

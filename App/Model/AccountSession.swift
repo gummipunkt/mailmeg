@@ -244,12 +244,31 @@ final class AccountSession: Identifiable {
         }
         if !stale.isEmpty {
             let threads = try await client.threads(ids: stale.map(\.id), format: .metadata)
+            AddressBook.shared.note(threads.flatMap { $0.messages ?? [] }, ownAddresses: Set(ownAddresses))
             for thread in threads {
                 let summary = ThreadSummary(thread: thread, selfAddresses: Set(ownAddresses), selfName: tr("Ich", "Me"))
                 summaryCache[thread.id] = (thread.historyId, summary)
             }
         }
         return refs.compactMap { summaryCache[$0.id]?.summary }
+    }
+
+    /// Learns the people you write to from your recent sent mail, at most once a day,
+    /// so address suggestions work right from the start.
+    func harvestAddresses() async {
+        let key = "addresses.harvested.\(id)"
+        if AddressBook.shared.isPersistent, let last = UserDefaults.standard.object(forKey: key) as? Date,
+           Date().timeIntervalSince(last) < 86_400 {
+            return
+        }
+        do {
+            let list = try await client.listThreads(labelIDs: [SystemLabel.sent], maxResults: 100)
+            let threads = try await client.threads(ids: (list.threads ?? []).map(\.id), format: .metadata, concurrency: 4)
+            AddressBook.shared.note(threads.flatMap { $0.messages ?? [] }, ownAddresses: Set(ownAddresses))
+            UserDefaults.standard.set(Date(), forKey: key)
+        } catch {
+            DebugLog.log("address harvest failed: \(error)")
+        }
     }
 
     /// Keeps a locally changed entry (e.g. marked read) in the cache until Gmail reports a new historyId.
