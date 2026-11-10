@@ -6,17 +6,21 @@ struct RootView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        if model.section == .calendar, let calendarView = model.calendarView {
-            // The calendar takes the whole width next to the sidebar.
-            NavigationSplitView {
-                CalendarSidebarView(view: calendarView)
-                    .navigationSplitViewColumnWidth(min: 220, ideal: 256, max: 340)
-            } detail: {
-                CalendarMainView(view: calendarView)
+        Group {
+            if model.section == .calendar, let calendarView = model.calendarView {
+                // The calendar takes the whole width next to the sidebar.
+                NavigationSplitView {
+                    CalendarSidebarView(view: calendarView)
+                        .navigationSplitViewColumnWidth(min: 220, ideal: 256, max: 340)
+                } detail: {
+                    CalendarMainView(view: calendarView)
+                }
+            } else {
+                mail
             }
-        } else {
-            mail
         }
+        // Behind the glass sidebar of macOS 26 the window itself carries the backdrop.
+        .windowBackdrop()
     }
 
     private var mail: some View {

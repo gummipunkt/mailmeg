@@ -105,8 +105,7 @@ struct CalendarMainView: View {
             Divider().frame(height: 14).opacity(0.6)
             stepButton("chevron.right", help: tr("Weiter", "Forward"), identifier: "calendar.next") { view.step(1) }
         }
-        .background(Capsule().fill(Theme.cardFill.opacity(0.7)))
-        .shadow(color: Theme.shadow.opacity(0.1), radius: 4, y: 2)
+        .glassControl(in: Capsule())
         .fixedSize()
     }
 
@@ -132,8 +131,7 @@ struct CalendarMainView: View {
                 .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(.white)
                 .frame(width: 32, height: 32)
-                .background(Circle().fill(Theme.accentGradient))
-                .shadow(color: Palette.violet.opacity(0.35), radius: 4, y: 1)
+                .prominentGlass(in: Circle())
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
@@ -165,7 +163,7 @@ struct CalendarMainView: View {
             }
             .padding(.horizontal, 11)
             .frame(height: 32)
-            .background(Capsule().fill(Theme.cardFill.opacity(0.85)))
+            .glassControl(in: Capsule(), isHighlighted: true)
             .task { searchFocused = true }
         } else {
             GlassCircleButton(systemImage: "magnifyingglass", help: tr("Termine suchen (⌘F)", "Search Events (⌘F)")) {

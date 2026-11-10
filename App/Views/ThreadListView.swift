@@ -125,8 +125,7 @@ struct ThreadListView: View {
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(.white)
                         .frame(width: 34, height: 34)
-                        .background(Circle().fill(Theme.accentGradient))
-                        .shadow(color: Palette.violet.opacity(0.4), radius: 6, y: 3)
+                        .prominentGlass(in: Circle())
                         .contentShape(Circle())
                 }
                 .buttonStyle(.plain)

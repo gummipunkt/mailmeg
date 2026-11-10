@@ -271,11 +271,7 @@ struct ComposeView: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 18)
                     .padding(.vertical, 8)
-                    .background(
-                        Theme.accentGradient,
-                        in: Capsule()
-                    )
-                    .shadow(color: Palette.violet.opacity(0.35), radius: 6, y: 2)
+                    .prominentGlass(in: Capsule())
                 }
                 .buttonStyle(.plain)
                 .keyboardShortcut(.return, modifiers: .command)

@@ -3,6 +3,13 @@
 Alle nennenswerten Änderungen an MailMeG. Versionen folgen [Semantic Versioning](https://semver.org/lang/de/).
 All notable changes to MailMeG. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.13.0] – 2026-11-10
+
+- **Liquid Glass** auf macOS 26 und neuer: die Seitenleiste ist die schwebende Glasfläche des Systems, durch die der Pastell-Verlauf scheint; Aktionsgruppen, runde Knöpfe und Umschalter sind echtes Glas, „Neue E-Mail“, „Senden“ und „+“ violett getöntes Glas
+  · **Liquid Glass** on macOS 26 and later: the sidebar is the system’s floating pane of glass with the pastel gradient showing through; action groups, round buttons and switches are real glass, “New Message”, “Send” and “+” violet-tinted glass
+- MailMeG wird jetzt mit Xcode 26 gebaut; auf macOS 14 und 15 bleibt das Pastell-Design unverändert
+  · MailMeG is now built with Xcode 26; on macOS 14 and 15 the pastel design stays as it is
+
 ## [1.12.1] – 2026-11-10
 
 - Flächen sind nicht mehr reinweiß, sondern milchig-flieder getönt und folgen dem Verlauf des Hintergrunds; gestaltete HTML-E-Mails liegen als abgerundetes weißes Blatt in der Karte

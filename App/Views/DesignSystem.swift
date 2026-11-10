@@ -255,10 +255,70 @@ enum GlassStyle {
     case sidebar, list, canvas
 }
 
+struct BackdropModifier: ViewModifier {
+    let style: GlassStyle
+
+    func body(content: Content) -> some View {
+        if #available(macOS 26.0, *), style == .sidebar {
+            // The system's sidebar is a floating pane of Liquid Glass: nothing is painted
+            // over it, the window's backdrop shows through.
+            content
+        } else {
+            content.modifier(ToolbarBandModifier(background: AppBackdrop(), band: Theme.backdropTop))
+        }
+    }
+}
+
+// MARK: - Liquid Glass
+
+extension View {
+    /// The pastel backdrop as the background of the whole window, behind the glass sidebar.
+    @ViewBuilder
+    func windowBackdrop() -> some View {
+        if #available(macOS 26.0, *) {
+            containerBackground(for: .window) { AppBackdrop() }
+        } else {
+            self
+        }
+    }
+
+    /// A control surface: Liquid Glass on macOS 26 and later, the milky fill before that.
+    @ViewBuilder
+    func glassControl<S: InsettableShape>(in shape: S, isHighlighted: Bool = false) -> some View {
+        if #available(macOS 26.0, *) {
+            glassEffect(Glass.regular.interactive(), in: shape)
+        } else {
+            background(shape.fill(Theme.cardFill.opacity(isHighlighted ? 1 : 0.7)))
+                .shadow(color: Theme.shadow.opacity(0.1), radius: 4, y: 2)
+        }
+    }
+
+    /// The surface of a prominent control: violet-tinted glass, or the accent gradient.
+    @ViewBuilder
+    func prominentGlass<S: InsettableShape>(in shape: S) -> some View {
+        if #available(macOS 26.0, *) {
+            glassEffect(Glass.regular.tint(Palette.violet).interactive(), in: shape)
+        } else {
+            background(shape.fill(Theme.accentGradient))
+                .shadow(color: Palette.violet.opacity(0.35), radius: 6, y: 2)
+        }
+    }
+
+    /// The track of a switch: glass, or a breath of violet.
+    @ViewBuilder
+    func glassTrack() -> some View {
+        if #available(macOS 26.0, *) {
+            glassEffect(Glass.regular, in: Capsule())
+        } else {
+            background(Capsule().fill(Palette.violet.opacity(0.1)))
+        }
+    }
+}
+
 extension View {
     /// The pastel backdrop behind the view and the toolbar above it.
     func glassBackground(_ style: GlassStyle) -> some View {
-        modifier(ToolbarBandModifier(background: AppBackdrop(), band: Theme.backdropTop))
+        modifier(BackdropModifier(style: style))
     }
 
     /// A floating milky panel with rounded corners and a soft coloured shadow.
@@ -319,22 +379,23 @@ struct GlassCircleLabel: View {
     @State private var isHovering = false
 
     var body: some View {
+        Group {
+            if isTinted {
+                icon.background(Circle().fill(Theme.tint.opacity(isHovering ? 1 : 0.75)))
+            } else {
+                icon.glassControl(in: Circle(), isHighlighted: isHovering)
+            }
+        }
+        .contentShape(Circle())
+        .onHover { isHovering = $0 }
+        .animation(.easeOut(duration: 0.12), value: isHovering)
+    }
+
+    private var icon: some View {
         Image(systemName: systemImage)
             .font(.system(size: 13.5, weight: .medium))
             .foregroundStyle(isActive || isTinted ? Color.accentColor : Color.primary.opacity(0.78))
             .frame(width: 32, height: 32)
-            .background {
-                if isTinted {
-                    Circle().fill(Theme.tint.opacity(isHovering ? 1 : 0.75))
-                } else {
-                    Circle()
-                        .fill(Theme.cardFill.opacity(isHovering ? 1 : 0.7))
-                        .shadow(color: Theme.shadow.opacity(0.1), radius: 4, y: 2)
-                }
-            }
-            .contentShape(Circle())
-            .onHover { isHovering = $0 }
-            .animation(.easeOut(duration: 0.12), value: isHovering)
     }
 }
 
@@ -427,7 +488,7 @@ struct PillSwitch<Value: Hashable>: View {
             }
         }
         .padding(3)
-        .background(Capsule().fill(Palette.violet.opacity(0.1)))
+        .glassTrack()
         .fixedSize()
     }
 }
@@ -455,18 +516,24 @@ struct GlassCapsuleButton: View {
             .foregroundStyle(isProminent ? Color.white : Color.primary.opacity(0.85))
             .padding(.horizontal, 14)
             .frame(height: 32)
-            .background {
-                if isProminent {
-                    Capsule().fill(Theme.accentGradient)
-                } else {
-                    Capsule().fill(Theme.cardFill.opacity(isHovering ? 1 : 0.7))
-                }
-            }
-            .shadow(color: isProminent ? Palette.violet.opacity(0.35) : Theme.shadow.opacity(0.1), radius: isProminent ? 6 : 4, y: 2)
+            .modifier(CapsuleButtonSurface(isProminent: isProminent, isHovering: isHovering))
             .contentShape(Capsule())
             .onHover { isHovering = $0 }
         }
         .buttonStyle(.plain)
+    }
+}
+
+private struct CapsuleButtonSurface: ViewModifier {
+    let isProminent: Bool
+    let isHovering: Bool
+
+    func body(content: Content) -> some View {
+        if isProminent {
+            content.prominentGlass(in: Capsule())
+        } else {
+            content.glassControl(in: Capsule(), isHighlighted: isHovering)
+        }
     }
 }
 
@@ -482,8 +549,7 @@ struct ToolbarGroup<Content: View>: View {
         }
         .padding(.horizontal, 3)
         .frame(height: 32)
-        .background(Capsule().fill(Theme.cardFill.opacity(0.7)))
-        .shadow(color: Theme.shadow.opacity(0.1), radius: 4, y: 2)
+        .glassControl(in: Capsule())
     }
 }
 

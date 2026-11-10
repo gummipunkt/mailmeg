@@ -139,7 +139,7 @@ struct SectionSwitch: View {
             tab(.calendar, title: tr("Kalender", "Calendar"), systemImage: "calendar", badge: 0, identifier: "section.calendar")
         }
         .padding(3)
-        .background(Capsule().fill(Palette.violet.opacity(0.1)))
+        .glassTrack()
         .padding(.horizontal, 12)
         .padding(.top, 4)
         .padding(.bottom, 8)
