@@ -3,6 +3,15 @@
 Alle nennenswerten Änderungen an MailMeG. Versionen folgen [Semantic Versioning](https://semver.org/lang/de/).
 All notable changes to MailMeG. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.12.0] – 2026-11-10
+
+- **Aufgefrischtes Design**: Bedienelemente sind flacher und ruhiger (keine Schatten und Ränder mehr), die Aktionen über der Konversation sitzen in gemeinsamen Gruppen, und die ausgewählte E-Mail ist sanft hinterlegt statt vollflächig violett
+  · **Refreshed design**: controls are flatter and calmer (no more shadows and outlines), the actions above a conversation sit in shared groups, and the selected email gets a soft tint instead of a solid violet block
+- Hellere, klarere Flächen für Liste, Konversation und Kalender; Karten mit weichem Schatten statt Rahmen; gelesene E-Mails in leichterer Schrift, damit Ungelesenes hervorsticht
+  · Lighter, cleaner surfaces for list, conversation and calendar; cards with a soft shadow instead of an outline; read emails in a lighter weight so unread ones stand out
+- Umschalter (Tag/Woche/Monat, Quelltext/Header) im selben Stil wie der Mail/Kalender-Tab
+  · Switches (Day/Week/Month, Source/Headers) in the same style as the Mail/Calendar tab
+
 ## [1.11.0] – 2026-11-10
 
 - **Zitierte Nachrichten sind eingeklappt**: unter der Antwort steht „••• Zitat anzeigen“, ein Klick klappt den zitierten Verlauf auf und wieder zu. In den Einstellungen (Allgemein → Konversationen) lässt sich umstellen, dass Zitate immer ausgeklappt sind

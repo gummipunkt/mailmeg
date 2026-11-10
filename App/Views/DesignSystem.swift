@@ -11,20 +11,24 @@ enum Palette {
 }
 
 enum Theme {
-    static let cardRadius: CGFloat = 12
+    static let cardRadius: CGFloat = 14
 
-    /// Sidebar background: the lightest palette tone.
-    static let sidebar = Color(light: "#E3E6FE", dark: "#1A1B2F")
+    /// Sidebar background: a breath of the lightest palette tone over the desktop blur.
+    static let sidebar = Color(light: "#E9EBFB", dark: "#16172A")
     /// Message list background.
-    static let listBackground = Color(light: "#FAFAFF", dark: "#1D1E34")
+    static let listBackground = Color(light: "#FFFFFF", dark: "#1A1B2E")
     /// Background behind conversation cards.
-    static let canvas = Color(light: "#EEF0FE", dark: "#15162A")
+    static let canvas = Color(light: "#F3F4FB", dark: "#121324")
     /// Cards, text fields.
-    static let cardFill = Color(light: "#FFFFFF", dark: "#25263F")
+    static let cardFill = Color(light: "#FFFFFF", dark: "#212238")
     /// Subtle fills: chips, counters, banners.
-    static let tint = Color(light: "#DFE2FE", dark: "#2F3058")
+    static let tint = Color(light: "#E9EBFD", dark: "#2B2C4E")
     /// Lines and outlines.
-    static let hairline = Color(light: "#B1CBFA", dark: "#3A3C6B")
+    static let hairline = Color(light: "#D5D9F0", dark: "#34365C")
+    /// The barely visible edge of cards.
+    static let cardStroke = Color(light: "#E7E9F5", dark: "#2C2D49")
+    /// Fill of the selected row in lists.
+    static let selection = Color(light: "#E4E6FD", dark: "#34366A")
 
     /// Avatar styles built from the palette: gradient top, bottom and text colour.
     static let avatarStyles: [(Color, Color, Color)] = [
@@ -150,9 +154,9 @@ struct CardModifier: ViewModifier {
             .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous)
-                    .strokeBorder(Theme.hairline.opacity(0.45))
+                    .strokeBorder(Theme.cardStroke)
             )
-            .shadow(color: Palette.violet.opacity(0.10), radius: 10, y: 3)
+            .shadow(color: .black.opacity(0.05), radius: 14, y: 5)
     }
 }
 
@@ -217,17 +221,17 @@ enum GlassStyle {
         case .sidebar:
             ZStack {
                 VisualEffectView(material: .sidebar)
-                Theme.sidebar.opacity(0.55)
+                Theme.sidebar.opacity(0.5)
             }
         case .list:
             ZStack {
                 VisualEffectView(material: .menu)
-                Theme.listBackground.opacity(0.6)
+                Theme.listBackground.opacity(0.86)
             }
         case .canvas:
             ZStack {
                 VisualEffectView(material: .underWindowBackground)
-                Theme.canvas.opacity(0.62)
+                Theme.canvas.opacity(0.82)
             }
         }
     }
@@ -251,7 +255,7 @@ extension View {
             }
         }
         .overlay(alignment: .bottom) {
-            Divider().opacity(0.6)
+            Divider().opacity(0.35)
         }
     }
 }
@@ -280,15 +284,13 @@ struct GlassCircleLabel: View {
 
     var body: some View {
         Image(systemName: systemImage)
-            .font(.system(size: 14, weight: .medium))
-            .foregroundStyle(isActive ? Color.accentColor : Color.primary.opacity(0.8))
+            .font(.system(size: 13.5, weight: .medium))
+            .foregroundStyle(isActive ? Color.accentColor : Color.primary.opacity(0.78))
             .frame(width: 32, height: 32)
-            .background(.ultraThinMaterial, in: Circle())
-            .background(Circle().fill(Color.primary.opacity(isHovering ? 0.12 : 0.05)))
-            .overlay(Circle().strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8))
-            .shadow(color: .black.opacity(0.08), radius: 3, y: 1)
+            .background(Circle().fill(Color.primary.opacity(isHovering ? 0.12 : 0.06)))
             .contentShape(Circle())
             .onHover { isHovering = $0 }
+            .animation(.easeOut(duration: 0.12), value: isHovering)
     }
 }
 
@@ -363,12 +365,14 @@ struct PillSwitch<Value: Hashable>: View {
                         }
                     }
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(selected ? Color.white : Color.primary.opacity(0.75))
+                    .foregroundStyle(selected ? Color.primary : Color.secondary)
                     .padding(.horizontal, 12)
                     .frame(height: 26)
                     .background {
                         if selected {
-                            Capsule().fill(LinearGradient(colors: [Palette.periwinkle, Palette.violet], startPoint: .top, endPoint: .bottom))
+                            Capsule()
+                                .fill(Theme.cardFill)
+                                .shadow(color: .black.opacity(0.12), radius: 2, y: 1)
                         }
                     }
                     .contentShape(Capsule())
@@ -378,9 +382,7 @@ struct PillSwitch<Value: Hashable>: View {
             }
         }
         .padding(3)
-        .background(.ultraThinMaterial, in: Capsule())
-        .background(Capsule().fill(Color.primary.opacity(0.05)))
-        .overlay(Capsule().strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8))
+        .background(Capsule().fill(Color.primary.opacity(0.07)))
         .fixedSize()
     }
 }
@@ -412,16 +414,110 @@ struct GlassCapsuleButton: View {
                 if isProminent {
                     Capsule().fill(LinearGradient(colors: [Palette.periwinkle, Palette.violet], startPoint: .top, endPoint: .bottom))
                 } else {
-                    Capsule().fill(.ultraThinMaterial)
-                    Capsule().fill(Color.primary.opacity(isHovering ? 0.12 : 0.05))
+                    Capsule().fill(Color.primary.opacity(isHovering ? 0.12 : 0.06))
                 }
             }
-            .overlay(Capsule().strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8))
-            .shadow(color: .black.opacity(0.08), radius: 3, y: 1)
+            .shadow(color: isProminent ? Palette.violet.opacity(0.3) : .clear, radius: 5, y: 2)
             .contentShape(Capsule())
             .onHover { isHovering = $0 }
         }
         .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Grouped toolbar controls
+
+/// Several toolbar buttons sharing one capsule, like the grouped controls of current macOS.
+struct ToolbarGroup<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        HStack(spacing: 1) {
+            content()
+        }
+        .padding(.horizontal, 3)
+        .frame(height: 32)
+        .background(Capsule().fill(Color.primary.opacity(0.06)))
+    }
+}
+
+/// The face of a button inside a `ToolbarGroup`.
+struct ToolbarIconLabel: View {
+    let systemImage: String
+    var isActive = false
+    @State private var isHovering = false
+
+    var body: some View {
+        Image(systemName: systemImage)
+            .font(.system(size: 13.5, weight: .medium))
+            .foregroundStyle(isActive ? Color.accentColor : Color.primary.opacity(0.78))
+            .frame(width: 34, height: 26)
+            .background(Capsule().fill(Color.primary.opacity(isHovering ? 0.1 : 0)))
+            .contentShape(Rectangle())
+            .onHover { isHovering = $0 }
+            .animation(.easeOut(duration: 0.12), value: isHovering)
+    }
+}
+
+struct ToolbarIconButton: View {
+    let systemImage: String
+    let help: String
+    var isActive = false
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            ToolbarIconLabel(systemImage: systemImage, isActive: isActive)
+        }
+        .buttonStyle(.plain)
+        .help(help)
+        .accessibilityLabel(help)
+    }
+}
+
+/// A button inside a `ToolbarGroup` that opens a menu.
+struct ToolbarIconMenu<Content: View>: View {
+    let systemImage: String
+    let help: String
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        Menu {
+            content()
+        } label: {
+            ToolbarIconLabel(systemImage: systemImage)
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help(help)
+        .accessibilityLabel(help)
+    }
+}
+
+// MARK: - Soft list selection
+
+/// Turns off a list's own (solid) selection highlight, so its rows can draw a softer one.
+/// Put it into the background of a row.
+struct ListHighlightRemover: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { Probe() }
+    func updateNSView(_ view: NSView, context: Context) {}
+
+    final class Probe: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            var view = superview
+            while let current = view {
+                if let table = current as? NSTableView {
+                    if table.selectionHighlightStyle != .none {
+                        table.selectionHighlightStyle = .none
+                    }
+                    return
+                }
+                view = current.superview
+            }
+        }
     }
 }
 

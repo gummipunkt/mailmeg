@@ -92,44 +92,48 @@ struct ThreadDetailView: View {
     }
 
     private func actionButtons(compact: Bool) -> some View {
-        HStack(spacing: 6) {
-            GlassCircleButton(systemImage: "arrowshape.turn.up.left", help: tr("Antworten (⌘R)", "Reply (⌘R)")) { compose(.reply) }
-                .accessibilityIdentifier("detail.reply")
-            if compact {
-                GlassCircleMenu(systemImage: "arrowshape.turn.up.right", help: tr("Allen antworten oder weiterleiten", "Reply All or Forward")) {
-                    Button(tr("Allen antworten", "Reply All")) { compose(.replyAll) }
-                    Button(tr("Weiterleiten", "Forward")) { compose(.forward) }
+        HStack(spacing: 8) {
+            ToolbarGroup {
+                ToolbarIconButton(systemImage: "arrowshape.turn.up.left", help: tr("Antworten (⌘R)", "Reply (⌘R)")) { compose(.reply) }
+                    .accessibilityIdentifier("detail.reply")
+                if compact {
+                    ToolbarIconMenu(systemImage: "arrowshape.turn.up.right", help: tr("Allen antworten oder weiterleiten", "Reply All or Forward")) {
+                        Button(tr("Allen antworten", "Reply All")) { compose(.replyAll) }
+                        Button(tr("Weiterleiten", "Forward")) { compose(.forward) }
+                    }
+                } else {
+                    ToolbarIconButton(systemImage: "arrowshape.turn.up.left.2", help: tr("Allen antworten (⇧⌘R)", "Reply All (⇧⌘R)")) { compose(.replyAll) }
+                    ToolbarIconButton(systemImage: "arrowshape.turn.up.right", help: tr("Weiterleiten (⇧⌘F)", "Forward (⇧⌘F)")) { compose(.forward) }
                 }
-            } else {
-                GlassCircleButton(systemImage: "arrowshape.turn.up.left.2", help: tr("Allen antworten (⇧⌘R)", "Reply All (⇧⌘R)")) { compose(.replyAll) }
-                GlassCircleButton(systemImage: "arrowshape.turn.up.right", help: tr("Weiterleiten (⇧⌘F)", "Forward (⇧⌘F)")) { compose(.forward) }
             }
 
-            Spacer().frame(width: compact ? 2 : 6)
-
-            if thread?.labelIDs.contains(SystemLabel.trash) == true {
-                GlassCircleButton(systemImage: "arrow.uturn.backward", help: tr("Wiederherstellen", "Restore")) { model.perform(.untrash) }
-            } else {
-                GlassCircleButton(systemImage: "archivebox", help: tr("Archivieren (⌃⌘A)", "Archive (⌃⌘A)")) { model.perform(.archive) }
-                GlassCircleButton(systemImage: "trash", help: tr("In den Papierkorb (⌘⌫)", "Move to Trash (⌘⌫)")) { model.perform(.trash) }
+            ToolbarGroup {
+                if thread?.labelIDs.contains(SystemLabel.trash) == true {
+                    ToolbarIconButton(systemImage: "arrow.uturn.backward", help: tr("Wiederherstellen", "Restore")) { model.perform(.untrash) }
+                } else {
+                    ToolbarIconButton(systemImage: "archivebox", help: tr("Archivieren (⌃⌘A)", "Archive (⌃⌘A)")) { model.perform(.archive) }
+                    ToolbarIconButton(systemImage: "trash", help: tr("In den Papierkorb (⌘⌫)", "Move to Trash (⌘⌫)")) { model.perform(.trash) }
+                }
+                labelsMenu
+                ToolbarIconButton(
+                    systemImage: thread?.isUnread == true ? "envelope.badge" : "envelope.open",
+                    help: tr("Als gelesen/ungelesen markieren (⇧⌘U)", "Mark as Read/Unread (⇧⌘U)"),
+                    isActive: thread?.isUnread == true
+                ) { model.toggleRead() }
             }
-            labelsMenu
-            GlassCircleButton(
-                systemImage: thread?.isUnread == true ? "envelope.badge" : "envelope.open",
-                help: tr("Als gelesen/ungelesen markieren (⇧⌘U)", "Mark as Read/Unread (⇧⌘U)"),
-                isActive: thread?.isUnread == true
-            ) { model.toggleRead() }
 
             Spacer(minLength: 6)
 
-            GlassCircleButton(systemImage: "chevron.up", help: tr("Vorherige Konversation (⌥⌘↑)", "Previous Conversation (⌥⌘↑)")) { model.selectAdjacentThread(-1) }
-                .disabled(!model.canSelectAdjacentThread(-1))
-                .opacity(model.canSelectAdjacentThread(-1) ? 1 : 0.45)
-                .accessibilityIdentifier("detail.previous")
-            GlassCircleButton(systemImage: "chevron.down", help: tr("Nächste Konversation (⌥⌘↓)", "Next Conversation (⌥⌘↓)")) { model.selectAdjacentThread(1) }
-                .disabled(!model.canSelectAdjacentThread(1))
-                .opacity(model.canSelectAdjacentThread(1) ? 1 : 0.45)
-                .accessibilityIdentifier("detail.next")
+            ToolbarGroup {
+                ToolbarIconButton(systemImage: "chevron.up", help: tr("Vorherige Konversation (⌥⌘↑)", "Previous Conversation (⌥⌘↑)")) { model.selectAdjacentThread(-1) }
+                    .disabled(!model.canSelectAdjacentThread(-1))
+                    .opacity(model.canSelectAdjacentThread(-1) ? 1 : 0.4)
+                    .accessibilityIdentifier("detail.previous")
+                ToolbarIconButton(systemImage: "chevron.down", help: tr("Nächste Konversation (⌥⌘↓)", "Next Conversation (⌥⌘↓)")) { model.selectAdjacentThread(1) }
+                    .disabled(!model.canSelectAdjacentThread(1))
+                    .opacity(model.canSelectAdjacentThread(1) ? 1 : 0.4)
+                    .accessibilityIdentifier("detail.next")
+            }
             moreMenu
         }
     }
@@ -139,7 +143,7 @@ struct ThreadDetailView: View {
             .filter { !$0.isSystem && !$0.isHidden }
             .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
         let applied = thread?.labelIDs ?? []
-        return GlassCircleMenu(systemImage: "square.grid.2x2", help: tr("Labels", "Labels")) {
+        return ToolbarIconMenu(systemImage: "tag", help: tr("Labels", "Labels")) {
             if userLabels.isEmpty {
                 Text(tr("Keine eigenen Labels", "No Custom Labels"))
             }
@@ -190,7 +194,8 @@ struct ThreadDetailView: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Text(detail.subject.isEmpty ? tr("(kein Betreff)", "(no subject)") : detail.subject)
-                        .font(.system(size: 26, weight: .bold))
+                        .font(.system(size: 24, weight: .bold))
+                        .tracking(-0.3)
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("detail.subject")
@@ -610,10 +615,10 @@ private struct QuickReplyBar: View {
                 .focused($isFocused)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 9)
-                .background(Theme.cardFill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .background(Theme.cardFill, in: RoundedRectangle(cornerRadius: 17, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(isFocused ? Color.accentColor.opacity(0.7) : Theme.hairline.opacity(0.6))
+                    RoundedRectangle(cornerRadius: 17, style: .continuous)
+                        .strokeBorder(isFocused ? Color.accentColor.opacity(0.7) : Theme.cardStroke, lineWidth: isFocused ? 1.5 : 1)
                 )
                 .accessibilityIdentifier("quickReply")
 

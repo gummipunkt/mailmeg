@@ -175,9 +175,7 @@ private struct ModeSwitch: View {
             option(.source, title: tr("Quelltext", "Source"), systemImage: "chevron.left.forwardslash.chevron.right")
         }
         .padding(3)
-        .background(.ultraThinMaterial, in: Capsule())
-        .background(Capsule().fill(Color.primary.opacity(0.05)))
-        .overlay(Capsule().strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8))
+        .background(Capsule().fill(Color.primary.opacity(0.07)))
     }
 
     private func option(_ value: SourceRequest.Mode, title: String, systemImage: String) -> some View {
@@ -187,12 +185,14 @@ private struct ModeSwitch: View {
         } label: {
             Label(title, systemImage: systemImage)
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(selected ? Color.white : Color.primary.opacity(0.75))
+                .foregroundStyle(selected ? Color.primary : Color.secondary)
                 .padding(.horizontal, 12)
                 .frame(height: 26)
                 .background {
                     if selected {
-                        Capsule().fill(LinearGradient(colors: [Palette.periwinkle, Palette.violet], startPoint: .top, endPoint: .bottom))
+                        Capsule()
+                            .fill(Theme.cardFill)
+                            .shadow(color: .black.opacity(0.12), radius: 2, y: 1)
                     }
                 }
                 .contentShape(Capsule())

@@ -18,6 +18,14 @@ struct ThreadListView: View {
                 )
                 .tag(thread.id)
                 .accessibilityIdentifier("thread.\(thread.id)")
+                .listRowSeparator(.hidden)
+                // A soft tint marks the selection instead of the table's solid highlight.
+                .listRowBackground(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(model.selectedThreadIDs.contains(thread.id) ? Theme.selection : Color.clear)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 1)
+                )
                 .onAppear { mailbox.loadMoreIfNeeded(after: thread) }
             }
             if mailbox.isLoadingMore {
@@ -280,11 +288,10 @@ struct SearchField: View {
                 .help(tr("Suche löschen", "Clear Search"))
             }
         }
-        .padding(.horizontal, 10)
-        .frame(height: 28)
-        .background(.ultraThinMaterial, in: Capsule())
-        .background(Capsule().fill(Color.primary.opacity(0.05)))
-        .overlay(Capsule().strokeBorder(isFocused ? Color.accentColor.opacity(0.7) : Color.white.opacity(0.22), lineWidth: isFocused ? 1.5 : 0.8))
+        .padding(.horizontal, 11)
+        .frame(height: 30)
+        .background(Capsule().fill(Color.primary.opacity(0.06)))
+        .overlay(Capsule().strokeBorder(Color.accentColor.opacity(isFocused ? 0.7 : 0), lineWidth: 1.5))
     }
 }
 
@@ -312,7 +319,7 @@ struct ThreadRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(senderLine)
-                        .font(.system(size: 13.5, weight: thread.isUnread ? .bold : .semibold))
+                        .font(.system(size: 13.5, weight: thread.isUnread ? .bold : .medium))
                         .lineLimit(1)
                     if thread.messageCount > 1 {
                         Text("\(thread.messageCount)")
@@ -338,8 +345,8 @@ struct ThreadRow: View {
                             .foregroundStyle(Color.accentColor)
                     }
                     Text(thread.subject.isEmpty ? tr("(kein Betreff)", "(no subject)") : thread.subject)
-                        .font(.system(size: 12.5, weight: thread.isUnread ? .semibold : .medium))
-                        .foregroundStyle(.primary.opacity(0.9))
+                        .font(.system(size: 12.5, weight: thread.isUnread ? .semibold : .regular))
+                        .foregroundStyle(.primary.opacity(thread.isUnread ? 0.95 : 0.82))
                         .lineLimit(1)
                 }
                 Text(thread.snippet)
@@ -357,10 +364,11 @@ struct ThreadRow: View {
                 }
             }
         }
-        .padding(.vertical, 9)
+        .padding(.vertical, 10)
         .padding(.trailing, 2)
         .contentShape(Rectangle())
         .onHover { isHovering = $0 }
+        .background(ListHighlightRemover().frame(width: 0, height: 0))
     }
 
     private var senderLine: String {
@@ -408,6 +416,7 @@ struct ThreadRow: View {
             ) { onAction(thread.isStarred ? .unstar : .star) }
         }
         .padding(.horizontal, 2)
-        .background(.regularMaterial, in: Capsule())
+        .background(Theme.cardFill, in: Capsule())
+        .shadow(color: .black.opacity(0.1), radius: 3, y: 1)
     }
 }

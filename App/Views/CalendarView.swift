@@ -18,13 +18,13 @@ struct CalendarMainView: View {
             header
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Theme.cardFill.opacity(0.88), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .background(Theme.cardFill, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(Theme.hairline.opacity(0.45), lineWidth: 0.8)
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(Theme.cardStroke)
                 )
-                .shadow(color: .black.opacity(0.05), radius: 6, y: 2)
+                .shadow(color: .black.opacity(0.05), radius: 14, y: 5)
                 .padding(.horizontal, 14)
                 .padding(.bottom, 14)
         }
@@ -111,10 +111,7 @@ struct CalendarMainView: View {
             Divider().frame(height: 14).opacity(0.6)
             stepButton("chevron.right", help: tr("Weiter", "Forward"), identifier: "calendar.next") { view.step(1) }
         }
-        .background(.ultraThinMaterial, in: Capsule())
-        .background(Capsule().fill(Color.primary.opacity(0.05)))
-        .overlay(Capsule().strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8))
-        .shadow(color: .black.opacity(0.08), radius: 3, y: 1)
+        .background(Capsule().fill(Color.primary.opacity(0.06)))
         .fixedSize()
     }
 
@@ -173,9 +170,7 @@ struct CalendarMainView: View {
             }
             .padding(.horizontal, 11)
             .frame(height: 32)
-            .background(.ultraThinMaterial, in: Capsule())
-            .background(Capsule().fill(Color.primary.opacity(0.05)))
-            .overlay(Capsule().strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8))
+            .background(Capsule().fill(Color.primary.opacity(0.06)))
             .task { searchFocused = true }
         } else {
             GlassCircleButton(systemImage: "magnifyingglass", help: tr("Termine suchen (⌘F)", "Search Events (⌘F)")) {
