@@ -94,8 +94,8 @@ struct MailCommands: Commands {
     }
 
     private func compose(_ kind: ComposeKind) {
-        if let draft = model.replyDraft(kind) {
-            openWindow(value: draft)
+        if let detail = model.threadDetail, let draft = detail.draft(kind) {
+            detail.present(draft, openWindow: openWindow)
         }
     }
 }

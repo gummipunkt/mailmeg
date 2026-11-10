@@ -6,6 +6,12 @@ import UniformTypeIdentifiers
 struct ComposeView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openWindow) private var openWindow
+
+    /// Set when the editor sits below a conversation in the main window instead of in a
+    /// window of its own; called when it should go away.
+    private let onClose: (() -> Void)?
+    private var isEmbedded: Bool { onClose != nil }
 
     @State private var draft: ComposeDraft
     @State private var attachments: [OutgoingAttachment] = []
@@ -28,7 +34,8 @@ struct ComposeView: View {
 
     private enum Field { case to, cc, bcc, subject, body }
 
-    init(draft: ComposeDraft) {
+    init(draft: ComposeDraft, onClose: (() -> Void)? = nil) {
+        self.onClose = onClose
         _draft = State(initialValue: draft)
         _autosaver = State(initialValue: DraftAutosaver(draft: draft))
         _showsCcBcc = State(initialValue: !draft.cc.isEmpty || !draft.bcc.isEmpty)
@@ -51,8 +58,66 @@ struct ComposeView: View {
         model.account(id: draft.accountID) ?? model.accounts.first
     }
 
+    /// Closes the editor: the embedded one folds away, a window closes.
+    private func close() {
+        if let onClose {
+            onClose()
+        } else {
+            dismiss()
+        }
+    }
+
+    /// Title and window controls of the editor below a conversation.
+    private var embeddedHeader: some View {
+        HStack(spacing: 8) {
+            Image(systemName: draft.kind == .forward ? "arrowshape.turn.up.right.fill" : "arrowshape.turn.up.left.fill")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Color.accentColor)
+            Text(embeddedTitle)
+                .font(.system(size: 12.5, weight: .semibold))
+                .lineLimit(1)
+                .accessibilityIdentifier("compose.inlineTitle")
+            Spacer(minLength: 8)
+            IconButton(systemImage: "macwindow.badge.plus", help: tr("In eigenem Fenster weiterschreiben", "Continue in a separate window")) {
+                popOut()
+            }
+            .accessibilityIdentifier("compose.popOut")
+            IconButton(systemImage: "xmark", help: tr("Schließen – der Text bleibt als Entwurf erhalten", "Close – what you wrote is kept as a draft")) {
+                close()
+            }
+            .accessibilityIdentifier("compose.close")
+        }
+        .padding(.horizontal, 4)
+    }
+
+    private var embeddedTitle: String {
+        switch draft.kind {
+        case .forward: return tr("Weiterleiten", "Forward")
+        case .replyAll: return tr("Allen antworten", "Reply All")
+        case .reply: return tr("Antworten", "Reply")
+        case .new: return draft.subject.isEmpty ? tr("Entwurf", "Draft") : draft.subject
+        }
+    }
+
+    /// Moves the message into a window of its own, with everything written so far.
+    private func popOut() {
+        Task {
+            // Save and stop saving here first, so the window continues the same Gmail draft.
+            await saveDraft()
+            await autosaver.finish()
+            var moved = draft
+            moved.gmailDraftID = autosaver.draftID
+            ComposeHandoff.keepAttachments(attachments, for: moved.id)
+            openWindow(value: moved)
+            close()
+        }
+    }
+
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: isEmbedded ? 8 : 12) {
+            if isEmbedded {
+                embeddedHeader
+            }
             // Header fields
             VStack(spacing: 0) {
                 if model.allIdentities.count > 1 {
@@ -92,12 +157,15 @@ struct ComposeView: View {
                     }
                     suggestionList(for: .bcc)
                 }
-                fieldRow(tr("Betreff", "Subject"), showsDivider: false) {
-                    TextField("", text: $draft.subject, prompt: Text(tr("Worum geht es?", "What’s it about?")))
-                        .textFieldStyle(.plain)
-                        .font(.system(size: 13, weight: .semibold))
-                        .focused($focusedField, equals: .subject)
-                        .accessibilityIdentifier("compose.subject")
+                // A reply below its conversation keeps the subject; no need to show it.
+                if !isEmbedded || draft.kind == .forward || draft.kind == .new {
+                    fieldRow(tr("Betreff", "Subject"), showsDivider: false) {
+                        TextField("", text: $draft.subject, prompt: Text(tr("Worum geht es?", "What’s it about?")))
+                            .textFieldStyle(.plain)
+                            .font(.system(size: 13, weight: .semibold))
+                            .focused($focusedField, equals: .subject)
+                            .accessibilityIdentifier("compose.subject")
+                    }
                 }
             }
             .card()
@@ -200,9 +268,8 @@ struct ComposeView: View {
                 .accessibilityIdentifier("compose.send")
             }
         }
-        .padding(14)
-        .glassBackground(.canvas)
-        .navigationTitle(draft.subject.isEmpty ? tr("Neue E-Mail", "New Message") : draft.subject)
+        .padding(isEmbedded ? 12 : 14)
+        .modifier(ComposeChrome(isEmbedded: isEmbedded, title: draft.subject.isEmpty ? tr("Neue E-Mail", "New Message") : draft.subject))
         .fileImporter(isPresented: $isImporting, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
             addAttachments(result)
         }
@@ -243,13 +310,16 @@ struct ComposeView: View {
                 Task {
                     await autosaver.discard(account: account)
                     if let account { model.draftsChanged(account) }
-                    dismiss()
+                    close()
                 }
             }
         } message: {
             Text(tr("Die E-Mail wird nicht gesendet und auch in Gmail gelöscht.", "The message won’t be sent and is also removed from Gmail."))
         }
         .onAppear {
+            // Files of a message that was moved here from below its conversation.
+            let handedOver = ComposeHandoff.takeAttachments(for: draft.id)
+            if !handedOver.isEmpty { attachments = handedOver }
             if draft.accountID.isEmpty, let first = model.accounts.first {
                 draft.accountID = first.id
             }
@@ -269,7 +339,6 @@ struct ComposeView: View {
         .onChange(of: draft.to) { suggestionIndex = 0 }
         .onChange(of: draft.cc) { suggestionIndex = 0 }
         .onChange(of: draft.bcc) { suggestionIndex = 0 }
-        .frame(minWidth: 520, minHeight: 400)
     }
 
     // MARK: - Address suggestions
@@ -351,7 +420,7 @@ struct ComposeView: View {
                         accept(entry, in: field)
                     } label: {
                         HStack(spacing: 10) {
-                            AvatarView(name: entry.name ?? entry.address, size: 24)
+                            AvatarView(name: entry.name ?? entry.address, email: entry.address, size: 24)
                             VStack(alignment: .leading, spacing: 0) {
                                 Text(entry.name ?? entry.address)
                                     .font(.system(size: 12.5, weight: .semibold))
@@ -623,7 +692,7 @@ struct ComposeView: View {
             try await MailSender.send(final, attachments: attachments, account: account)
             model.didSend(from: account)
             model.draftsChanged(account)
-            dismiss()
+            close()
         } catch {
             autosaver.resume()
             errorMessage = error.localizedDescription
@@ -638,4 +707,39 @@ private struct DriveUpload: Identifiable {
     let size: Int
     var progress: Double = 0
     var error: String?
+}
+
+/// The surroundings of the editor: a window with a title, or a panel below a conversation.
+private struct ComposeChrome: ViewModifier {
+    let isEmbedded: Bool
+    let title: String
+
+    func body(content: Content) -> some View {
+        if isEmbedded {
+            content
+                .background(.regularMaterial)
+                .overlay(alignment: .top) { Divider().opacity(0.6) }
+        } else {
+            content
+                .frame(minWidth: 520, minHeight: 400)
+                .glassBackground(.canvas)
+                .navigationTitle(title)
+        }
+    }
+}
+
+/// Carries files that are not part of the draft itself from the editor below a
+/// conversation to the window it is moved into.
+@MainActor
+enum ComposeHandoff {
+    private static var attachments: [UUID: [OutgoingAttachment]] = [:]
+
+    static func keepAttachments(_ files: [OutgoingAttachment], for draftID: UUID) {
+        guard !files.isEmpty else { return }
+        attachments[draftID] = files
+    }
+
+    static func takeAttachments(for draftID: UUID) -> [OutgoingAttachment] {
+        attachments.removeValue(forKey: draftID) ?? []
+    }
 }

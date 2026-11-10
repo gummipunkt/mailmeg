@@ -91,12 +91,16 @@ private enum DemoData {
                             <ul><li>Kick-off am 7. Oktober</li><li>Design-Review am 21. Oktober</li><li>Launch Anfang Dezember</li></ul>
                             <p>Lass uns Donnerstag kurz drüber sprechen.</p>
                             <p>Viele Grüße<br>Anna</p>
+                            <div class="gmail_quote"><div class="gmail_attr">Am Dienstag schrieb Alex Berger &lt;alex@example.com&gt;:</div>
+                            <blockquote class="gmail_quote" style="margin:0 0 0 .8ex;border-left:1px solid #ccc;padding-left:1ex">Hi Anna,<br><br>kannst du mir bis Freitag den aktuellen Stand zum Projektplan schicken?<br><br>Danke!<br>Alex</blockquote></div>
                             """, """
                             <p>Hi Alex,</p>
                             <p>attached is the <b>Q4 project plan</b>. The key milestones:</p>
                             <ul><li>Kick-off on October 7</li><li>Design review on October 21</li><li>Launch in early December</li></ul>
                             <p>Let’s talk it through on Thursday.</p>
                             <p>Best,<br>Anna</p>
+                            <div class="gmail_quote"><div class="gmail_attr">On Tuesday Alex Berger &lt;alex@example.com&gt; wrote:</div>
+                            <blockquote class="gmail_quote" style="margin:0 0 0 .8ex;border-left:1px solid #ccc;padding-left:1ex">Hi Anna,<br><br>could you send me the current state of the project plan by Friday?<br><br>Thanks!<br>Alex</blockquote></div>
                             """),
                             attachments: [DemoAttachment(filename: tr("Projektplan-Q4.pdf", "Project-plan-Q4.pdf"), mimeType: "application/pdf", size: 482_133)]),
             ]),
@@ -132,8 +136,12 @@ private enum DemoData {
                 DemoMessage(from: jonas, to: [.me], hoursAgo: 5, text: tr(
                     "Hey Alex,\n\nhast du Donnerstag Zeit für einen Kaffee? Ich wollte dir von dem neuen Job erzählen.\n\nGruß\nJonas",
                     "Hey Alex,\n\ndo you have time for a coffee on Thursday? I wanted to tell you about the new job.\n\nCheers,\nJonas")),
-                DemoMessage(from: .me, to: [jonas], hoursAgo: 4, text: tr("Klar, 15 Uhr im Café am Park?\n\nAlex", "Sure, 3 pm at the café by the park?\n\nAlex")),
-                DemoMessage(from: jonas, to: [.me], hoursAgo: 3.2, text: tr("Perfekt, bis dann! ☕️", "Perfect, see you then! ☕️")),
+                DemoMessage(from: .me, to: [jonas], hoursAgo: 4, text: tr(
+                    "Klar, 15 Uhr im Café am Park?\n\nAlex\n\nAm Mittwoch schrieb Jonas Weber <jonas@example.org>:\n> Hey Alex,\n>\n> hast du Donnerstag Zeit für einen Kaffee? Ich wollte dir von dem neuen Job erzählen.\n>\n> Gruß\n> Jonas",
+                    "Sure, 3 pm at the café by the park?\n\nAlex\n\nOn Wednesday Jonas Weber <jonas@example.org> wrote:\n> Hey Alex,\n>\n> do you have time for a coffee on Thursday? I wanted to tell you about the new job.\n>\n> Cheers,\n> Jonas")),
+                DemoMessage(from: jonas, to: [.me], hoursAgo: 3.2, text: tr(
+                    "Perfekt, bis dann! ☕️\n\nAm Mittwoch schrieb Alex Berger <alex@example.com>:\n> Klar, 15 Uhr im Café am Park?\n>\n> Alex",
+                    "Perfect, see you then! ☕️\n\nOn Wednesday Alex Berger <alex@example.com> wrote:\n> Sure, 3 pm at the café by the park?\n>\n> Alex")),
             ]),
             DemoThread(id: "t-rechnung", subject: tr("Ihre Rechnung für Oktober", "Your invoice for October"), labels: ["INBOX", "Label_4"], messages: [
                 DemoMessage(from: utility, to: [.me], hoursAgo: 20, text: tr(
@@ -538,7 +546,7 @@ private final class DemoTransport: HTTPTransport, @unchecked Sendable {
                 "id": id,
                 "threadId": thread.id,
                 "labelIds": Array(labelIDs),
-                "snippet": String(message.text.replacingOccurrences(of: "\n", with: " ").prefix(140)),
+                "snippet": String(QuotedText.split(message.text).body.replacingOccurrences(of: "\n", with: " ").prefix(140)),
                 "historyId": "1000",
                 "internalDate": String(Int64(date.timeIntervalSince1970 * 1000)),
                 "payload": payload(for: message, thread: thread, id: id, date: date),

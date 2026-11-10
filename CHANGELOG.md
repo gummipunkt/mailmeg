@@ -3,6 +3,17 @@
 Alle nennenswerten Änderungen an MailMeG. Versionen folgen [Semantic Versioning](https://semver.org/lang/de/).
 All notable changes to MailMeG. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.11.0] – 2026-11-10
+
+- **Zitierte Nachrichten sind eingeklappt**: unter der Antwort steht „••• Zitat anzeigen“, ein Klick klappt den zitierten Verlauf auf und wieder zu. In den Einstellungen (Allgemein → Konversationen) lässt sich umstellen, dass Zitate immer ausgeklappt sind
+  · **Quoted messages are collapsed**: “••• Show quoted text” below the reply opens and closes the quoted history. Settings (General → Conversations) can keep quotes expanded
+- **Antworten im Hauptfenster**: Antworten, Allen antworten und Weiterleiten öffnen den Editor mit Formatierung, Anhängen und Adressvorschlägen direkt unter der Konversation; von dort lässt er sich in ein eigenes Fenster verschieben. Wer lieber immer ein eigenes Fenster möchte, stellt das unter Einstellungen → Verfassen um
+  · **Replies in the main window**: Reply, Reply All and Forward open the editor with formatting, attachments and address suggestions right below the conversation; it can be moved into a window of its own from there. Settings → Composing switches to always using a separate window
+- **Neueste Nachricht zuerst**: Konversationen zeigen die neueste E-Mail oben (umstellbar auf „Älteste zuerst“)
+  · **Newest message first**: conversations show the latest email on top (can be switched to “Oldest first”)
+- **Website-Symbole als Profilbilder**: Absender bekommen das Favicon ihrer E-Mail-Domain, wenn es eines gibt; private Postfächer wie gmail.com oder web.de behalten die Initialen (abschaltbar)
+  · **Website icons as pictures**: senders get the favicon of their email domain where there is one; personal mailboxes such as gmail.com keep their initials (can be turned off)
+
 ## [1.10.0] – 2026-10-29
 
 - **Adressvorschläge** beim Tippen in An, Cc und Bcc: Personen, denen du schreibst oder von denen du E-Mails bekommst, und – nach deiner Erlaubnis – deine macOS-Kontakte; mit ↑/↓ wählen, ↩ oder ⇥ übernimmt, Esc blendet aus

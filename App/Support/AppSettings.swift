@@ -68,6 +68,25 @@ enum AppSettings {
 
     static let showAvatarsKey = "showAvatars"
     static let dockBadgeKey = "dockBadge"
+    static let collapseQuotesKey = "collapseQuotes"
+    static let replyInWindowKey = "replyInWindow"
+    static let faviconAvatarsKey = "faviconAvatars"
+    static let newestFirstKey = "conversationNewestFirst"
+
+    /// Quoted earlier messages start collapsed (default) or shown.
+    static var collapseQuotes: Bool {
+        UserDefaults.standard.object(forKey: collapseQuotesKey) as? Bool ?? true
+    }
+
+    /// Replies open in their own window instead of below the conversation (default).
+    static var replyInWindow: Bool {
+        UserDefaults.standard.bool(forKey: replyInWindowKey)
+    }
+
+    /// Senders are shown with their domain's website icon where there is one.
+    static var faviconAvatars: Bool {
+        UserDefaults.standard.object(forKey: faviconAvatarsKey) as? Bool ?? true
+    }
 
     /// Shows the number of unread conversations on the Dock icon.
     static var dockBadgeEnabled: Bool {

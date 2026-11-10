@@ -37,7 +37,7 @@ public enum ComposeHTML {
                 if stripped.hasPrefix(" ") { stripped = stripped.dropFirst() }
                 return String(stripped)
             }.joined(separator: "\n")
-            output += "<blockquote style=\"margin:0 0 0 .8ex;border-left:1px solid #ccc;padding-left:1ex\">"
+            output += "<blockquote class=\"gmail_quote\" style=\"margin:0 0 0 .8ex;border-left:1px solid #ccc;padding-left:1ex\">"
                 + renderPlain(inner) + "</blockquote>"
             quoteLines = []
         }

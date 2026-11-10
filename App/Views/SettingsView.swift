@@ -26,6 +26,9 @@ private struct GeneralSettingsView: View {
     @AppStorage(AppSettings.refreshIntervalKey) private var refreshInterval: Double = 60
     @AppStorage(AppSettings.showAvatarsKey) private var showAvatars = false
     @AppStorage(AppSettings.dockBadgeKey) private var dockBadge = true
+    @AppStorage(AppSettings.collapseQuotesKey) private var collapseQuotes = true
+    @AppStorage(AppSettings.faviconAvatarsKey) private var faviconAvatars = true
+    @AppStorage(AppSettings.newestFirstKey) private var newestFirst = true
     @State private var notificationStatus: UNAuthorizationStatus?
 
     private var lastRefreshText: String {
@@ -90,14 +93,35 @@ private struct GeneralSettingsView: View {
             }
 
             Section {
+                Picker(tr("Reihenfolge der Nachrichten", "Order of messages"), selection: $newestFirst) {
+                    Text(tr("Neueste zuerst", "Newest first")).tag(true)
+                    Text(tr("Älteste zuerst", "Oldest first")).tag(false)
+                }
+                .accessibilityIdentifier("settings.order")
+                Toggle(tr("Zitierte Nachrichten einklappen", "Collapse quoted messages"), isOn: $collapseQuotes)
+                    .accessibilityIdentifier("settings.collapseQuotes")
+            } header: {
+                Text(tr("Konversationen", "Conversations"))
+            } footer: {
+                Text(tr("Eingeklappte Zitate lassen sich in jeder E-Mail mit „••• Zitat anzeigen“ aufklappen.", "Collapsed quotes open with “••• Show quoted text” in each email."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
                 Toggle(tr("Avatare in der Nachrichtenliste", "Show avatars in the message list"), isOn: $showAvatars)
+                Toggle(tr("Website-Symbol der Absender-Domain als Profilbild", "Use the sender domain’s website icon as picture"), isOn: $faviconAvatars)
+                    .accessibilityIdentifier("settings.favicons")
                 Toggle(tr("Externe Inhalte automatisch laden", "Load remote content automatically"), isOn: $loadRemoteContent)
             } header: {
                 Text(tr("Darstellung", "Appearance"))
             } footer: {
-                Text(tr("Externe Bilder können verraten, wann und wo du eine E-Mail liest.", "Remote images can reveal when and where you read an email."))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text(tr(
+                    "Website-Symbole lädt MailMeG über Googles Favicon-Dienst; private Postfächer wie gmail.com oder web.de behalten die Initialen. Externe Bilder können verraten, wann und wo du eine E-Mail liest.",
+                    "MailMeG loads website icons through Google’s favicon service; personal mailboxes such as gmail.com keep the initials. Remote images can reveal when and where you read an email."
+                ))
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
@@ -225,10 +249,19 @@ private struct ComposeSettingsView: View {
     @AppStorage(AppSettings.replyPositionKey) private var replyPosition = AppSettings.ReplyPosition.above.rawValue
     @AppStorage(AppSettings.signatureEnabledKey) private var signatureEnabled = true
     @AppStorage(AppSettings.signatureInRepliesKey) private var signatureInReplies = true
+    @AppStorage(AppSettings.replyInWindowKey) private var replyInWindow = false
 
     var body: some View {
         Form {
             Section {
+                Picker(tr("Antworten öffnen", "Open replies"), selection: $replyInWindow) {
+                    Text(tr("Im Hauptfenster unter der Konversation", "In the main window, below the conversation"))
+                        .tag(false)
+                    Text(tr("In einem eigenen Fenster", "In a window of their own"))
+                        .tag(true)
+                }
+                .pickerStyle(.radioGroup)
+                .accessibilityIdentifier("settings.replyPlace")
                 Picker(tr("Antwort schreiben", "Write replies"), selection: $replyPosition) {
                     Text(tr("Über dem Zitat (wie Gmail)", "Above the quoted message (like Gmail)"))
                         .tag(AppSettings.ReplyPosition.above.rawValue)

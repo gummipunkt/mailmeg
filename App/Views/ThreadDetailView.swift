@@ -7,13 +7,32 @@ struct ThreadDetailView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
     @Bindable var detail: ThreadDetailModel
+    @AppStorage(AppSettings.newestFirstKey) private var newestFirst = true
+    /// Height of the pane, for sizing the reply editor below the conversation.
+    @State private var paneHeight: CGFloat = 640
+
+    /// The messages in the order chosen in Settings (newest first by default).
+    private var orderedMessages: [MessageItem] {
+        newestFirst ? detail.messages.reversed() : detail.messages
+    }
+
+    private func binding(for item: MessageItem) -> Binding<MessageItem> {
+        Binding(
+            get: { detail.messages.first { $0.id == item.id } ?? item },
+            set: { newValue in
+                if let index = detail.messages.firstIndex(where: { $0.id == item.id }) {
+                    detail.messages[index] = newValue
+                }
+            }
+        )
+    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 header
-                ForEach($detail.messages) { $item in
-                    MessageCardView(item: $item, detail: detail)
+                ForEach(orderedMessages) { item in
+                    MessageCardView(item: binding(for: item), detail: detail)
                 }
             }
             .padding(.horizontal, 28)
@@ -24,7 +43,12 @@ struct ThreadDetailView: View {
         }
         .safeAreaInset(edge: .top, spacing: 0) { actionBar }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if !detail.messages.isEmpty {
+            if let draft = detail.inlineDraft {
+                // The reply is written right below the conversation.
+                ComposeView(draft: draft, onClose: { detail.inlineDraft = nil })
+                    .id(draft.id)
+                    .frame(height: min(max(paneHeight * 0.58, 300), 560))
+            } else if !detail.messages.isEmpty {
                 QuickReplyBar(detail: detail)
             }
         }
@@ -39,6 +63,13 @@ struct ThreadDetailView: View {
                 } actions: {
                     Button(tr("Erneut versuchen", "Try Again")) { Task { await detail.load() } }
                 }
+            }
+        }
+        .background {
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear { paneHeight = proxy.size.height }
+                    .onChange(of: proxy.size.height) { _, height in paneHeight = height }
             }
         }
         .glassBackground(.canvas)
@@ -146,7 +177,7 @@ struct ThreadDetailView: View {
     }
 
     private func compose(_ kind: ComposeKind) {
-        if let draft = detail.draft(kind) { openWindow(value: draft) }
+        if let draft = detail.draft(kind) { detail.present(draft, openWindow: openWindow) }
     }
 
     private func showSource(_ mode: SourceRequest.Mode) {
@@ -201,6 +232,7 @@ struct MessageCardView: View {
     @Binding var item: MessageItem
     let detail: ThreadDetailModel
     @Environment(\.openWindow) private var openWindow
+    @AppStorage(AppSettings.collapseQuotesKey) private var collapsesQuotes = true
     @State private var bodyHeight: CGFloat = 60
     @State private var showsDetails = false
 
@@ -229,6 +261,7 @@ struct MessageCardView: View {
                     html: item.content.html == nil ? nil : item.displayHTML,
                     plainText: item.content.plainText,
                     allowsRemoteContent: item.allowsRemoteContent,
+                    collapsesQuotes: collapsesQuotes,
                     height: $bodyHeight,
                     onMailto: openMailto
                 )
@@ -252,7 +285,7 @@ struct MessageCardView: View {
     private var header: some View {
         if item.isExpanded {
             HStack(alignment: .top, spacing: 12) {
-                AvatarView(name: senderName, size: 38)
+                AvatarView(name: senderName, email: message.from?.address, size: 38)
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(senderName)
@@ -331,7 +364,7 @@ struct MessageCardView: View {
             }
         } else {
             HStack(spacing: 10) {
-                AvatarView(name: senderName, size: 26)
+                AvatarView(name: senderName, email: message.from?.address, size: 26)
                 Text(senderName)
                     .font(.system(size: 13, weight: .semibold))
                     .lineLimit(1)
@@ -395,7 +428,7 @@ struct MessageCardView: View {
             Button(tr("Bearbeiten", "Edit")) {
                 Task {
                     if let draft = await detail.editDraft(messageID: message.id) {
-                        openWindow(value: draft)
+                        detail.present(draft, openWindow: openWindow)
                     }
                 }
             }
@@ -425,7 +458,7 @@ struct MessageCardView: View {
 
     private func open(_ kind: ComposeKind) {
         if let draft = detail.draft(kind, messageID: message.id) {
-            openWindow(value: draft)
+            detail.present(draft, openWindow: openWindow)
         }
     }
 
@@ -584,13 +617,14 @@ private struct QuickReplyBar: View {
                 )
                 .accessibilityIdentifier("quickReply")
 
-            IconButton(systemImage: "arrow.up.left.and.arrow.down.right", help: tr("Im Fenster bearbeiten", "Edit in Window")) {
+            IconButton(systemImage: "arrow.up.left.and.arrow.down.right", help: tr("Ausführlich antworten – mit Formatierung und Anhängen", "Full reply – with formatting and attachments")) {
                 guard var draft = detail.draft(.reply) else { return }
                 draft.body = DraftComposer.insert(text, into: draft)
                 draft.cursorOffset += text.utf16.count
                 text = ""
-                openWindow(value: draft)
+                detail.present(draft, openWindow: openWindow)
             }
+            .accessibilityIdentifier("quickReply.expand")
             .padding(.bottom, 6)
 
             Button {

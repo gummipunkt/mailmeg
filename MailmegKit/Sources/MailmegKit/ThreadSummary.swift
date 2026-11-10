@@ -15,6 +15,8 @@ public struct ThreadSummary: Identifiable, Hashable, Sendable {
     /// The other side of the conversation: senders other than oneself or, for
     /// conversations that only contain one's own messages, their recipients.
     public var correspondents: [String]
+    /// Address of the first correspondent (for their picture).
+    public var correspondentAddress: String?
     /// `true` if every message in the conversation was sent by oneself.
     public var isOnlyOwnMessages: Bool
 
@@ -45,12 +47,15 @@ public struct ThreadSummary: Identifiable, Hashable, Sendable {
         isOnlyOwnMessages = !messages.isEmpty && others.isEmpty
         var counterparts: [String] = []
         var counterpartKeys = Set<String>()
+        var firstAddress: String?
         let candidates = others.isEmpty ? messages.flatMap { $0.to + $0.cc } : others
         for address in candidates where !ownAddresses.contains(address.address.lowercased()) {
             if counterpartKeys.insert(address.address.lowercased()).inserted {
                 counterparts.append(address.displayName)
+                if firstAddress == nil { firstAddress = address.address }
             }
         }
         correspondents = counterparts
+        correspondentAddress = firstAddress
     }
 }

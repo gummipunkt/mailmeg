@@ -300,7 +300,7 @@ struct ThreadRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             if showAvatars {
-                AvatarView(name: thread.correspondents.first ?? thread.participants.first ?? "?", size: 34)
+                AvatarView(name: thread.correspondents.first ?? thread.participants.first ?? "?", email: thread.correspondentAddress, size: 34)
             }
             // Unread marker in its own narrow gutter, like Airmail.
             Circle()

@@ -282,6 +282,56 @@ final class MailmegUITests: XCTestCase {
         element(app, "calendar.mode.week").click()
     }
 
+    func testInlineReplyAndCollapsedQuotes() {
+        let app = launch(["--demo"])
+        let thread = element(app, "thread.t-kaffee")
+        XCTAssertTrue(thread.waitForExistence(timeout: 20))
+        thread.click()
+        XCTAssertTrue(element(app, "detail.subject").waitForExistence(timeout: 10))
+        sleep(2)
+        // Newest message on top, earlier messages quoted in it folded away.
+        snapshot("22-zitate-eingeklappt", of: app.windows.firstMatch.screenshot())
+
+        // By default a reply is written below the conversation, in the main window.
+        element(app, "detail.reply").click()
+        XCTAssertTrue(element(app, "compose.inlineTitle").waitForExistence(timeout: 10), "Reply should open below the conversation")
+        let body = element(app, "compose.body")
+        XCTAssertTrue(body.waitForExistence(timeout: 5))
+        XCTAssertTrue((element(app, "compose.to").value as? String ?? "").contains("jonas@example.org"), "The reply goes to the sender")
+        body.click()
+        app.typeKey(.upArrow, modifierFlags: .command)
+        body.typeText("Bis Donnerstag!")
+        sleep(1)
+        snapshot("23-antwort-im-hauptfenster", of: app.windows.firstMatch.screenshot())
+        element(app, "compose.send").click()
+        let gone = NSPredicate(format: "exists == false")
+        expectation(for: gone, evaluatedWith: element(app, "compose.inlineTitle"))
+        waitForExpectations(timeout: 15)
+        XCTAssertTrue(element(app, "quickReply").waitForExistence(timeout: 10), "After sending, the quick reply field is back")
+
+        // The editor can be closed again without sending.
+        element(app, "detail.reply").click()
+        XCTAssertTrue(element(app, "compose.close").waitForExistence(timeout: 10))
+        element(app, "compose.close").click()
+        expectation(for: gone, evaluatedWith: element(app, "compose.inlineTitle"))
+        waitForExpectations(timeout: 10)
+    }
+
+    func testReplyInOwnWindowSetting() {
+        // The setting, passed for this launch only.
+        let app = launch(["--demo", "-replyInWindow", "YES"])
+        let thread = element(app, "thread.t-kaffee")
+        XCTAssertTrue(thread.waitForExistence(timeout: 20))
+        thread.click()
+        XCTAssertTrue(element(app, "detail.reply").waitForExistence(timeout: 10))
+        sleep(1)
+        element(app, "detail.reply").click()
+        XCTAssertTrue(element(app, "compose.body").waitForExistence(timeout: 10), "Reply should open in a window")
+        XCTAssertFalse(element(app, "compose.inlineTitle").exists, "…and not below the conversation")
+        XCTAssertTrue(element(app, "compose.subject").exists, "The window shows the subject")
+        app.typeKey("w", modifierFlags: .command)
+    }
+
     func testAddressSuggestions() {
         let app = launch(["--demo"])
         XCTAssertTrue(element(app, "thread.t-projektplan").waitForExistence(timeout: 20))

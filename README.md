@@ -25,6 +25,8 @@ mit Beispiel-E-Mails, Kalender und Einladung.
 - **Vorherige/nächste Konversation** mit ⌥⌘↑/↓ oder den Pfeil-Buttons
 - **Empfängerdetails**: die genaue Adresse, an die eine E-Mail ging (auch bei „mich“), plus Von, Antwort an,
   An, Cc, Bcc, Zugestellt an und Datum
+- **Zitierte Nachrichten eingeklappt** („••• Zitat anzeigen“), neueste Nachricht zuerst – beides umstellbar
+- **Website-Symbol der Absender-Domain** als Profilbild, wenn es eines gibt
 - **Quelltext** (⌥⌘U) und **alle Header** (⇧⌘H) in einem eigenen Fenster, mit Filter, Kopieren und Sichern als `.eml`
 - **Anhänge und Inline-Bilder** öffnen oder sichern
 - **Umlaute und Sonderzeichen** werden richtig angezeigt, auch wenn der Absender einen falschen Zeichensatz angibt
@@ -39,7 +41,8 @@ mit Beispiel-E-Mails, Kalender und Einladung.
   Adresse raus, an die die E-Mail ging
 - **Signaturen aus Gmail**, auch bei Antworten, und beim Absenderwechsel automatisch getauscht
 - **Antwort über oder unter dem Zitat** (einstellbar), Antworten landen im richtigen Gmail-Thread
-- **Schnellantwort** direkt unter der Konversation (⌘↩ sendet)
+- **Antworten im Hauptfenster** direkt unter der Konversation – mit vollem Editor – oder wahlweise in einem
+  eigenen Fenster; dazu die **Schnellantwort** (⌘↩ sendet)
 - **Entwürfe** werden beim Schreiben automatisch in Gmail gesichert (⌘S sofort) und lassen sich in MailMeG,
   im Web oder auf dem Handy weiterbearbeiten
 - **Anhänge** per Button; Weiterleitungen übernehmen die Anhänge der Original-E-Mail

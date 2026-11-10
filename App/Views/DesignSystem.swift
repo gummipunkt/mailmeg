@@ -62,11 +62,31 @@ extension Color {
 /// Round avatar with initials and a stable colour per name.
 struct AvatarView: View {
     let name: String
+    /// The person's address: its domain's website icon is shown when there is one.
+    var email: String? = nil
     var size: CGFloat = 32
+    @AppStorage(AppSettings.faviconAvatarsKey) private var usesWebsiteIcons = true
 
     var body: some View {
+        if usesWebsiteIcons, let icon = FaviconStore.shared.image(forAddress: email) {
+            Image(nsImage: icon)
+                .resizable()
+                .interpolation(.high)
+                .aspectRatio(contentMode: .fit)
+                .frame(width: size * 0.62, height: size * 0.62)
+                .clipShape(RoundedRectangle(cornerRadius: size * 0.12, style: .continuous))
+                .frame(width: size, height: size)
+                .background(Color.white, in: Circle())
+                .overlay(Circle().strokeBorder(Theme.hairline.opacity(0.8), lineWidth: 0.8))
+                .accessibilityHidden(true)
+        } else {
+            initialsAvatar
+        }
+    }
+
+    private var initialsAvatar: some View {
         let style = Theme.avatarStyles[Self.hash(name) % Theme.avatarStyles.count]
-        Circle()
+        return Circle()
             .fill(LinearGradient(colors: [style.0, style.1], startPoint: .top, endPoint: .bottom))
             .frame(width: size, height: size)
             .overlay {

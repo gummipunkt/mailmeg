@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import MailmegKit
 import Observation
+import SwiftUI
 
 struct MessageItem: Identifiable {
     var message: GmailMessage
@@ -35,6 +36,8 @@ final class ThreadDetailModel {
     var messages: [MessageItem] = []
     private(set) var isLoading = false
     private(set) var loadError: String?
+    /// A reply, forward or draft being written below the conversation.
+    var inlineDraft: ComposeDraft?
 
     var onMarkedRead: ((String) -> Void)?
     var onError: ((Error) -> Void)?
@@ -194,6 +197,16 @@ final class ThreadDetailModel {
     }
 
     // MARK: - Compose
+
+    /// Opens a reply, forward or draft where Settings say: below the conversation
+    /// (default) or in a window of its own.
+    func present(_ draft: ComposeDraft, openWindow: OpenWindowAction) {
+        if AppSettings.replyInWindow {
+            openWindow(value: draft)
+        } else {
+            inlineDraft = draft
+        }
+    }
 
     /// Sends a short reply written in the inline reply field below the conversation.
     func sendQuickReply(_ text: String, replyAll: Bool) async throws {
