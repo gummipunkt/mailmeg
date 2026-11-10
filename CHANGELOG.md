@@ -3,6 +3,15 @@
 Alle nennenswerten Änderungen an MailMeG. Versionen folgen [Semantic Versioning](https://semver.org/lang/de/).
 All notable changes to MailMeG. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.13.1] – 2026-11-10
+
+- Kalender: Der Mail/Kalender-Umschalter rutschte auf neueren macOS-Versionen unter die Fensterknöpfe; er sitzt jetzt immer darunter
+  · Calendar: on newer macOS versions the Mail/Calendar switch slipped underneath the window buttons; it now always sits below them
+- Labels mit sehr heller Gmail-Farbe (bis hin zu Weiß) sind in der Seitenleiste und als Chip wieder gut zu erkennen
+  · Labels with a very pale Gmail colour (down to white) are clearly visible again in the sidebar and as chips
+- Hat ein Konto keinen Namen, steht die E-Mail-Adresse im Kontokopf nur noch einmal
+  · If an account has no name, the header shows its email address only once
+
 ## [1.13.0] – 2026-11-10
 
 - **Liquid Glass** auf macOS 26 und neuer: die Seitenleiste ist die schwebende Glasfläche des Systems, durch die der Pastell-Verlauf scheint; Aktionsgruppen, runde Knöpfe und Umschalter sind echtes Glas, „Neue E-Mail“, „Senden“ und „+“ violett getöntes Glas

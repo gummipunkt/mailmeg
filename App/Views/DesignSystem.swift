@@ -12,6 +12,21 @@ enum Palette {
 
 enum Theme {
     static let cardRadius: CGFloat = 18
+    /// Height of the window's title bar with its toolbar.
+    static let titleBarHeight: CGFloat = 52
+
+    /// A label's colour, made readable on the light pastel surfaces: Gmail allows very pale
+    /// label colours (even white), which would vanish as an icon or as text.
+    static func labelColor(hex: String?) -> Color {
+        guard let hex, let color = NSColor(Color(hex: hex)).usingColorSpace(.sRGB) else { return Palette.periwinkle }
+        var hue: CGFloat = 0, saturation: CGFloat = 0, brightness: CGFloat = 0, alpha: CGFloat = 0
+        color.getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha)
+        if saturation < 0.12 {
+            // White, grey or black: a neutral that shows in both appearances.
+            return brightness > 0.8 || brightness < 0.25 ? Palette.periwinkle : Color(hue: hue, saturation: saturation, brightness: 0.55)
+        }
+        return Color(hue: hue, saturation: max(saturation, 0.55), brightness: min(max(brightness, 0.55), 0.82))
+    }
 
     /// The pastel backdrop behind everything: lilac at the top, sky in the middle, a blush
     /// of pink at the bottom. It only changes from top to bottom, so the columns of the
@@ -140,7 +155,7 @@ struct LabelChip: View {
     let label: GmailLabel
 
     var body: some View {
-        let color = label.color?.backgroundColor.map(Color.init(hex:)) ?? Palette.violet
+        let color = label.color?.backgroundColor == nil ? Palette.violet : Theme.labelColor(hex: label.color?.backgroundColor)
         Text(label.name.components(separatedBy: "/").last ?? label.name)
             .font(.system(size: 10.5, weight: .medium))
             .padding(.horizontal, 7)

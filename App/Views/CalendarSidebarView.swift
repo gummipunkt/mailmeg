@@ -7,24 +7,27 @@ struct CalendarSidebarView: View {
     @Bindable var view: CalendarViewState
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                MiniMonthView(view: view)
-                ForEach(view.accounts) { account in
-                    CalendarAccountSection(account: account)
+        GeometryReader { proxy in
+            VStack(spacing: 0) {
+                SectionSwitch()
+                    // Always below the window buttons. Newer systems let a sidebar's content
+                    // start at the very top of the window, underneath the title bar.
+                    .padding(.top, max(0, Theme.titleBarHeight - proxy.frame(in: .global).minY))
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        MiniMonthView(view: view)
+                        ForEach(view.accounts) { account in
+                            CalendarAccountSection(account: account)
+                        }
+                        WaitingForAnswerSection(view: view)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.top, 4)
+                    .padding(.bottom, 16)
                 }
-                WaitingForAnswerSection(view: view)
+                .scrollIndicators(.never)
+                SidebarFooter()
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 4)
-            .padding(.bottom, 16)
-        }
-        .scrollIndicators(.never)
-        .safeAreaInset(edge: .top, spacing: 0) {
-            SectionSwitch()
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            SidebarFooter()
         }
         .glassBackground(.sidebar)
     }

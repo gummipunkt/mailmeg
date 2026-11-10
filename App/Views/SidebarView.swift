@@ -114,7 +114,7 @@ struct SidebarView: View {
     }
 
     private func tint(for item: SidebarItem) -> Color {
-        if let hex = item.colorHex { return Color(hex: hex) }
+        if let hex = item.colorHex { return Theme.labelColor(hex: hex) }
         switch item.id {
         case SystemLabel.inbox: return Palette.violet
         case SystemLabel.starred: return Color(hex: "#F2A900")
@@ -235,15 +235,20 @@ private struct AccountHeader: View {
     let isDemo: Bool
 
     var body: some View {
-        HStack(spacing: 8) {
-            AvatarView(name: account.displayName ?? account.email, size: 22)
+        let name = account.displayName ?? account.email
+        let detail = isDemo ? tr("Demo-Konto", "Demo account") : account.email
+        return HStack(spacing: 8) {
+            AvatarView(name: name, size: 22)
             VStack(alignment: .leading, spacing: 0) {
-                Text(account.displayName ?? account.email)
+                Text(name)
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.primary)
-                Text(isDemo ? tr("Demo-Konto", "Demo account") : account.email)
-                    .font(.system(size: 10.5))
-                    .foregroundStyle(.secondary)
+                // Without a name the address is the title; it is not repeated below.
+                if detail.caseInsensitiveCompare(name) != .orderedSame {
+                    Text(detail)
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(.secondary)
+                }
             }
             .lineLimit(1)
         }
