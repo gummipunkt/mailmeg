@@ -11,6 +11,8 @@ final class MailmegUITests: XCTestCase {
     private func launch(_ arguments: [String], language: String = "de") -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = arguments + ["--lang=\(language)"]
+        // Each test starts with just the main window: windows of an earlier launch are not restored.
+        app.launchArguments += ["-ApplePersistenceIgnoreState", "YES"]
         app.launch()
         app.activate()
         return app
@@ -224,6 +226,9 @@ final class MailmegUITests: XCTestCase {
         sleep(1)
         snapshot("11-rich-text", of: XCUIScreen.main.screenshot())
         app.typeKey("w", modifierFlags: .command)
+        let closed = NSPredicate(format: "exists == false")
+        expectation(for: closed, evaluatedWith: body)
+        waitForExpectations(timeout: 10)
     }
 
     /// yyyy-MM-dd of a day relative to today, as used in the mini calendar's identifiers.
@@ -298,9 +303,10 @@ final class MailmegUITests: XCTestCase {
         let body = element(app, "compose.body")
         XCTAssertTrue(body.waitForExistence(timeout: 5))
         XCTAssertTrue((element(app, "compose.to").value as? String ?? "").contains("jonas@example.org"), "The reply goes to the sender")
-        body.click()
-        app.typeKey(.upArrow, modifierFlags: .command)
-        body.typeText("Bis Donnerstag!")
+        // The editor has the focus, with the cursor above the quoted message.
+        sleep(1)
+        app.typeText("Bis Donnerstag!")
+        XCTAssertTrue((body.value as? String ?? "").hasPrefix("Bis Donnerstag!"), "Typing goes into the reply, above the quote")
         sleep(1)
         snapshot("23-antwort-im-hauptfenster", of: app.windows.firstMatch.screenshot())
         element(app, "compose.send").click()

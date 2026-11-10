@@ -11,6 +11,8 @@ final class LandingPageScreenshots: XCTestCase {
     private func launch(_ arguments: [String], language: String) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["--demo", "--screenshots", "--lang=\(language)"] + arguments
+        // Each test starts with just the main window: windows of an earlier launch are not restored.
+        app.launchArguments += ["-ApplePersistenceIgnoreState", "YES"]
         app.launch()
         app.activate()
         return app

@@ -67,6 +67,21 @@ struct ComposeView: View {
         }
     }
 
+    /// "Attach" and "Google Drive": with their names in a window, icons only below a conversation.
+    private func actionPill(_ title: String, systemImage: String) -> some View {
+        Group {
+            if isEmbedded {
+                Image(systemName: systemImage)
+            } else {
+                Label(title, systemImage: systemImage)
+            }
+        }
+        .font(.system(size: 13, weight: .medium))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .background(Theme.tint, in: Capsule())
+    }
+
     /// Title and window controls of the editor below a conversation.
     private var embeddedHeader: some View {
         HStack(spacing: 8) {
@@ -132,9 +147,9 @@ struct ComposeView: View {
                             }
                         }
                         .labelsHidden()
-                        .fixedSize()
+                        .fixedSize(horizontal: !isEmbedded, vertical: true)
                         .accessibilityIdentifier("compose.from")
-                        Spacer()
+                        Spacer(minLength: 0)
                     }
                 }
                 fieldRow(tr("An", "To")) {
@@ -172,7 +187,14 @@ struct ComposeView: View {
 
             // Body and attachments
             VStack(spacing: 0) {
-                FormatBar(controller: formatter)
+                if isEmbedded {
+                    // Below a conversation the column can be narrow: the bar scrolls sideways.
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        FormatBar(controller: formatter)
+                    }
+                } else {
+                    FormatBar(controller: formatter)
+                }
                 Divider().overlay(Theme.hairline.opacity(0.5))
                 MailBodyEditor(
                     text: $draft.body,
@@ -196,27 +218,21 @@ struct ComposeView: View {
                     importsToDrive = false
                     isImporting = true
                 } label: {
-                    Label(tr("Anhängen", "Attach"), systemImage: "paperclip")
-                        .font(.system(size: 13, weight: .medium))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .background(Theme.tint, in: Capsule())
+                    actionPill(tr("Anhängen", "Attach"), systemImage: "paperclip")
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(Color.accentColor)
+                .accessibilityLabel(tr("Anhängen", "Attach"))
                 .help(tr("Dateien anhängen (große Dateien gehen automatisch über Google Drive)", "Attach files (large files go via Google Drive automatically)"))
 
                 Button {
                     startDriveImport()
                 } label: {
-                    Label("Google Drive", systemImage: "externaldrive.badge.icloud")
-                        .font(.system(size: 13, weight: .medium))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .background(Theme.tint, in: Capsule())
+                    actionPill("Google Drive", systemImage: "externaldrive.badge.icloud")
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(Color.accentColor)
+                .accessibilityLabel("Google Drive")
                 .help(tr("Dateien über Google Drive senden – für große Dateien, ZIPs und Dateitypen, die Gmail sperrt", "Send files via Google Drive – for large files, ZIPs and file types Gmail blocks"))
                 .accessibilityIdentifier("compose.drive")
 
@@ -231,6 +247,7 @@ struct ComposeView: View {
                     Text(statusText)
                         .font(.system(size: 11.5))
                         .foregroundStyle(autosaver.status == .failed ? Color.red : Color.secondary)
+                        .lineLimit(1)
                 }
                 .buttonStyle(.plain)
                 .keyboardShortcut("s")
@@ -717,7 +734,9 @@ private struct ComposeChrome: ViewModifier {
     func body(content: Content) -> some View {
         if isEmbedded {
             content
+                .frame(maxWidth: .infinity)
                 .background(.regularMaterial)
+                .clipped()
                 .overlay(alignment: .top) { Divider().opacity(0.6) }
         } else {
             content
