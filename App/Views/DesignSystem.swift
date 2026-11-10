@@ -272,10 +272,10 @@ extension View {
 }
 
 extension View {
-    /// Frosted backing for bars that float above scrolling content (the action bar),
-    /// so what passes underneath is blurred instead of mixing with the controls.
+    /// Backing for the bar that floats above a scrolling conversation: the backdrop's own
+    /// top tone, so the bar belongs to the window instead of sitting on a grey strip.
     func frostedBar(tint: Color) -> some View {
-        background(.ultraThinMaterial)
+        background(Theme.backdropTop)
     }
 }
 

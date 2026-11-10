@@ -72,10 +72,10 @@ struct SidebarView: View {
         return HStack(spacing: 9) {
             // Every folder has its own colour, on a pastel tile.
             Image(systemName: item.systemImage)
-                .font(.system(size: 11.5, weight: .semibold))
+                .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(color)
-                .frame(width: 24, height: 24)
-                .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(color.opacity(0.17)))
+                .frame(width: 22, height: 22)
+                .background(RoundedRectangle(cornerRadius: 6.5, style: .continuous).fill(color.opacity(0.17)))
             Text(item.title)
                 .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
                 .lineLimit(1)
@@ -90,7 +90,7 @@ struct SidebarView: View {
             }
         }
         .padding(.leading, CGFloat(item.indent) * 14)
-        .padding(.vertical, 2)
+        .padding(.vertical, -1)
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
         // The whole row reacts to clicks, independent of List's own selection handling.

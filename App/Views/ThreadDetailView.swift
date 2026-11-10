@@ -651,8 +651,8 @@ private struct QuickReplyBar: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background(.ultraThinMaterial)
-        .overlay(alignment: .top) { Divider().opacity(0.6) }
+        .background(Theme.backdropBottom)
+        .overlay(alignment: .top) { Divider().opacity(0.25) }
     }
 
     private var placeholder: String {

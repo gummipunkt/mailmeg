@@ -76,7 +76,7 @@ struct MiniMonthView: View {
                     .background {
                         if isSelectedWeek {
                             RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                .fill(Color.primary.opacity(0.06))
+                                .fill(Palette.violet.opacity(0.1))
                         }
                     }
                 }

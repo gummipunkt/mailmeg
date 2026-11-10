@@ -735,7 +735,8 @@ private struct ComposeChrome: ViewModifier {
         if isEmbedded {
             content
                 .frame(maxWidth: .infinity)
-                .background(.regularMaterial)
+                // The lower part of the backdrop, so the editor continues the window.
+                .background(LinearGradient(colors: [Theme.backdropMiddle, Theme.backdropBottom], startPoint: .top, endPoint: .bottom))
                 .clipped()
                 .overlay(alignment: .top) { Divider().opacity(0.6) }
         } else {
