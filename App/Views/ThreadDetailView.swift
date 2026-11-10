@@ -271,8 +271,11 @@ struct MessageCardView: View {
                     onMailto: openMailto
                 )
                 .frame(height: max(bodyHeight, 40))
+                // Designed mail needs its white page: it lies in the card like a sheet of paper.
                 .background(item.content.html != nil ? Color.white : Color.clear)
-                .padding(.horizontal, item.content.html != nil ? 0 : 4)
+                .clipShape(RoundedRectangle(cornerRadius: item.content.html != nil ? 12 : 0, style: .continuous))
+                .padding(.horizontal, item.content.html != nil ? 10 : 4)
+                .padding(.bottom, item.content.html != nil ? 10 : 0)
 
                 let attachments = item.content.visibleAttachments
                 if !attachments.isEmpty {

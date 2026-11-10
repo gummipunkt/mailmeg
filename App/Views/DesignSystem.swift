@@ -24,18 +24,21 @@ enum Theme {
     static let sidebar = backdropTop
     static let listBackground = backdropTop
     static let canvas = backdropTop
-    /// The floating panel that holds the message list.
-    static let panel = Color(light: "#FFFFFF", dark: "#221F3D")
-    /// Cards, text fields.
-    static let cardFill = Color(light: "#FFFFFF", dark: "#272445")
+    /// The floating panels (message list, calendar): not pure white, but a milky tone that
+    /// follows the backdrop from lilac to rosé.
+    static let panel = Color(light: "#F7F3FF", dark: "#221F3D")
+    static let panelMiddle = Color(light: "#F4F5FF", dark: "#201F3E")
+    static let panelBottom = Color(light: "#FCF3F9", dark: "#261F3E")
+    /// Cards, text fields: a lilac-tinted white.
+    static let cardFill = Color(light: "#FAF7FF", dark: "#272445")
     /// Subtle fills: chips, counters, banners.
-    static let tint = Color(light: "#EFE9FF", dark: "#342F5E")
+    static let tint = Color(light: "#EAE3FF", dark: "#342F5E")
     /// Lines and outlines.
     static let hairline = Color(light: "#DCD4F8", dark: "#3D3870")
     /// The barely visible edge of cards.
-    static let cardStroke = Color(light: "#F1ECFF", dark: "#353060")
+    static let cardStroke = Color(light: "#FFFFFF", dark: "#353060")
     /// Fill of the selected row in lists.
-    static let selection = Color(light: "#EAE2FF", dark: "#3D3678")
+    static let selection = Color(light: "#E2D8FF", dark: "#3D3678")
     /// Soft coloured shadow under floating panels and cards.
     static let shadow = Color(light: "#7B6BD6", dark: "#000000")
 
@@ -258,10 +261,22 @@ extension View {
         modifier(ToolbarBandModifier(background: AppBackdrop(), band: Theme.backdropTop))
     }
 
-    /// A floating white panel with rounded corners and a soft coloured shadow.
+    /// A floating milky panel with rounded corners and a soft coloured shadow.
     func floatingPanel(radius: CGFloat = 18) -> some View {
         self
-            .background(Theme.panel)
+            .background(
+                LinearGradient(
+                    stops: [
+                        // Flat at the top, where the pinned header has to match.
+                        .init(color: Theme.panel, location: 0),
+                        .init(color: Theme.panel, location: 0.3),
+                        .init(color: Theme.panelMiddle, location: 0.6),
+                        .init(color: Theme.panelBottom, location: 1),
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
             .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: radius, style: .continuous)

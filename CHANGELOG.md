@@ -3,6 +3,11 @@
 Alle nennenswerten Änderungen an MailMeG. Versionen folgen [Semantic Versioning](https://semver.org/lang/de/).
 All notable changes to MailMeG. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.12.1] – 2026-11-10
+
+- Flächen sind nicht mehr reinweiß, sondern milchig-flieder getönt und folgen dem Verlauf des Hintergrunds; gestaltete HTML-E-Mails liegen als abgerundetes weißes Blatt in der Karte
+  · Surfaces are no longer pure white but a milky lilac tone that follows the backdrop’s gradient; designed HTML emails lie in their card as a rounded white sheet
+
 ## [1.12.0] – 2026-11-10
 
 - **Neues Design in Pastell**: Das ganze Fenster liegt auf einem Verlauf von Flieder über Himmelblau nach Rosé; die Nachrichtenliste, die E-Mails und der Kalender schweben darauf als weiße, abgerundete Flächen mit weichem Schatten

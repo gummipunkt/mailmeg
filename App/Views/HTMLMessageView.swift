@@ -109,7 +109,7 @@ struct HTMLMessageView: NSViewRepresentable {
         details.mailmeg-quote > summary:hover { background: #DFE2FE; }
         details.mailmeg-quote[open] > summary { margin-bottom: 10px; }
         .mailmeg-quoted { color: #6B6E8C; border-left: 2px solid #B1CBFA; padding-left: 10px; }
-        html.plain, html.plain body { background: #FFFFFF; }
+        html.plain, html.plain body { background: #FAF7FF; }
         @media (prefers-color-scheme: dark) {
           html.plain, html.plain body { background: #272445; color: #E9E7FB; }
           .mailmeg-plain a { color: #B1CBFA; }
