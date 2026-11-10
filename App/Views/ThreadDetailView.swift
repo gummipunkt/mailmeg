@@ -194,8 +194,8 @@ struct ThreadDetailView: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Text(detail.subject.isEmpty ? tr("(kein Betreff)", "(no subject)") : detail.subject)
-                        .font(.system(size: 24, weight: .bold))
-                        .tracking(-0.3)
+                        .font(.system(size: 26, weight: .bold))
+                        .tracking(-0.4)
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("detail.subject")

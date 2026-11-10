@@ -272,7 +272,7 @@ struct ComposeView: View {
                     .padding(.horizontal, 18)
                     .padding(.vertical, 8)
                     .background(
-                        LinearGradient(colors: [Palette.periwinkle, Palette.violet], startPoint: .top, endPoint: .bottom),
+                        Theme.accentGradient,
                         in: Capsule()
                     )
                     .shadow(color: Palette.violet.opacity(0.35), radius: 6, y: 2)

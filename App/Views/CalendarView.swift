@@ -18,13 +18,7 @@ struct CalendarMainView: View {
             header
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Theme.cardFill, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(Theme.cardStroke)
-                )
-                .shadow(color: .black.opacity(0.05), radius: 14, y: 5)
+                .floatingPanel()
                 .padding(.horizontal, 14)
                 .padding(.bottom, 14)
         }
@@ -111,7 +105,8 @@ struct CalendarMainView: View {
             Divider().frame(height: 14).opacity(0.6)
             stepButton("chevron.right", help: tr("Weiter", "Forward"), identifier: "calendar.next") { view.step(1) }
         }
-        .background(Capsule().fill(Color.primary.opacity(0.06)))
+        .background(Capsule().fill(Theme.cardFill.opacity(0.7)))
+        .shadow(color: Theme.shadow.opacity(0.1), radius: 4, y: 2)
         .fixedSize()
     }
 
@@ -137,7 +132,7 @@ struct CalendarMainView: View {
                 .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(.white)
                 .frame(width: 32, height: 32)
-                .background(Circle().fill(LinearGradient(colors: [Palette.periwinkle, Palette.violet], startPoint: .top, endPoint: .bottom)))
+                .background(Circle().fill(Theme.accentGradient))
                 .shadow(color: Palette.violet.opacity(0.35), radius: 4, y: 1)
                 .contentShape(Circle())
         }
@@ -170,7 +165,7 @@ struct CalendarMainView: View {
             }
             .padding(.horizontal, 11)
             .frame(height: 32)
-            .background(Capsule().fill(Color.primary.opacity(0.06)))
+            .background(Capsule().fill(Theme.cardFill.opacity(0.85)))
             .task { searchFocused = true }
         } else {
             GlassCircleButton(systemImage: "magnifyingglass", help: tr("Termine suchen (⌘F)", "Search Events (⌘F)")) {

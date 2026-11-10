@@ -90,7 +90,7 @@ private struct MultiSelectionView: View {
                             if index == 2 {
                                 Image(systemName: "envelope.fill")
                                     .font(.system(size: 26))
-                                    .foregroundStyle(LinearGradient(colors: [Palette.periwinkle, Palette.violet], startPoint: .top, endPoint: .bottom))
+                                    .foregroundStyle(Theme.accentGradient)
                             }
                         }
                         .frame(width: 92, height: 64)

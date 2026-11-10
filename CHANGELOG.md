@@ -5,12 +5,12 @@ All notable changes to MailMeG. Versions follow [Semantic Versioning](https://se
 
 ## [1.12.0] – 2026-11-10
 
-- **Aufgefrischtes Design**: Bedienelemente sind flacher und ruhiger (keine Schatten und Ränder mehr), die Aktionen über der Konversation sitzen in gemeinsamen Gruppen, und die ausgewählte E-Mail ist sanft hinterlegt statt vollflächig violett
-  · **Refreshed design**: controls are flatter and calmer (no more shadows and outlines), the actions above a conversation sit in shared groups, and the selected email gets a soft tint instead of a solid violet block
-- Hellere, klarere Flächen für Liste, Konversation und Kalender; Karten mit weichem Schatten statt Rahmen; gelesene E-Mails in leichterer Schrift, damit Ungelesenes hervorsticht
-  · Lighter, cleaner surfaces for list, conversation and calendar; cards with a soft shadow instead of an outline; read emails in a lighter weight so unread ones stand out
-- Umschalter (Tag/Woche/Monat, Quelltext/Header) im selben Stil wie der Mail/Kalender-Tab
-  · Switches (Day/Week/Month, Source/Headers) in the same style as the Mail/Calendar tab
+- **Neues Design in Pastell**: Das ganze Fenster liegt auf einem Verlauf von Flieder über Himmelblau nach Rosé; die Nachrichtenliste, die E-Mails und der Kalender schweben darauf als weiße, abgerundete Flächen mit weichem Schatten
+  · **New pastel design**: the whole window sits on a gradient from lilac through sky blue to rosé; the message list, the emails and the calendar float on it as white, rounded surfaces with a soft shadow
+- **Farbige Ordner** in der Seitenleiste – jeder mit eigenem Symbol auf einer Pastellkachel, der gewählte Ordner als weiße Pille; **bunte Profilbilder** in mehreren Pastelltönen, jetzt auch in der Nachrichtenliste (abschaltbar)
+  · **Colourful folders** in the sidebar – each with its own icon on a pastel tile, the selected folder as a white pill; **colourful pictures** in several pastel hues, now in the message list too (can be turned off)
+- Großer Titel über der Liste, sanft hinterlegte Auswahl statt vollflächig violett, Aktionen über der Konversation in gemeinsamen Gruppen, flache Bedienelemente ohne Ränder
+  · Big title above the list, a softly tinted selection instead of a solid violet block, the actions above a conversation in shared groups, flat controls without outlines
 
 ## [1.11.0] – 2026-11-10
 

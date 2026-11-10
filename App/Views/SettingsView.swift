@@ -24,7 +24,7 @@ private struct GeneralSettingsView: View {
     @AppStorage(AppSettings.loadRemoteContentKey) private var loadRemoteContent = false
     @AppStorage(AppSettings.notificationsKey) private var notificationsEnabled = true
     @AppStorage(AppSettings.refreshIntervalKey) private var refreshInterval: Double = 60
-    @AppStorage(AppSettings.showAvatarsKey) private var showAvatars = false
+    @AppStorage(AppSettings.showAvatarsKey) private var showAvatars = true
     @AppStorage(AppSettings.dockBadgeKey) private var dockBadge = true
     @AppStorage(AppSettings.collapseQuotesKey) private var collapseQuotes = true
     @AppStorage(AppSettings.faviconAvatarsKey) private var faviconAvatars = true

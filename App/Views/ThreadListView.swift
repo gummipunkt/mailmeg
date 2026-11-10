@@ -21,7 +21,7 @@ struct ThreadListView: View {
                 .listRowSeparator(.hidden)
                 // A soft tint marks the selection instead of the table's solid highlight.
                 .listRowBackground(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    RoundedRectangle(cornerRadius: 13, style: .continuous)
                         .fill(model.selectedThreadIDs.contains(thread.id) ? Theme.selection : Color.clear)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 1)
@@ -53,6 +53,10 @@ struct ThreadListView: View {
         .scrollContentBackground(.hidden)
         .safeAreaInset(edge: .top, spacing: 0) { header }
         .overlay { emptyState }
+        // The list is a white panel floating on the pastel backdrop.
+        .floatingPanel()
+        .padding(.horizontal, 8)
+        .padding(.bottom, 10)
         .onChange(of: mailbox.searchText) { _, newValue in
             if newValue.isEmpty, !mailbox.activeQuery.isEmpty {
                 mailbox.submitSearch()
@@ -80,13 +84,28 @@ struct ThreadListView: View {
         }
     }
 
-    /// Airmail-style header: round glass buttons around a centred title, search below.
+    /// Big title with the counts, filter and compose next to it, search below.
     private var header: some View {
-        VStack(spacing: 10) {
-            HStack(alignment: .center, spacing: 10) {
+        VStack(spacing: 12) {
+            HStack(alignment: .center, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(mailbox.title)
+                        .font(.system(size: 22, weight: .bold))
+                        .tracking(-0.3)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .accessibilityIdentifier("mailbox.title")
+                    Text(subtitle)
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 6)
+
                 GlassCircleMenu(
                     systemImage: mailbox.unreadOnly ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease",
-                    help: tr("Filter", "Filter")
+                    help: tr("Filter", "Filter"),
+                    isTinted: true
                 ) {
                     Picker("Filter", selection: Binding(get: { mailbox.unreadOnly }, set: { mailbox.setUnreadOnly($0) })) {
                         Label(tr("Alle E-Mails", "All Mail"), systemImage: "tray").tag(false)
@@ -99,22 +118,20 @@ struct ThreadListView: View {
                 }
                 .accessibilityIdentifier("mailbox.filter")
 
-                Spacer(minLength: 4)
-                VStack(spacing: 1) {
-                    Text(mailbox.title)
-                        .font(.system(size: 15, weight: .bold))
-                        .lineLimit(1)
-                        .accessibilityIdentifier("mailbox.title")
-                    Text(subtitle)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                Spacer(minLength: 4)
-
-                GlassCircleButton(systemImage: "square.and.pencil", help: tr("Neue E-Mail (⌘N)", "New Message (⌘N)")) {
+                Button {
                     openWindow(value: model.newDraft())
+                } label: {
+                    Image(systemName: "square.and.pencil")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 34, height: 34)
+                        .background(Circle().fill(Theme.accentGradient))
+                        .shadow(color: Palette.violet.opacity(0.4), radius: 6, y: 3)
+                        .contentShape(Circle())
                 }
+                .buttonStyle(.plain)
+                .help(tr("Neue E-Mail (⌘N)", "New Message (⌘N)"))
+                .accessibilityLabel(tr("Neue E-Mail (⌘N)", "New Message (⌘N)"))
                 .accessibilityIdentifier("compose")
             }
             SearchField(text: $mailbox.searchText) { mailbox.submitSearch() }
@@ -122,10 +139,10 @@ struct ThreadListView: View {
                 selectionBar
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.top, 8)
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
         .padding(.bottom, 10)
-        .frostedBar(tint: Theme.listBackground)
+        .background(Theme.panel)
     }
 
     /// Result count and selection buttons, shown for searches and when several
@@ -288,9 +305,9 @@ struct SearchField: View {
                 .help(tr("Suche löschen", "Clear Search"))
             }
         }
-        .padding(.horizontal, 11)
-        .frame(height: 30)
-        .background(Capsule().fill(Color.primary.opacity(0.06)))
+        .padding(.horizontal, 12)
+        .frame(height: 32)
+        .background(Capsule().fill(Theme.tint))
         .overlay(Capsule().strokeBorder(Color.accentColor.opacity(isFocused ? 0.7 : 0), lineWidth: 1.5))
     }
 }
@@ -301,20 +318,31 @@ struct ThreadRow: View {
     let isTrash: Bool
     var showsImportant = false
     let onAction: (ThreadAction) -> Void
-    @AppStorage(AppSettings.showAvatarsKey) private var showAvatars = false
+    @AppStorage(AppSettings.showAvatarsKey) private var showAvatars = true
     @State private var isHovering = false
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             if showAvatars {
-                AvatarView(name: thread.correspondents.first ?? thread.participants.first ?? "?", email: thread.correspondentAddress, size: 34)
+                // The unread marker sits on the picture.
+                AvatarView(name: thread.correspondents.first ?? thread.participants.first ?? "?", email: thread.correspondentAddress, size: 36)
+                    .overlay(alignment: .topLeading) {
+                        if thread.isUnread {
+                            Circle()
+                                .fill(Color.accentColor)
+                                .frame(width: 10, height: 10)
+                                .overlay(Circle().strokeBorder(Theme.panel, lineWidth: 2))
+                                .offset(x: -2, y: -2)
+                        }
+                    }
+                    .padding(.top, 1)
+            } else {
+                // Without pictures the marker gets its own narrow gutter.
+                Circle()
+                    .fill(thread.isUnread ? Color.accentColor : Color.clear)
+                    .frame(width: 8, height: 8)
+                    .padding(.top, 6)
             }
-            // Unread marker in its own narrow gutter, like Airmail.
-            Circle()
-                .fill(thread.isUnread ? Color.accentColor : Color.clear)
-                .frame(width: 8, height: 8)
-                .padding(.top, 6)
-                .padding(.leading, showAvatars ? -6 : 0)
 
             VStack(alignment: .leading, spacing: 3) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -365,7 +393,7 @@ struct ThreadRow: View {
             }
         }
         .padding(.vertical, 10)
-        .padding(.trailing, 2)
+        .padding(.horizontal, 4)
         .contentShape(Rectangle())
         .onHover { isHovering = $0 }
         .background(ListHighlightRemover().frame(width: 0, height: 0))

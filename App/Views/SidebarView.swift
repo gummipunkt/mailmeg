@@ -67,13 +67,30 @@ struct SidebarView: View {
 
     private func row(_ entry: SidebarEntry) -> some View {
         let item = entry.item
-        return Label {
-            Text(item.title)
-        } icon: {
+        let isSelected = model.selection == entry.selection
+        let color = tint(for: item)
+        return HStack(spacing: 9) {
+            // Every folder has its own colour, on a pastel tile.
             Image(systemName: item.systemImage)
-                .foregroundStyle(tint(for: item))
+                .font(.system(size: 11.5, weight: .semibold))
+                .foregroundStyle(color)
+                .frame(width: 24, height: 24)
+                .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(color.opacity(0.17)))
+            Text(item.title)
+                .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
+                .lineLimit(1)
+            Spacer(minLength: 4)
+            if item.unread > 0 {
+                Text("\(item.unread)")
+                    .font(.system(size: 10.5, weight: .bold).monospacedDigit())
+                    .foregroundStyle(isSelected ? Color.white : color)
+                    .padding(.horizontal, 6)
+                    .frame(minWidth: 20, minHeight: 18)
+                    .background(Capsule().fill(isSelected ? AnyShapeStyle(Theme.accentGradient) : AnyShapeStyle(color.opacity(0.15))))
+            }
         }
         .padding(.leading, CGFloat(item.indent) * 14)
+        .padding(.vertical, 2)
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
         // The whole row reacts to clicks, independent of List's own selection handling.
@@ -81,15 +98,32 @@ struct SidebarView: View {
             DebugLog.log("sidebar row tapped: \(item.id)")
             model.select(entry.selection)
         })
-        .badge(item.unread)
         .tag(entry.selection)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(item.title)
+        .accessibilityValue(item.unread > 0 ? "\(item.unread)" : "")
         .accessibilityIdentifier("sidebar.\(item.id)")
+        // The selected mailbox is a white pill instead of the system's grey highlight.
+        .listRowBackground(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(isSelected ? Theme.cardFill.opacity(0.92) : Color.clear)
+                .shadow(color: Theme.shadow.opacity(isSelected ? 0.12 : 0), radius: 5, y: 2)
+                .padding(.horizontal, 8)
+        )
+        .background(ListHighlightRemover().frame(width: 0, height: 0))
     }
 
     private func tint(for item: SidebarItem) -> Color {
         if let hex = item.colorHex { return Color(hex: hex) }
         switch item.id {
-        case SystemLabel.inbox, SystemLabel.starred, SystemLabel.important: return .accentColor
+        case SystemLabel.inbox: return Palette.violet
+        case SystemLabel.starred: return Color(hex: "#F2A900")
+        case SystemLabel.important: return Color(hex: "#F2784B")
+        case SystemLabel.sent: return Color(hex: "#3B9BF5")
+        case SystemLabel.draft: return Color(hex: "#E7689A")
+        case AccountSession.allMailID: return Color(hex: "#2BB5A3")
+        case SystemLabel.spam: return Color(hex: "#E5534B")
+        case SystemLabel.trash: return Color(hex: "#7B839A")
         default: return Palette.periwinkle
         }
     }
@@ -105,8 +139,7 @@ struct SectionSwitch: View {
             tab(.calendar, title: tr("Kalender", "Calendar"), systemImage: "calendar", badge: 0, identifier: "section.calendar")
         }
         .padding(3)
-        .background(Capsule().fill(Color.primary.opacity(0.07)))
-        .overlay(Capsule().strokeBorder(Color.primary.opacity(0.05), lineWidth: 0.8))
+        .background(Capsule().fill(Palette.violet.opacity(0.1)))
         .padding(.horizontal, 12)
         .padding(.top, 4)
         .padding(.bottom, 8)

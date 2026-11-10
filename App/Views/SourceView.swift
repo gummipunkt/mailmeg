@@ -175,7 +175,7 @@ private struct ModeSwitch: View {
             option(.source, title: tr("Quelltext", "Source"), systemImage: "chevron.left.forwardslash.chevron.right")
         }
         .padding(3)
-        .background(Capsule().fill(Color.primary.opacity(0.07)))
+        .background(Capsule().fill(Palette.violet.opacity(0.1)))
     }
 
     private func option(_ value: SourceRequest.Mode, title: String, systemImage: String) -> some View {

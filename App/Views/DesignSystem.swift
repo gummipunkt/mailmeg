@@ -11,33 +11,50 @@ enum Palette {
 }
 
 enum Theme {
-    static let cardRadius: CGFloat = 14
+    static let cardRadius: CGFloat = 18
 
-    /// Sidebar background: a breath of the lightest palette tone over the desktop blur.
-    static let sidebar = Color(light: "#E9EBFB", dark: "#16172A")
-    /// Message list background.
-    static let listBackground = Color(light: "#FFFFFF", dark: "#1A1B2E")
-    /// Background behind conversation cards.
-    static let canvas = Color(light: "#F3F4FB", dark: "#121324")
+    /// The pastel backdrop behind everything: lilac at the top, sky in the middle, a blush
+    /// of pink at the bottom. It only changes from top to bottom, so the columns of the
+    /// window line up without a seam.
+    static let backdropTop = Color(light: "#EDE6FF", dark: "#1D1936")
+    static let backdropMiddle = Color(light: "#E5EAFF", dark: "#181733")
+    static let backdropBottom = Color(light: "#F9E6F2", dark: "#221735")
+
+    /// Sidebar, list and canvas all sit on the backdrop; these are its top tone.
+    static let sidebar = backdropTop
+    static let listBackground = backdropTop
+    static let canvas = backdropTop
+    /// The floating panel that holds the message list.
+    static let panel = Color(light: "#FFFFFF", dark: "#221F3D")
     /// Cards, text fields.
-    static let cardFill = Color(light: "#FFFFFF", dark: "#212238")
+    static let cardFill = Color(light: "#FFFFFF", dark: "#272445")
     /// Subtle fills: chips, counters, banners.
-    static let tint = Color(light: "#E9EBFD", dark: "#2B2C4E")
+    static let tint = Color(light: "#EFE9FF", dark: "#342F5E")
     /// Lines and outlines.
-    static let hairline = Color(light: "#D5D9F0", dark: "#34365C")
+    static let hairline = Color(light: "#DCD4F8", dark: "#3D3870")
     /// The barely visible edge of cards.
-    static let cardStroke = Color(light: "#E7E9F5", dark: "#2C2D49")
+    static let cardStroke = Color(light: "#F1ECFF", dark: "#353060")
     /// Fill of the selected row in lists.
-    static let selection = Color(light: "#E4E6FD", dark: "#34366A")
+    static let selection = Color(light: "#EAE2FF", dark: "#3D3678")
+    /// Soft coloured shadow under floating panels and cards.
+    static let shadow = Color(light: "#7B6BD6", dark: "#000000")
 
-    /// Avatar styles built from the palette: gradient top, bottom and text colour.
+    /// Prominent buttons: lilac into violet.
+    static let accentGradient = LinearGradient(
+        colors: [Color(hex: "#A990FF"), Palette.violet],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+
+    /// Pastel avatar styles in several hues: gradient top, bottom and text colour.
     static let avatarStyles: [(Color, Color, Color)] = [
-        (Palette.periwinkle, Palette.violet, .white),
-        (Palette.sky, Palette.periwinkle, Color(hex: "#2E2A7A")),
-        (Palette.violet, Color(hex: "#5A51D6"), .white),
-        (Palette.mist, Palette.sky, Color(hex: "#4A44B8")),
-        (Color(hex: "#A3B4F8"), Palette.violet, .white),
-        (Palette.sky, Palette.violet, .white),
+        (Color(hex: "#E6DDFF"), Color(hex: "#CDBFFB"), Color(hex: "#5B45C2")),
+        (Color(hex: "#FFDCCB"), Color(hex: "#FFC4AA"), Color(hex: "#B5502A")),
+        (Color(hex: "#CFF2E0"), Color(hex: "#ABE5C9"), Color(hex: "#1F7A55")),
+        (Color(hex: "#D3E6FF"), Color(hex: "#B1CBFA"), Color(hex: "#2B5FB8")),
+        (Color(hex: "#FFD6E6"), Color(hex: "#FBB8D2"), Color(hex: "#B03A6E")),
+        (Color(hex: "#FFEFC0"), Color(hex: "#FFE08F"), Color(hex: "#8A6500")),
+        (Color(hex: "#CBEFF3"), Color(hex: "#A6E1E9"), Color(hex: "#1B7480")),
     ]
 }
 
@@ -156,7 +173,7 @@ struct CardModifier: ViewModifier {
                 RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous)
                     .strokeBorder(Theme.cardStroke)
             )
-            .shadow(color: .black.opacity(0.05), radius: 14, y: 5)
+            .shadow(color: Theme.shadow.opacity(0.13), radius: 16, y: 6)
     }
 }
 
@@ -166,20 +183,21 @@ extension View {
     /// Paints `color` behind the view *and* the window toolbar above it, so the toolbar
     /// takes the colour of the column below instead of the system grey.
     func themedWindowBackground(_ color: Color) -> some View {
-        modifier(ToolbarBandModifier(background: color))
+        modifier(ToolbarBandModifier(background: color, band: color))
     }
 }
 
-struct ToolbarBandModifier<Background: View>: ViewModifier {
+struct ToolbarBandModifier<Background: View, Band: View>: ViewModifier {
     let background: Background
+    /// What covers content scrolling up underneath the transparent toolbar.
+    let band: Band
 
     func body(content: Content) -> some View {
         GeometryReader { proxy in
             content
                 .frame(width: proxy.size.width, height: proxy.size.height)
-                // Covers content that scrolls up underneath the transparent toolbar.
                 .overlay(alignment: .top) {
-                    background
+                    band
                         .frame(height: proxy.safeAreaInsets.top)
                         .offset(y: -proxy.safeAreaInsets.top)
                         .allowsHitTesting(false)
@@ -211,65 +229,67 @@ struct VisualEffectView: NSViewRepresentable {
     }
 }
 
-/// Frosted surfaces for the three columns, lightly tinted with the palette.
+/// The pastel backdrop of the window. Every column draws the same top-to-bottom gradient
+/// over its full height, so together they read as one surface.
+struct AppBackdrop: View {
+    var body: some View {
+        LinearGradient(
+            stops: [
+                // Flat at the top, where the toolbar band has to match exactly.
+                .init(color: Theme.backdropTop, location: 0),
+                .init(color: Theme.backdropTop, location: 0.12),
+                .init(color: Theme.backdropMiddle, location: 0.55),
+                .init(color: Theme.backdropBottom, location: 1),
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+}
+
+/// The surfaces of the window. They share one backdrop; the names say what sits on it.
 enum GlassStyle {
     case sidebar, list, canvas
-
-    @ViewBuilder
-    var background: some View {
-        switch self {
-        case .sidebar:
-            ZStack {
-                VisualEffectView(material: .sidebar)
-                Theme.sidebar.opacity(0.5)
-            }
-        case .list:
-            ZStack {
-                VisualEffectView(material: .menu)
-                Theme.listBackground.opacity(0.86)
-            }
-        case .canvas:
-            ZStack {
-                VisualEffectView(material: .underWindowBackground)
-                Theme.canvas.opacity(0.82)
-            }
-        }
-    }
 }
 
 extension View {
-    /// Frosted glass behind the view and the toolbar above it.
+    /// The pastel backdrop behind the view and the toolbar above it.
     func glassBackground(_ style: GlassStyle) -> some View {
-        modifier(ToolbarBandModifier(background: style.background))
+        modifier(ToolbarBandModifier(background: AppBackdrop(), band: Theme.backdropTop))
+    }
+
+    /// A floating white panel with rounded corners and a soft coloured shadow.
+    func floatingPanel(radius: CGFloat = 18) -> some View {
+        self
+            .background(Theme.panel)
+            .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .strokeBorder(Theme.cardStroke)
+            )
+            .shadow(color: Theme.shadow.opacity(0.13), radius: 16, y: 6)
     }
 }
 
 extension View {
-    /// Frosted backing for bars that float above scrolling content (list header, action bar),
-    /// so rows passing underneath are blurred instead of mixing with the controls.
+    /// Frosted backing for bars that float above scrolling content (the action bar),
+    /// so what passes underneath is blurred instead of mixing with the controls.
     func frostedBar(tint: Color) -> some View {
-        background {
-            ZStack {
-                Rectangle().fill(.regularMaterial)
-                tint.opacity(0.55)
-            }
-        }
-        .overlay(alignment: .bottom) {
-            Divider().opacity(0.35)
-        }
+        background(.ultraThinMaterial)
     }
 }
 
-/// Round frosted button, as in Airmail's toolbar.
+/// Round button: white glass on the backdrop, or lilac-tinted on a white panel.
 struct GlassCircleButton: View {
     let systemImage: String
     let help: String
     var isActive = false
+    var isTinted = false
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            GlassCircleLabel(systemImage: systemImage, isActive: isActive)
+            GlassCircleLabel(systemImage: systemImage, isActive: isActive, isTinted: isTinted)
         }
         .buttonStyle(.plain)
         .help(help)
@@ -280,14 +300,23 @@ struct GlassCircleButton: View {
 struct GlassCircleLabel: View {
     let systemImage: String
     var isActive = false
+    var isTinted = false
     @State private var isHovering = false
 
     var body: some View {
         Image(systemName: systemImage)
             .font(.system(size: 13.5, weight: .medium))
-            .foregroundStyle(isActive ? Color.accentColor : Color.primary.opacity(0.78))
+            .foregroundStyle(isActive || isTinted ? Color.accentColor : Color.primary.opacity(0.78))
             .frame(width: 32, height: 32)
-            .background(Circle().fill(Color.primary.opacity(isHovering ? 0.12 : 0.06)))
+            .background {
+                if isTinted {
+                    Circle().fill(Theme.tint.opacity(isHovering ? 1 : 0.75))
+                } else {
+                    Circle()
+                        .fill(Theme.cardFill.opacity(isHovering ? 1 : 0.7))
+                        .shadow(color: Theme.shadow.opacity(0.1), radius: 4, y: 2)
+                }
+            }
             .contentShape(Circle())
             .onHover { isHovering = $0 }
             .animation(.easeOut(duration: 0.12), value: isHovering)
@@ -298,13 +327,14 @@ struct GlassCircleLabel: View {
 struct GlassCircleMenu<Content: View>: View {
     let systemImage: String
     let help: String
+    var isTinted = false
     @ViewBuilder let content: () -> Content
 
     var body: some View {
         Menu {
             content()
         } label: {
-            GlassCircleLabel(systemImage: systemImage)
+            GlassCircleLabel(systemImage: systemImage, isTinted: isTinted)
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
@@ -382,7 +412,7 @@ struct PillSwitch<Value: Hashable>: View {
             }
         }
         .padding(3)
-        .background(Capsule().fill(Color.primary.opacity(0.07)))
+        .background(Capsule().fill(Palette.violet.opacity(0.1)))
         .fixedSize()
     }
 }
@@ -412,12 +442,12 @@ struct GlassCapsuleButton: View {
             .frame(height: 32)
             .background {
                 if isProminent {
-                    Capsule().fill(LinearGradient(colors: [Palette.periwinkle, Palette.violet], startPoint: .top, endPoint: .bottom))
+                    Capsule().fill(Theme.accentGradient)
                 } else {
-                    Capsule().fill(Color.primary.opacity(isHovering ? 0.12 : 0.06))
+                    Capsule().fill(Theme.cardFill.opacity(isHovering ? 1 : 0.7))
                 }
             }
-            .shadow(color: isProminent ? Palette.violet.opacity(0.3) : .clear, radius: 5, y: 2)
+            .shadow(color: isProminent ? Palette.violet.opacity(0.35) : Theme.shadow.opacity(0.1), radius: isProminent ? 6 : 4, y: 2)
             .contentShape(Capsule())
             .onHover { isHovering = $0 }
         }
@@ -437,7 +467,8 @@ struct ToolbarGroup<Content: View>: View {
         }
         .padding(.horizontal, 3)
         .frame(height: 32)
-        .background(Capsule().fill(Color.primary.opacity(0.06)))
+        .background(Capsule().fill(Theme.cardFill.opacity(0.7)))
+        .shadow(color: Theme.shadow.opacity(0.1), radius: 4, y: 2)
     }
 }
 
@@ -452,7 +483,7 @@ struct ToolbarIconLabel: View {
             .font(.system(size: 13.5, weight: .medium))
             .foregroundStyle(isActive ? Color.accentColor : Color.primary.opacity(0.78))
             .frame(width: 34, height: 26)
-            .background(Capsule().fill(Color.primary.opacity(isHovering ? 0.1 : 0)))
+            .background(Capsule().fill(Palette.violet.opacity(isHovering ? 0.14 : 0)))
             .contentShape(Rectangle())
             .onHover { isHovering = $0 }
             .animation(.easeOut(duration: 0.12), value: isHovering)

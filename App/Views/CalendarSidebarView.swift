@@ -101,7 +101,7 @@ struct MiniMonthView: View {
                     .background {
                         if isSelected {
                             RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                .fill(LinearGradient(colors: [Palette.periwinkle, Palette.violet], startPoint: .top, endPoint: .bottom))
+                                .fill(Theme.accentGradient)
                         }
                     }
                 HStack(spacing: 2) {
