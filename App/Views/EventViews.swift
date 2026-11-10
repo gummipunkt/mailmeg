@@ -264,6 +264,7 @@ struct EventEditorView: View {
         .padding(14)
         .glassBackground(.canvas)
         .navigationTitle(draft.title.isEmpty ? (draft.isEditing ? tr("Termin bearbeiten", "Edit Event") : tr("Neuer Termin", "New Event")) : draft.title)
+        .background(NonRestorableWindow().frame(width: 0, height: 0))
         .frame(minWidth: 480, minHeight: 470)
         .confirmationDialog(tr("Termin löschen?", "Delete this event?"), isPresented: $confirmsDelete) {
             Button(tr("Löschen", "Delete"), role: .destructive) { Task { await delete() } }

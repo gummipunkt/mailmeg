@@ -743,6 +743,7 @@ private struct ComposeChrome: ViewModifier {
                 .frame(minWidth: 520, minHeight: 400)
                 .glassBackground(.canvas)
                 .navigationTitle(title)
+                .background(NonRestorableWindow().frame(width: 0, height: 0))
         }
     }
 }

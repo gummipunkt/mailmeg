@@ -11,8 +11,6 @@ final class MailmegUITests: XCTestCase {
     private func launch(_ arguments: [String], language: String = "de") -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = arguments + ["--lang=\(language)"]
-        // Each test starts with just the main window: windows of an earlier launch are not restored.
-        app.launchArguments += ["-ApplePersistenceIgnoreState", "YES"]
         app.launch()
         app.activate()
         return app
@@ -20,6 +18,13 @@ final class MailmegUITests: XCTestCase {
 
     private func element(_ app: XCUIApplication, _ identifier: String) -> XCUIElement {
         app.descendants(matching: .any)[identifier].firstMatch
+    }
+
+    /// A mouse click at the element's centre. The accessibility hit test XCUITest runs before
+    /// `click()` reports controls in the panel below a conversation as covered by the scroll
+    /// view above it; a real click reaches them.
+    private func click(_ element: XCUIElement) {
+        element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
     }
 
     private func snapshot(_ name: String, of screenshot: XCUIScreenshot) {
@@ -309,7 +314,7 @@ final class MailmegUITests: XCTestCase {
         XCTAssertTrue((body.value as? String ?? "").hasPrefix("Bis Donnerstag!"), "Typing goes into the reply, above the quote")
         sleep(1)
         snapshot("23-antwort-im-hauptfenster", of: app.windows.firstMatch.screenshot())
-        element(app, "compose.send").click()
+        click(element(app, "compose.send"))
         let gone = NSPredicate(format: "exists == false")
         expectation(for: gone, evaluatedWith: element(app, "compose.inlineTitle"))
         waitForExpectations(timeout: 15)
@@ -318,7 +323,7 @@ final class MailmegUITests: XCTestCase {
         // The editor can be closed again without sending.
         element(app, "detail.reply").click()
         XCTAssertTrue(element(app, "compose.close").waitForExistence(timeout: 10))
-        element(app, "compose.close").click()
+        click(element(app, "compose.close"))
         expectation(for: gone, evaluatedWith: element(app, "compose.inlineTitle"))
         waitForExpectations(timeout: 10)
     }

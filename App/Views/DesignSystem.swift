@@ -424,3 +424,20 @@ struct GlassCapsuleButton: View {
         .buttonStyle(.plain)
     }
 }
+
+// MARK: - Windows
+
+/// Keeps a window out of macOS' window restoration. A compose window reopened after a
+/// restart would show the message as it was when the window first opened, not what was
+/// written since – that is in Gmail's drafts.
+struct NonRestorableWindow: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { Probe() }
+    func updateNSView(_ view: NSView, context: Context) {}
+
+    final class Probe: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            window?.isRestorable = false
+        }
+    }
+}
