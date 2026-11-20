@@ -418,9 +418,15 @@ final class MailmegUITests: XCTestCase {
         XCTAssertTrue(label.waitForExistence(timeout: 10))
         let gone = NSPredicate(format: "exists == false")
 
-        coffee.press(forDuration: 0.6, thenDragTo: label, withVelocity: .slow, thenHoldForDuration: 0.6)
-        expectation(for: gone, evaluatedWith: coffee)
-        waitForExpectations(timeout: 10)
+        // A synthesized drag does not always start on the first try (the press can be taken
+        // as a plain click); a drag that did not start changes nothing, so try again.
+        var dropped = false
+        for _ in 0..<3 where !dropped {
+            coffee.press(forDuration: 0.8, thenDragTo: label, withVelocity: .slow, thenHoldForDuration: 0.8)
+            let left = XCTNSPredicateExpectation(predicate: gone, object: coffee)
+            dropped = XCTWaiter().wait(for: [left], timeout: 5) == .completed
+        }
+        XCTAssertTrue(dropped, "Dragging a conversation onto a label takes it out of the inbox")
         label.click()
         XCTAssertTrue(coffee.waitForExistence(timeout: 10), "The dragged conversation is filed under the label")
         sleep(1)
