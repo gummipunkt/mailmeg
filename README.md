@@ -22,13 +22,15 @@ mit Beispiel-E-Mails, Kalender und Einladung.
   archivieren, löschen, als gelesen/ungelesen, markiert oder Spam kennzeichnen
 - **Aktionen**: Antworten, Allen antworten, Weiterleiten, Archivieren, Löschen, Wiederherstellen, Spam,
   Gelesen/Ungelesen, Markieren, Labels zuweisen; per Hover direkt in der Liste, per Rechtsklick oder Tastatur
+- **Drag & Drop**: E-Mails (auch mehrere) auf einen Ordner oder ein Label in der Seitenleiste ziehen
+- **Widerrufen** (⌘Z) für Archivieren, Löschen, Verschieben, Labels, Markieren und Gelesen/Ungelesen
 - **Vorherige/nächste Konversation** mit ⌥⌘↑/↓ oder den Pfeil-Buttons
 - **Empfängerdetails**: die genaue Adresse, an die eine E-Mail ging (auch bei „mich“), plus Von, Antwort an,
   An, Cc, Bcc, Zugestellt an und Datum
 - **Zitierte Nachrichten eingeklappt** („••• Zitat anzeigen“), neueste Nachricht zuerst – beides umstellbar
 - **Website-Symbol der Absender-Domain** als Profilbild, wenn es eines gibt
 - **Quelltext** (⌥⌘U) und **alle Header** (⇧⌘H) in einem eigenen Fenster, mit Filter, Kopieren und Sichern als `.eml`
-- **Anhänge und Inline-Bilder** öffnen oder sichern
+- **Anhänge und Inline-Bilder** öffnen oder sichern; bei mehreren Anhängen „Alle sichern …“ in einen Ordner
 - **Umlaute und Sonderzeichen** werden richtig angezeigt, auch wenn der Absender einen falschen Zeichensatz angibt
 
 ### Schreiben
@@ -109,6 +111,8 @@ mit Beispiel-E-Mails, Kalender und Einladung.
 | ⌥⌘E | Termin aus E-Mail | ⌥⌘U / ⇧⌘H | Quelltext / Header |
 | ⌘A | Alle in der Liste auswählen | ⌥⌘A | Alle Ergebnisse auswählen |
 | ⌘S | Entwurf sichern | ⌘B / ⌘I / ⌘U / ⌘K | Fett / Kursiv / Unterstrichen / Link |
+| ⌘F | Suchen (Mail und Kalender) | ⌘Z / ⇧⌘Z | Widerrufen / Wiederholen |
+| ⌫ | Auswahl in den Papierkorb | | |
 
 ## Installation (fertige DMG, ohne Xcode)
 
@@ -231,7 +235,8 @@ wrapping the Gmail website. The interface is available in English and German and
 order.
 
 **Features:** multiple Gmail accounts with all folders and labels · Gmail-style conversations with label chips ·
-full Gmail search syntax · archive, delete, spam, star, labels, read/unread · exact recipient details, message source
+full Gmail search syntax · archive, delete, spam, star, labels, read/unread · drag and drop onto folders and labels ·
+undo (⌘Z) for mail actions · save all attachments at once · exact recipient details, message source
 and all headers · rich text editor · Gmail “Send mail as” addresses and signatures · reply above or below the quote ·
 quick reply · drafts synced with Gmail · large files, ZIPs and blocked file types sent as Google Drive links ·
 Google Calendar with day, week and month view, today list, invitations with Accept/Maybe/Decline, events created

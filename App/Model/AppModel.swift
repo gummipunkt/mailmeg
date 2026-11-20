@@ -9,6 +9,30 @@ struct MailboxSelection: Hashable {
     var labelID: String
 }
 
+/// Conversations being dragged from the message list, as the text the drag carries.
+struct ThreadDrag: Equatable {
+    var accountID: String
+    var threadIDs: [String]
+
+    private static let prefix = "mailmeg-threads:"
+
+    var text: String { Self.prefix + accountID + "|" + threadIDs.joined(separator: ",") }
+
+    init(accountID: String, threadIDs: [String]) {
+        self.accountID = accountID
+        self.threadIDs = threadIDs
+    }
+
+    init?(text: String) {
+        guard text.hasPrefix(Self.prefix) else { return nil }
+        let parts = text.dropFirst(Self.prefix.count).split(separator: "|", maxSplits: 1).map(String.init)
+        guard parts.count == 2 else { return nil }
+        let ids = parts[1].split(separator: ",").map(String.init)
+        guard !parts[0].isEmpty, !ids.isEmpty else { return nil }
+        self.init(accountID: parts[0], threadIDs: ids)
+    }
+}
+
 /// The two tabs of the main window.
 enum AppSection: Hashable {
     case mail, calendar
@@ -19,6 +43,8 @@ enum AppSection: Hashable {
 @Observable
 final class AppModel {
     private(set) var accounts: [AccountSession] = []
+    /// The main window's undo manager: mail actions can be undone with ⌘Z.
+    @ObservationIgnored weak var undoManager: UndoManager?
     private(set) var mailbox: MailboxModel?
     private(set) var threadDetail: ThreadDetailModel?
     /// Mail or calendar, switched with the tabs at the top of the sidebar.
@@ -348,6 +374,7 @@ final class AppModel {
         }
         guard let mailbox, let id = threadID ?? selectedThreadID else { return }
         let position = mailbox.threads.firstIndex { $0.id == id }
+        registerUndo(action, ids: [id], in: mailbox)
         Task {
             let removed = await mailbox.perform(action, on: id)
             if removed, id == selectedThreadID {
@@ -367,9 +394,13 @@ final class AppModel {
 
     /// Applies an action to all selected conversations, a few at a time.
     func performOnSelection(_ action: ThreadAction) {
-        guard let mailbox else { return }
-        let ids = selectedThreads.map(\.id)
-        guard !ids.isEmpty else { return }
+        perform(action, onThreads: selectedThreads.map(\.id))
+    }
+
+    /// Applies an action to several conversations of the open mailbox, a few at a time.
+    func perform(_ action: ThreadAction, onThreads ids: [String]) {
+        guard let mailbox, !ids.isEmpty else { return }
+        registerUndo(action, ids: ids, in: mailbox)
         Task {
             var removed = 0
             var start = 0
@@ -390,9 +421,169 @@ final class AppModel {
         }
     }
 
+    // MARK: - Undo
+
+    /// What it takes to undo an action: the conversations as they were, and where.
+    private struct UndoRecord {
+        let accountID: String
+        let labelID: String
+        let action: ThreadAction
+        let threads: [(index: Int, summary: ThreadSummary)]
+    }
+
+    /// Remembers an action in the window's undo stack (⌘Z), before it is applied.
+    private func registerUndo(_ action: ThreadAction, ids: [String], in mailbox: MailboxModel) {
+        guard let undoManager else { return }
+        let wanted = Set(ids)
+        let threads = mailbox.threads.enumerated()
+            .filter { wanted.contains($0.element.id) }
+            .map { (index: $0.offset, summary: $0.element) }
+        guard !threads.isEmpty else { return }
+        let record = UndoRecord(accountID: mailbox.account.id, labelID: mailbox.labelID, action: action, threads: threads)
+        undoManager.registerUndo(withTarget: self) { model in
+            MainActor.assumeIsolated { model.undo(record) }
+        }
+        undoManager.setActionName(action.undoName)
+    }
+
+    /// The open mailbox, if it is the list an undo record was made in.
+    private func openMailbox(for record: UndoRecord) -> MailboxModel? {
+        guard let mailbox, mailbox.account.id == record.accountID, mailbox.labelID == record.labelID else { return nil }
+        return mailbox
+    }
+
+    private func undo(_ record: UndoRecord) {
+        guard let account = accounts.first(where: { $0.id == record.accountID }) else { return }
+        undoManager?.registerUndo(withTarget: self) { model in
+            MainActor.assumeIsolated { model.redo(record) }
+        }
+        undoManager?.setActionName(record.action.undoName)
+
+        let ids = record.threads.map { $0.summary.id }
+        let list = openMailbox(for: record)
+        // Back in the list at once; Gmail follows.
+        list?.putBack(record.threads)
+        if let list, self.mailbox === list, record.threads.contains(where: { list.thread(id: $0.summary.id) != nil }) {
+            setThreadSelection(Set(ids))
+        }
+        let work = record.threads.map { entry in
+            (id: entry.summary.id, actions: record.action.inverse(for: entry.summary, in: record.labelID))
+        }
+        var labels = Set(record.action.touchedLabelIDs).union([record.labelID])
+        for entry in record.threads { labels.formUnion(entry.summary.labelIDs) }
+        Task {
+            let failure = await Self.sync(work, client: account.client)
+            account.refreshCounts(for: labels)
+            if let failure {
+                present(failure, account: account)
+                await mailbox?.reload()
+            } else if list == nil, mailbox?.account.id == record.accountID {
+                await mailbox?.refreshFirstPage()
+            }
+            if let selectedThreadID, ids.contains(selectedThreadID) {
+                await threadDetail?.load()
+            }
+            updateDockBadge()
+        }
+    }
+
+    private func redo(_ record: UndoRecord) {
+        guard let account = accounts.first(where: { $0.id == record.accountID }) else { return }
+        let ids = record.threads.map { $0.summary.id }
+        if openMailbox(for: record) != nil {
+            // The usual way; it registers its own undo again.
+            perform(record.action, onThreads: ids)
+            return
+        }
+        undoManager?.registerUndo(withTarget: self) { model in
+            MainActor.assumeIsolated { model.undo(record) }
+        }
+        undoManager?.setActionName(record.action.undoName)
+        let work = ids.map { (id: $0, actions: [record.action]) }
+        var labels = Set(record.action.touchedLabelIDs).union([record.labelID])
+        for entry in record.threads { labels.formUnion(entry.summary.labelIDs) }
+        Task {
+            let failure = await Self.sync(work, client: account.client)
+            account.refreshCounts(for: labels)
+            if let failure { present(failure, account: account) }
+            if mailbox?.account.id == record.accountID { await mailbox?.refreshFirstPage() }
+            updateDockBadge()
+        }
+    }
+
+    /// Tells Gmail about actions on several conversations, a few at a time.
+    /// Returns the last error, if any.
+    private static func sync(_ work: [(id: String, actions: [ThreadAction])], client: GmailClient) async -> Error? {
+        var failure: Error?
+        var start = 0
+        while start < work.count {
+            let chunk = work[start..<min(start + 5, work.count)]
+            start += chunk.count
+            await withTaskGroup(of: Error?.self) { group in
+                for item in chunk {
+                    group.addTask {
+                        do {
+                            for action in item.actions {
+                                try await MailboxModel.sync(action, threadID: item.id, client: client)
+                            }
+                            return nil
+                        } catch {
+                            return error
+                        }
+                    }
+                }
+                for await error in group {
+                    if let error { failure = error }
+                }
+            }
+        }
+        return failure
+    }
+
+    // MARK: - Search
+
+    /// Bumped by “Find” (⌘F); the visible search field takes the focus.
+    private(set) var searchRequest = 0
+
+    func requestSearch() {
+        searchRequest += 1
+    }
+
+    // MARK: - Drag and drop
+
+    /// What dragging conversations of the open mailbox onto a sidebar entry does, or nil
+    /// if they cannot be dropped there.
+    func dropAction(onto target: MailboxSelection) -> ThreadAction? {
+        guard let mailbox, target.accountID == mailbox.account.id, target.labelID != mailbox.labelID else { return nil }
+        let source = mailbox.labelID
+        switch target.labelID {
+        case SystemLabel.inbox: return .moveToInbox
+        case SystemLabel.trash: return .trash
+        case SystemLabel.spam: return .reportSpam
+        case SystemLabel.starred: return .star
+        case SystemLabel.important: return .addLabel(SystemLabel.important)
+        case AccountSession.allMailID: return source == SystemLabel.inbox ? .archive : nil
+        case SystemLabel.sent, SystemLabel.draft: return nil
+        default:
+            // A label of one's own: file the conversation there. Coming from the inbox or
+            // from another label it moves, from anywhere else the label is added.
+            let sourceIsUserLabel = mailbox.account.label(id: source)?.isSystem == false
+            return .move(to: target.labelID, from: source == SystemLabel.inbox || sourceIsUserLabel ? source : nil)
+        }
+    }
+
+    /// Drops dragged conversations onto a sidebar entry. Returns false if nothing was done.
+    @discardableResult
+    func drop(_ payload: ThreadDrag, onto target: MailboxSelection) -> Bool {
+        guard payload.accountID == target.accountID, payload.accountID == mailbox?.account.id,
+              let action = dropAction(onto: target) else { return false }
+        perform(action, onThreads: payload.threadIDs)
+        return true
+    }
+
     private static func reloadsDetail(_ action: ThreadAction) -> Bool {
         switch action {
-        case .markRead, .markUnread, .star, .unstar, .addLabel, .removeLabel: return true
+        case .markRead, .markUnread, .star, .unstar, .addLabel, .removeLabel, .move: return true
         default: return false
         }
     }

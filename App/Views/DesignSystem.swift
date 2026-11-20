@@ -49,11 +49,11 @@ enum Theme {
     /// Subtle fills: chips, counters, banners.
     static let tint = Color(light: "#EAE3FF", dark: "#342F5E")
     /// Lines and outlines.
-    static let hairline = Color(light: "#DCD4F8", dark: "#3D3870")
+    static let hairline = Color(light: "#DCD4F8", dark: "#3D3870", lightContrast: "#8E82C9", darkContrast: "#8C84D6")
     /// The barely visible edge of cards.
-    static let cardStroke = Color(light: "#FFFFFF", dark: "#353060")
+    static let cardStroke = Color(light: "#FFFFFF", dark: "#353060", lightContrast: "#A99DE0", darkContrast: "#7069B8")
     /// Fill of the selected row in lists.
-    static let selection = Color(light: "#E2D8FF", dark: "#3D3678")
+    static let selection = Color(light: "#E2D8FF", dark: "#3D3678", lightContrast: "#C9B8FF", darkContrast: "#564BB0")
     /// Soft coloured shadow under floating panels and cards.
     static let shadow = Color(light: "#7B6BD6", dark: "#000000")
 
@@ -78,11 +78,19 @@ enum Theme {
 
 extension Color {
     /// A colour that adapts to light and dark appearance.
-    init(light: String, dark: String) {
+    /// The `Contrast` variants are used with "Increase contrast" in System Settings.
+    init(light: String, dark: String, lightContrast: String? = nil, darkContrast: String? = nil) {
         let lightColor = NSColor(Color(hex: light))
         let darkColor = NSColor(Color(hex: dark))
+        let lightContrastColor = NSColor(Color(hex: lightContrast ?? light))
+        let darkContrastColor = NSColor(Color(hex: darkContrast ?? dark))
         self.init(nsColor: NSColor(name: nil) { appearance in
-            appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? darkColor : lightColor
+            let names: [NSAppearance.Name] = [.aqua, .darkAqua, .accessibilityHighContrastAqua, .accessibilityHighContrastDarkAqua]
+            let match = appearance.bestMatch(from: names) ?? .aqua
+            if match == .darkAqua { return darkColor }
+            if match == .accessibilityHighContrastAqua { return lightContrastColor }
+            if match == .accessibilityHighContrastDarkAqua { return darkContrastColor }
+            return lightColor
         })
     }
 
@@ -326,6 +334,23 @@ extension View {
             glassEffect(Glass.regular, in: Capsule())
         } else {
             background(Capsule().fill(Palette.violet.opacity(0.1)))
+        }
+    }
+}
+
+/// Neighbouring glass controls belong into one container: glass cannot sample other glass,
+/// and in a container the shapes render together and can flow into each other when they
+/// move. `spacing` is the distance below which two shapes merge – keep it smaller than
+/// the gap between the controls, so they stay separate at rest.
+struct GlassGroup<Content: View>: View {
+    var spacing: CGFloat = 4
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        if #available(macOS 26.0, *) {
+            GlassEffectContainer(spacing: spacing) { content() }
+        } else {
+            content()
         }
     }
 }

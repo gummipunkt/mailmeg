@@ -115,11 +115,13 @@ private struct MultiSelectionView: View {
             }
 
             let items = actions(threads: threads, unread: unread)
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 8) { buttons(items) }
-                VStack(spacing: 8) {
-                    HStack(spacing: 8) { buttons(Array(items.prefix(3))) }
-                    HStack(spacing: 8) { buttons(Array(items.dropFirst(3))) }
+            GlassGroup {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) { buttons(items) }
+                    VStack(spacing: 8) {
+                        HStack(spacing: 8) { buttons(Array(items.prefix(3))) }
+                        HStack(spacing: 8) { buttons(Array(items.dropFirst(3))) }
+                    }
                 }
             }
 

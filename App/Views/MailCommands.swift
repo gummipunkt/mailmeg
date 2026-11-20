@@ -19,6 +19,14 @@ struct MailCommands: Commands {
                 .disabled(model.accounts.isEmpty)
         }
 
+        // Edit > Find, where every Mac app has it.
+        CommandGroup(after: .pasteboard) {
+            Divider()
+            Button(tr("Suchen", "Find")) { model.requestSearch() }
+                .keyboardShortcut("f")
+                .disabled(model.accounts.isEmpty)
+        }
+
         CommandMenu(tr("Postfach", "Mailbox")) {
             Button(tr("Neue E-Mails abrufen", "Get New Mail")) { Task { await model.refreshAll() } }
                 .keyboardShortcut("n", modifiers: [.command, .shift])

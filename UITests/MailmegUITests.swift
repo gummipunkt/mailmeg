@@ -408,6 +408,54 @@ final class MailmegUITests: XCTestCase {
         waitForExpectations(timeout: 10)
     }
 
+    /// Conversations can be dragged onto a label and deleted with the Delete key, ⌘Z brings
+    /// them back; ⌘F leads to the search, several attachments offer “Save All”.
+    func testDragToLabelUndoFindAndSaveAll() {
+        let app = launch(["--demo"])
+        let coffee = element(app, "thread.t-kaffee")
+        XCTAssertTrue(coffee.waitForExistence(timeout: 20))
+        let label = element(app, "sidebar.Label_3")
+        XCTAssertTrue(label.waitForExistence(timeout: 10))
+        let gone = NSPredicate(format: "exists == false")
+
+        coffee.press(forDuration: 0.6, thenDragTo: label, withVelocity: .slow, thenHoldForDuration: 0.6)
+        expectation(for: gone, evaluatedWith: coffee)
+        waitForExpectations(timeout: 10)
+        label.click()
+        XCTAssertTrue(coffee.waitForExistence(timeout: 10), "The dragged conversation is filed under the label")
+        sleep(1)
+        snapshot("22-drag-auf-label", of: app.windows.firstMatch.screenshot())
+
+        // ⌘Z takes it out of the label again and back into the inbox.
+        app.typeKey("z", modifierFlags: .command)
+        expectation(for: gone, evaluatedWith: coffee)
+        waitForExpectations(timeout: 10)
+        element(app, "sidebar.INBOX").click()
+        XCTAssertTrue(coffee.waitForExistence(timeout: 10), "Undo moves the conversation back to the inbox")
+
+        // The Delete key moves the selected conversation to the trash; ⌘Z restores it in place.
+        coffee.click()
+        XCTAssertTrue(element(app, "detail.subject").waitForExistence(timeout: 10))
+        coffee.click()
+        app.typeKey(.delete, modifierFlags: [])
+        expectation(for: gone, evaluatedWith: coffee)
+        waitForExpectations(timeout: 10)
+        app.typeKey("z", modifierFlags: .command)
+        XCTAssertTrue(coffee.waitForExistence(timeout: 10), "⌘Z restores a deleted conversation")
+
+        // ⌘F puts the cursor into the search field.
+        app.typeKey("f", modifierFlags: .command)
+        app.typeText("Fotos\r")
+        expectation(for: gone, evaluatedWith: coffee)
+        waitForExpectations(timeout: 10)
+        let photos = element(app, "thread.t-fotos")
+        XCTAssertTrue(photos.waitForExistence(timeout: 10), "⌘F focuses the search")
+        photos.click()
+        XCTAssertTrue(element(app, "attachments.saveAll").waitForExistence(timeout: 10), "Several attachments offer “Save All”")
+        sleep(1)
+        snapshot("23-alle-sichern", of: app.windows.firstMatch.screenshot())
+    }
+
     func testInvitationCardInEmail() {
         let app = launch(["--demo"])
         let thread = element(app, "thread.t-einladung")

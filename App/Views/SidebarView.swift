@@ -3,6 +3,8 @@ import SwiftUI
 
 struct SidebarView: View {
     @Environment(AppModel.self) private var model
+    /// The entry dragged conversations are hovering over.
+    @State private var dropTarget: MailboxSelection?
 
     var body: some View {
         List(selection: Binding(
@@ -68,6 +70,7 @@ struct SidebarView: View {
     private func row(_ entry: SidebarEntry) -> some View {
         let item = entry.item
         let isSelected = model.selection == entry.selection
+        let isDropTarget = dropTarget == entry.selection
         let color = tint(for: item)
         return HStack(spacing: 9) {
             // Every folder has its own colour, on a pastel tile.
@@ -106,10 +109,25 @@ struct SidebarView: View {
         // The selected mailbox is a white pill instead of the system's grey highlight.
         .listRowBackground(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(isSelected ? Theme.cardFill.opacity(0.92) : Color.clear)
-                .shadow(color: Theme.shadow.opacity(isSelected ? 0.12 : 0), radius: 5, y: 2)
+                .fill(isDropTarget ? Palette.violet.opacity(0.22) : isSelected ? Theme.cardFill.opacity(0.92) : Color.clear)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(Palette.violet.opacity(isDropTarget ? 0.9 : 0), lineWidth: 1.5)
+                )
+                .shadow(color: Theme.shadow.opacity(isSelected && !isDropTarget ? 0.12 : 0), radius: 5, y: 2)
                 .padding(.horizontal, 8)
         )
+        // Conversations dragged from the list are filed here.
+        .dropDestination(for: String.self) { items, _ in
+            guard let payload = items.lazy.compactMap(ThreadDrag.init(text:)).first else { return false }
+            return model.drop(payload, onto: entry.selection)
+        } isTargeted: { targeted in
+            if targeted, model.dropAction(onto: entry.selection) != nil {
+                dropTarget = entry.selection
+            } else if dropTarget == entry.selection {
+                dropTarget = nil
+            }
+        }
         .background(ListHighlightRemover().frame(width: 0, height: 0))
     }
 
@@ -211,6 +229,7 @@ struct SidebarFooter: View {
             }
             .buttonStyle(.borderless)
             .help(tr("Einstellungen", "Settings"))
+            .accessibilityLabel(tr("Einstellungen", "Settings"))
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)

@@ -172,6 +172,51 @@ final class ThreadDetailModel {
         }
     }
 
+    /// Saves several attachments into a folder the user picks (Downloads is offered first),
+    /// then shows them in the Finder. Existing files are kept: a number is appended instead.
+    func saveAll(_ attachments: [AttachmentInfo]) async {
+        guard !attachments.isEmpty else { return }
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.directoryURL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
+        panel.prompt = tr("Hier sichern", "Save Here")
+        panel.message = attachments.count == 1
+            ? tr("Ordner für den Anhang wählen", "Choose a folder for the attachment")
+            : tr("Ordner für \(attachments.count) Anhänge wählen", "Choose a folder for \(attachments.count) attachments")
+        guard panel.runModal() == .OK, let folder = panel.url else { return }
+        var saved: [URL] = []
+        do {
+            for attachment in attachments {
+                let data = try await data(for: attachment)
+                let url = Self.freeURL(for: Self.safeFilename(attachment.filename), in: folder, taken: saved)
+                try data.write(to: url, options: .atomic)
+                saved.append(url)
+            }
+        } catch {
+            onError?(error)
+        }
+        if !saved.isEmpty {
+            NSWorkspace.shared.activateFileViewerSelecting(saved)
+        }
+    }
+
+    /// "Plan.pdf", or "Plan 2.pdf" … if a file of that name is already there.
+    static func freeURL(for filename: String, in folder: URL, taken: [URL] = []) -> URL {
+        let name = (filename as NSString).deletingPathExtension
+        let ext = (filename as NSString).pathExtension
+        var candidate = folder.appendingPathComponent(filename)
+        var counter = 2
+        while FileManager.default.fileExists(atPath: candidate.path) || taken.contains(candidate) {
+            let numbered = ext.isEmpty ? "\(name) \(counter)" : "\(name) \(counter).\(ext)"
+            candidate = folder.appendingPathComponent(numbered)
+            counter += 1
+        }
+        return candidate
+    }
+
     static func safeFilename(_ name: String) -> String {
         let cleaned = name.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "-")
         return cleaned.isEmpty ? "attachment" : cleaned

@@ -3,6 +3,8 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.undoManager) private var undoManager
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Group {
@@ -13,6 +15,13 @@ struct ContentView: View {
             } else {
                 RootView()
             }
+        }
+        // Mail actions go to the window's undo stack (Edit > Undo, ⌘Z).
+        .onAppear { model.undoManager = undoManager }
+        .onChange(of: undoManager) { _, manager in model.undoManager = manager }
+        // "Reduce motion" in System Settings: no sliding and springing.
+        .transaction { transaction in
+            if reduceMotion { transaction.animation = nil }
         }
         .task {
             if LaunchOptions.dark {

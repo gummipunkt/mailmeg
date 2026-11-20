@@ -81,9 +81,11 @@ struct ThreadDetailView: View {
 
     /// Full bar when there is room; in a narrow column the reply actions share one menu.
     private var actionBar: some View {
-        ViewThatFits(in: .horizontal) {
-            actionButtons(compact: false)
-            actionButtons(compact: true)
+        GlassGroup {
+            ViewThatFits(in: .horizontal) {
+                actionButtons(compact: false)
+                actionButtons(compact: true)
+            }
         }
         .padding(.horizontal, 18)
         .padding(.top, 8)
@@ -209,6 +211,7 @@ struct ThreadDetailView: View {
                     }
                     .buttonStyle(.plain)
                     .help(tr("Markieren (⇧⌘L)", "Star (⇧⌘L)"))
+                    .accessibilityLabel(thread?.isStarred == true ? tr("Markierung entfernen", "Remove Star") : tr("Markieren", "Star"))
                 }
                 HStack(spacing: 6) {
                     let labelIDs = Set(detail.messages.flatMap { $0.message.labelIds ?? [] })
@@ -360,6 +363,7 @@ struct MessageCardView: View {
                             .menuIndicator(.hidden)
                             .fixedSize()
                             .help(tr("Weitere Aktionen", "More Actions"))
+                            .accessibilityLabel(tr("Weitere Aktionen", "More Actions"))
                         }
                         .fixedSize()
                     }
@@ -540,12 +544,52 @@ struct AttachmentGrid: View {
     let attachments: [AttachmentInfo]
     let detail: ThreadDetailModel
 
+    @State private var isSavingAll = false
+
     var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 190, maximum: 260), spacing: 8)], alignment: .leading, spacing: 8) {
-            ForEach(attachments) { attachment in
-                AttachmentTile(attachment: attachment, detail: detail)
+        VStack(alignment: .leading, spacing: 8) {
+            if attachments.count > 1 {
+                // Several files: how many, how large, and one button for all of them.
+                HStack(spacing: 8) {
+                    Label(summary, systemImage: "paperclip")
+                        .font(.system(size: 11.5, weight: .medium))
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 8)
+                    if isSavingAll {
+                        ProgressView().controlSize(.small)
+                    }
+                    Button {
+                        isSavingAll = true
+                        Task {
+                            await detail.saveAll(attachments)
+                            isSavingAll = false
+                        }
+                    } label: {
+                        Label(tr("Alle sichern …", "Save All…"), systemImage: "arrow.down.circle")
+                            .font(.system(size: 11.5, weight: .semibold))
+                            .foregroundStyle(Color.accentColor)
+                            .padding(.horizontal, 10)
+                            .frame(height: 24)
+                            .background(Capsule().fill(Theme.tint))
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isSavingAll)
+                    .help(tr("Alle Anhänge in einen Ordner sichern", "Save all attachments into a folder"))
+                    .accessibilityIdentifier("attachments.saveAll")
+                }
+            }
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 190, maximum: 260), spacing: 8)], alignment: .leading, spacing: 8) {
+                ForEach(attachments) { attachment in
+                    AttachmentTile(attachment: attachment, detail: detail)
+                }
             }
         }
+    }
+
+    private var summary: String {
+        let size = Formatting.byteCount(attachments.reduce(0) { $0 + $1.size })
+        return tr("\(attachments.count) Anhänge · \(size)", "\(attachments.count) attachments · \(size)")
     }
 }
 
@@ -650,6 +694,7 @@ private struct QuickReplyBar: View {
             .disabled(!canSend)
             .keyboardShortcut(.return, modifiers: .command)
             .help(tr("Senden (⌘↩)", "Send (⌘↩)"))
+            .accessibilityLabel(tr("Senden", "Send"))
             .padding(.bottom, 2)
         }
         .padding(.horizontal, 16)

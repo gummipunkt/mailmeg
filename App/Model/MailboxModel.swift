@@ -5,6 +5,77 @@ import Observation
 enum ThreadAction: Equatable {
     case archive, moveToInbox, trash, untrash, markRead, markUnread, star, unstar, reportSpam, notSpam
     case addLabel(String), removeLabel(String)
+    /// Files a conversation under a label and takes it out of the one it came from.
+    case move(to: String, from: String?)
+
+    /// What takes a conversation back to how it was before this action (for Undo).
+    /// `original` is the conversation before the action, `mailboxID` the list it was in.
+    func inverse(for original: ThreadSummary, in mailboxID: String) -> [ThreadAction] {
+        let labels = original.labelIDs
+        let wasInInbox = labels.contains(SystemLabel.inbox)
+        switch self {
+        case .archive:
+            return wasInInbox ? [.moveToInbox] : []
+        case .moveToInbox:
+            if mailboxID == SystemLabel.trash { return [.trash] }
+            if mailboxID == SystemLabel.spam { return [.reportSpam] }
+            return wasInInbox ? [] : [.archive]
+        case .trash:
+            // Gmail takes a trashed conversation out of the inbox, so put it back there.
+            return wasInInbox ? [.moveToInbox] : [.untrash]
+        case .untrash:
+            return [.trash]
+        case .markRead:
+            return original.isUnread ? [.markUnread] : []
+        case .markUnread:
+            return original.isUnread ? [] : [.markRead]
+        case .star:
+            return original.isStarred ? [] : [.unstar]
+        case .unstar:
+            return original.isStarred ? [.star] : []
+        case .reportSpam:
+            return wasInInbox ? [.notSpam] : [.removeLabel(SystemLabel.spam)]
+        case .notSpam:
+            return [.reportSpam]
+        case .addLabel(let id):
+            return labels.contains(id) ? [] : [.removeLabel(id)]
+        case .removeLabel(let id):
+            return labels.contains(id) ? [.addLabel(id)] : []
+        case .move(let target, let source):
+            let hadTarget = labels.contains(target)
+            guard let source else { return hadTarget ? [] : [.removeLabel(target)] }
+            return [hadTarget ? .addLabel(source) : .move(to: source, from: target)]
+        }
+    }
+
+    /// The labels whose counts this action changes.
+    var touchedLabelIDs: [String] {
+        switch self {
+        case .addLabel(let id), .removeLabel(let id): return [id]
+        case .move(let target, let source): return [target] + (source.map { [$0] } ?? [])
+        case .trash, .untrash: return [SystemLabel.inbox, SystemLabel.trash]
+        default: return [SystemLabel.inbox, SystemLabel.spam]
+        }
+    }
+
+    /// The name shown in the Edit menu: “Undo Archive”.
+    var undoName: String {
+        switch self {
+        case .archive: return tr("Archivieren", "Archive")
+        case .moveToInbox: return tr("In den Posteingang bewegen", "Move to Inbox")
+        case .trash: return tr("In den Papierkorb legen", "Move to Trash")
+        case .untrash: return tr("Wiederherstellen", "Restore")
+        case .markRead: return tr("Als gelesen markieren", "Mark as Read")
+        case .markUnread: return tr("Als ungelesen markieren", "Mark as Unread")
+        case .star: return tr("Markieren", "Star")
+        case .unstar: return tr("Markierung entfernen", "Remove Star")
+        case .reportSpam: return tr("Als Spam melden", "Report Spam")
+        case .notSpam: return tr("Kein Spam", "Not Spam")
+        case .addLabel: return tr("Label hinzufügen", "Add Label")
+        case .removeLabel: return tr("Label entfernen", "Remove Label")
+        case .move: return tr("Bewegen", "Move")
+        }
+    }
 }
 
 /// The thread list for one label of one account, including search and paging.
@@ -185,6 +256,12 @@ final class MailboxModel {
         case .removeLabel(let id):
             updated.labelIDs.remove(id)
             removes = labelID == id
+        case .move(let target, let source):
+            updated.labelIDs.insert(target)
+            if let source {
+                updated.labelIDs.remove(source)
+                removes = labelID == source
+            }
         }
 
         if removes {
@@ -195,7 +272,7 @@ final class MailboxModel {
 
         do {
             try await Self.sync(action, threadID: threadID, client: account.client)
-            account.refreshCounts(for: original.labelIDs.union([SystemLabel.inbox, SystemLabel.spam, labelID]))
+            account.refreshCounts(for: original.labelIDs.union(updated.labelIDs).union([SystemLabel.inbox, SystemLabel.spam, labelID]))
             if !removes { account.updateCachedSummary(updated) }
             return removes
         } catch {
@@ -209,6 +286,19 @@ final class MailboxModel {
         }
     }
 
+    /// Shows conversations again the way they were before an action (Undo). Gmail is told
+    /// separately; `index` is where each one stood in the list.
+    func putBack(_ entries: [(index: Int, summary: ThreadSummary)]) {
+        for entry in entries.sorted(by: { $0.index < $1.index }) {
+            if let current = threads.firstIndex(where: { $0.id == entry.summary.id }) {
+                threads[current] = entry.summary
+            } else {
+                threads.insert(entry.summary, at: min(entry.index, threads.count))
+            }
+            account.updateCachedSummary(entry.summary)
+        }
+    }
+
     /// Updates local state after the detail view marked a thread as read.
     func markLocallyRead(_ threadID: String) {
         guard let index = threads.firstIndex(where: { $0.id == threadID }) else { return }
@@ -219,7 +309,8 @@ final class MailboxModel {
     static func sync(_ action: ThreadAction, threadID: String, client: GmailClient) async throws {
         switch action {
         case .archive: try await client.modifyThread(id: threadID, remove: [SystemLabel.inbox])
-        case .moveToInbox: try await client.modifyThread(id: threadID, add: [SystemLabel.inbox], remove: [SystemLabel.spam])
+        // Also out of the trash: this is what dragging a deleted conversation to the inbox does.
+        case .moveToInbox: try await client.modifyThread(id: threadID, add: [SystemLabel.inbox], remove: [SystemLabel.spam, SystemLabel.trash])
         case .trash: try await client.trashThread(id: threadID)
         case .untrash: try await client.untrashThread(id: threadID)
         case .markRead: try await client.modifyThread(id: threadID, remove: [SystemLabel.unread])
@@ -230,6 +321,7 @@ final class MailboxModel {
         case .notSpam: try await client.modifyThread(id: threadID, add: [SystemLabel.inbox], remove: [SystemLabel.spam])
         case .addLabel(let id): try await client.modifyThread(id: threadID, add: [id])
         case .removeLabel(let id): try await client.modifyThread(id: threadID, remove: [id])
+        case .move(let target, let source): try await client.modifyThread(id: threadID, add: [target], remove: source.map { [$0] } ?? [])
         }
     }
 }

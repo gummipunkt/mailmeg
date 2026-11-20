@@ -27,6 +27,11 @@ struct ThreadListView: View {
                         .padding(.vertical, 1)
                 )
                 .onAppear { mailbox.loadMoreIfNeeded(after: thread) }
+                // Drag onto a mailbox or label in the sidebar; a selected row takes the
+                // whole selection along.
+                .draggable(dragPayload(for: thread).text) {
+                    DragPreview(count: dragPayload(for: thread).threadIDs.count, subject: thread.subject)
+                }
             }
             if mailbox.isLoadingMore {
                 HStack {
@@ -48,6 +53,12 @@ struct ThreadListView: View {
             guard ids.count == 1, let id = ids.first, let thread = mailbox.thread(id: id),
                   thread.labelIDs.contains(SystemLabel.draft) else { return }
             openDraft(thread)
+        }
+        // The Delete key moves the selection to the trash (⌘Z brings it back).
+        .onDeleteCommand {
+            if model.hasThreadSelection, mailbox.labelID != SystemLabel.trash {
+                model.perform(.trash)
+            }
         }
         .listStyle(.inset)
         .scrollContentBackground(.hidden)
@@ -74,6 +85,14 @@ struct ThreadListView: View {
             }
         }
         .glassBackground(.list)
+    }
+
+    private func dragPayload(for thread: ThreadSummary) -> ThreadDrag {
+        let selected = model.selectedThreadIDs
+        let ids = selected.contains(thread.id) && selected.count > 1
+            ? mailbox.threads.map(\.id).filter(selected.contains)
+            : [thread.id]
+        return ThreadDrag(accountID: mailbox.account.id, threadIDs: ids)
     }
 
     private func openDraft(_ thread: ThreadSummary) {
@@ -133,7 +152,7 @@ struct ThreadListView: View {
                 .accessibilityLabel(tr("Neue E-Mail (⌘N)", "New Message (⌘N)"))
                 .accessibilityIdentifier("compose")
             }
-            SearchField(text: $mailbox.searchText) { mailbox.submitSearch() }
+            SearchField(text: $mailbox.searchText, focusRequest: model.searchRequest) { mailbox.submitSearch() }
             if !mailbox.activeQuery.isEmpty || model.isMultipleSelection {
                 selectionBar
             }
@@ -274,11 +293,36 @@ struct ThreadListView: View {
     }
 }
 
+/// What follows the pointer while conversations are dragged.
+private struct DragPreview: View {
+    let count: Int
+    let subject: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: count > 1 ? "envelope.badge.fill" : "envelope.fill")
+                .foregroundStyle(.white)
+            Text(count > 1
+                ? tr("\(count) Konversationen", "\(count) conversations")
+                : (subject.isEmpty ? tr("(kein Betreff)", "(no subject)") : subject))
+                .font(.system(size: 12.5, weight: .semibold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 12)
+        .frame(height: 30)
+        .frame(maxWidth: 260)
+        .background(Capsule().fill(Theme.accentGradient))
+    }
+}
+
 /// Capsule search field in the list header (Gmail search syntax works, e.g. `from:anna`).
 struct SearchField: View {
     @Binding var text: String
     var prompt = tr("Suchen – z. B. from:anna has:attachment", "Search – e.g. from:anna has:attachment")
     var identifier = "mailbox.search"
+    /// Changes when the field should take the focus (Edit > Find).
+    var focusRequest = 0
     let onSubmit: () -> Void
     @FocusState private var isFocused: Bool
 
@@ -287,6 +331,7 @@ struct SearchField: View {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
             TextField(prompt, text: $text)
                 .textFieldStyle(.plain)
                 .font(.system(size: 12.5))
@@ -302,12 +347,14 @@ struct SearchField: View {
                 }
                 .buttonStyle(.plain)
                 .help(tr("Suche löschen", "Clear Search"))
+                .accessibilityLabel(tr("Suche löschen", "Clear Search"))
             }
         }
         .padding(.horizontal, 12)
         .frame(height: 32)
         .background(Capsule().fill(Theme.tint))
         .overlay(Capsule().strokeBorder(Color.accentColor.opacity(isFocused ? 0.7 : 0), lineWidth: 1.5))
+        .onChange(of: focusRequest) { isFocused = true }
     }
 }
 

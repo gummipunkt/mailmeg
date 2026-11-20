@@ -53,29 +53,37 @@ struct CalendarMainView: View {
     // MARK: Header
 
     private var header: some View {
-        HStack(spacing: 10) {
-            title
-                .layoutPriority(-1)
-            GlassCapsuleButton(title: tr("Heute", "Today")) { view.goToToday() }
-                .accessibilityIdentifier("calendar.today")
-            stepper
-            if view.isLoading {
-                ProgressView().controlSize(.small)
+        // One container for all the glass in the header.
+        GlassGroup {
+            HStack(spacing: 10) {
+                title
+                    .layoutPriority(-1)
+                GlassCapsuleButton(title: tr("Heute", "Today")) { view.goToToday() }
+                    .accessibilityIdentifier("calendar.today")
+                stepper
+                if view.isLoading {
+                    ProgressView().controlSize(.small)
+                }
+                Spacer(minLength: 8)
+                PillSwitch<CalendarViewState.Mode>(selection: $view.mode, options: [
+                    .init(value: .day, title: tr("Tag", "Day"), systemImage: nil, identifier: "calendar.mode.day"),
+                    .init(value: .week, title: tr("Woche", "Week"), systemImage: nil, identifier: "calendar.mode.week"),
+                    .init(value: .month, title: tr("Monat", "Month"), systemImage: nil, identifier: "calendar.mode.month"),
+                    .init(value: .agenda, title: tr("Agenda", "Agenda"), systemImage: nil, identifier: "calendar.mode.agenda"),
+                ])
+                newEventButton
+                search
             }
-            Spacer(minLength: 8)
-            PillSwitch<CalendarViewState.Mode>(selection: $view.mode, options: [
-                .init(value: .day, title: tr("Tag", "Day"), systemImage: nil, identifier: "calendar.mode.day"),
-                .init(value: .week, title: tr("Woche", "Week"), systemImage: nil, identifier: "calendar.mode.week"),
-                .init(value: .month, title: tr("Monat", "Month"), systemImage: nil, identifier: "calendar.mode.month"),
-                .init(value: .agenda, title: tr("Agenda", "Agenda"), systemImage: nil, identifier: "calendar.mode.agenda"),
-            ])
-            newEventButton
-            search
         }
         .padding(.leading, 22)
         .padding(.trailing, 16)
         .padding(.top, 8)
         .padding(.bottom, 12)
+        // Edit > Find (⌘F) opens the search.
+        .onChange(of: model.searchRequest) {
+            showsSearch = true
+            searchFocused = true
+        }
     }
 
     private var title: some View {
@@ -136,6 +144,7 @@ struct CalendarMainView: View {
         }
         .buttonStyle(.plain)
         .help(tr("Neuer Termin (⌥⌘N)", "New Event (⌥⌘N)"))
+        .accessibilityLabel(tr("Neuer Termin", "New Event"))
         .disabled(view.usableAccounts.isEmpty)
         .accessibilityIdentifier("calendar.new")
     }
@@ -160,6 +169,7 @@ struct CalendarMainView: View {
                 }
                 .buttonStyle(.plain)
                 .help(tr("Suche beenden", "Close Search"))
+                .accessibilityLabel(tr("Suche beenden", "Close Search"))
             }
             .padding(.horizontal, 11)
             .frame(height: 32)
@@ -169,7 +179,6 @@ struct CalendarMainView: View {
             GlassCircleButton(systemImage: "magnifyingglass", help: tr("Termine suchen (⌘F)", "Search Events (⌘F)")) {
                 showsSearch = true
             }
-            .keyboardShortcut("f")
             .accessibilityIdentifier("calendar.searchButton")
         }
     }

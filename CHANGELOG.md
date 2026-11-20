@@ -3,6 +3,19 @@
 Alle nennenswerten Änderungen an MailMeG. Versionen folgen [Semantic Versioning](https://semver.org/lang/de/).
 All notable changes to MailMeG. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.14.0] – 2026-11-20
+
+- **Drag & Drop**: E-Mails lassen sich aus der Liste auf einen Ordner oder ein Label in der Seitenleiste ziehen – auch mehrere ausgewählte auf einmal. Auf ein Label gezogen wird die Konversation dorthin verschoben, auf Papierkorb, Spam, Markiert oder Posteingang entsprechend gelöscht, gemeldet, markiert oder zurückgeholt
+  · **Drag and drop**: conversations can be dragged from the list onto a folder or label in the sidebar – several selected ones at once, too. Dropped on a label the conversation moves there; Trash, Spam, Starred and Inbox delete, report, star or bring it back
+- **„Alle sichern …“** bei E-Mails mit mehreren Anhängen: ein Klick, ein Ordner, alle Dateien (gleichnamige werden nummeriert statt überschrieben)
+  · **“Save All…”** for emails with several attachments: one click, one folder, all files (files of the same name are numbered instead of overwritten)
+- **Widerrufen (⌘Z) und Wiederholen (⇧⌘Z)** für Archivieren, Löschen, Verschieben, Spam, Labels, Markieren und Gelesen/Ungelesen – auch für mehrere Konversationen und nach Drag & Drop
+  · **Undo (⌘Z) and redo (⇧⌘Z)** for archive, delete, move, spam, labels, star and read/unread – for several conversations and after drag and drop as well
+- **Suchen (⌘F)** im Menü „Bearbeiten“ setzt den Cursor ins Suchfeld von Mail oder Kalender; die **Entf-Taste** legt die ausgewählten E-Mails in den Papierkorb
+  · **Find (⌘F)** in the Edit menu puts the cursor into the search field of Mail or Calendar; the **Delete key** moves the selected emails to the trash
+- Liquid Glass nach Apples Leitlinien: benachbarte Glasflächen liegen in gemeinsamen Glas-Containern; „Bewegung reduzieren“ und „Kontrast erhöhen“ aus den Systemeinstellungen werden beachtet, Symbol-Knöpfe haben VoiceOver-Beschriftungen
+  · Liquid Glass following Apple’s guidelines: neighbouring glass surfaces share glass containers; “Reduce motion” and “Increase contrast” from System Settings are respected, icon buttons have VoiceOver labels
+
 ## [1.13.1] – 2026-11-10
 
 - Kalender: Der Mail/Kalender-Umschalter rutschte auf neueren macOS-Versionen unter die Fensterknöpfe; er sitzt jetzt immer darunter
