@@ -157,7 +157,9 @@ final class MailboxModel {
         let (fresh, token) = page
         let freshIDs = Set(fresh.map(\.id))
         let oldestFresh = fresh.last?.date ?? .distantFuture
-        let tail = threads.filter { !freshIDs.contains($0.id) && ($0.date ?? .distantPast) < oldestFresh }
+        // Without a next page the fresh list is complete: whatever is missing from it has left
+        // this mailbox (archived, moved or undone elsewhere).
+        let tail = token == nil ? [] : threads.filter { !freshIDs.contains($0.id) && ($0.date ?? .distantPast) < oldestFresh }
         threads = fresh + tail
         if tail.isEmpty { nextPageToken = token }
     }
