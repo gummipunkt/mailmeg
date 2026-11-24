@@ -7,6 +7,8 @@ import Foundation
 public struct GoogleOAuthConfig: Sendable, Equatable {
     public static let defaultScopes = [
         "https://www.googleapis.com/auth/gmail.modify",
+        // Creating and deleting filters.
+        "https://www.googleapis.com/auth/gmail.settings.basic",
         "https://www.googleapis.com/auth/calendar.readonly",
         "https://www.googleapis.com/auth/calendar.events",
         "https://www.googleapis.com/auth/drive.file",

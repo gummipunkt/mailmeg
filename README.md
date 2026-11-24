@@ -24,6 +24,8 @@ mit Beispiel-E-Mails, Kalender und Einladung.
   Gelesen/Ungelesen, Markieren, Labels zuweisen; per Hover direkt in der Liste, per Rechtsklick oder Tastatur
 - **Drag & Drop**: E-Mails (auch mehrere) auf einen Ordner oder ein Label in der Seitenleiste ziehen
 - **Widerrufen** (⌘Z) für Archivieren, Löschen, Verschieben, Labels, Markieren und Gelesen/Ungelesen
+- **Wischen** in der Liste (Trackpad): standardmäßig nach links archivieren, nach rechts löschen – einstellbar
+- **Gmail-Filter** ansehen, anlegen, ändern und löschen (Einstellungen → Filter)
 - **Vorherige/nächste Konversation** mit ⌥⌘↑/↓ oder den Pfeil-Buttons
 - **Empfängerdetails**: die genaue Adresse, an die eine E-Mail ging (auch bei „mich“), plus Von, Antwort an,
   An, Cc, Bcc, Zugestellt an und Datum
@@ -88,7 +90,8 @@ mit Beispiel-E-Mails, Kalender und Einladung.
 - **Native macOS-App** (SwiftUI, AppKit, WebKit) mit System-Toolbar und Liquid Glass (macOS 26+): kräftiger
   Farbverlauf als Fensterhintergrund, durchscheinende Flächen für Liste, Konversation und Kalender, Hell- und
   Dunkelmodus
-- **Farbstimmungen**: Aurora, Lagune, Abendrot oder ruhiges Pastell (Einstellungen → Allgemein)
+- **Farbstimmungen**: Aurora, Lagune, Abendrot oder ruhiges Pastell, dazu Farbintensität, Deckkraft der Flächen
+  und ein in Stufen durchsichtiger Fensterhintergrund (Einstellungen → Allgemein)
 - **Deutsch und Englisch**, je nach Systemsprache
 - **Tastaturkürzel** wie in Apple Mail (siehe unten)
 
@@ -154,7 +157,7 @@ Google erlaubt Gmail-Zugriff nur über einen registrierten OAuth-Client. Für di
 3. **OAuth-Zustimmungsbildschirm** (*Google Auth Platform*):
    - *Branding*: App-Name „MailMeG“ und deine E-Mail-Adresse eintragen.
    - *Zielgruppe*: Nutzertyp **Extern** wählen. Unter *Testnutzer* deine Gmail-Adresse(n) hinzufügen.
-   - *Datenzugriff* (optional): die Bereiche `…/auth/gmail.modify`, `…/auth/calendar.readonly`,
+   - *Datenzugriff* (optional): die Bereiche `…/auth/gmail.modify`, `…/auth/gmail.settings.basic` (Filter), `…/auth/calendar.readonly`,
      `…/auth/calendar.events` und `…/auth/drive.file` hinzufügen.
 4. **OAuth-Client anlegen**: *Clients → Client erstellen*
    - Anwendungstyp: **iOS**. Google verwendet diesen Typ auch für macOS-Apps, er braucht kein Client-Secret.

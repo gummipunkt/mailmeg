@@ -185,6 +185,39 @@ public final class GmailClient: Sendable {
         _ = try await performRaw(request)
     }
 
+    // MARK: - Filters
+
+    /// Needed to create and delete filters; reading them works with the mail scope.
+    public static let settingsScope = "https://www.googleapis.com/auth/gmail.settings.basic"
+
+    /// True if the granted scopes (as stored with the tokens) allow changing filters.
+    public static func canEditFilters(scope: String?) -> Bool {
+        guard let scope else { return false }
+        let granted = Set(scope.split(separator: " ").map(String.init))
+        return granted.contains(settingsScope) || granted.contains("https://mail.google.com/")
+    }
+
+    public func listFilters() async throws -> [GmailFilter] {
+        struct FilterList: Decodable { let filter: [GmailFilter]? }
+        let list: FilterList = try await get("settings/filters")
+        return list.filter ?? []
+    }
+
+    /// Gmail has no "update": a changed filter is created anew and the old one deleted.
+    public func createFilter(criteria: GmailFilter.Criteria, action: GmailFilter.Action) async throws -> GmailFilter {
+        struct Body: Encodable {
+            let criteria: GmailFilter.Criteria
+            let action: GmailFilter.Action
+        }
+        return try await post("settings/filters", json: Body(criteria: criteria, action: action))
+    }
+
+    public func deleteFilter(id: String) async throws {
+        var request = URLRequest(url: url("settings/filters/\(escapePath(id))", query: []))
+        request.httpMethod = "DELETE"
+        _ = try await performRaw(request)
+    }
+
     /// Sends a saved draft; Gmail removes it from Drafts.
     @discardableResult
     public func sendDraft(id: String) async throws -> GmailMessage {

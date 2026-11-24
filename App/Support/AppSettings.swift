@@ -9,6 +9,28 @@ enum AppSettings {
     static let colorIntensityKey = "colorIntensity"
     /// How opaque the sheets on the backdrop are (list, conversation, calendar).
     static let sheetOpacityKey = "sheetOpacity"
+    /// How much of the desktop shows through the window's backdrop (0 = nothing).
+    static let backdropTransparencyKey = "backdropTransparency"
+    static let swipeLeftKey = "swipeLeftAction"
+    static let swipeRightKey = "swipeRightAction"
+
+    /// What swiping a conversation in the list does.
+    enum SwipeAction: String, CaseIterable, Identifiable {
+        case none, archive, trash, toggleRead, toggleStar, spam
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .none: return tr("Nichts", "Nothing")
+            case .archive: return tr("Archivieren", "Archive")
+            case .trash: return tr("Löschen", "Delete")
+            case .toggleRead: return tr("Gelesen/Ungelesen", "Read/Unread")
+            case .toggleStar: return tr("Markieren", "Star")
+            case .spam: return tr("Als Spam melden", "Report Spam")
+            }
+        }
+    }
     static let loadRemoteContentKey = "loadRemoteContent"
     static let notificationsKey = "notificationsEnabled"
     static let refreshIntervalKey = "refreshInterval"

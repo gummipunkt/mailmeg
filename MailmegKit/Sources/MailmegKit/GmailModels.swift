@@ -216,3 +216,69 @@ extension GmailMessage {
     public var isUnread: Bool { labelIds?.contains(SystemLabel.unread) ?? false }
     public var isStarred: Bool { labelIds?.contains(SystemLabel.starred) ?? false }
 }
+
+// MARK: - Filters
+
+/// A Gmail filter: what a new message has to match, and what happens to it then.
+public struct GmailFilter: Codable, Identifiable, Hashable, Sendable {
+    public struct Criteria: Codable, Hashable, Sendable {
+        public var from: String?
+        public var to: String?
+        public var subject: String?
+        /// "Has the words" (Gmail search syntax).
+        public var query: String?
+        /// "Doesn't have".
+        public var negatedQuery: String?
+        public var hasAttachment: Bool?
+        public var excludeChats: Bool?
+        public var size: Int?
+        /// "larger" or "smaller".
+        public var sizeComparison: String?
+
+        public init(
+            from: String? = nil, to: String? = nil, subject: String? = nil, query: String? = nil, negatedQuery: String? = nil,
+            hasAttachment: Bool? = nil, excludeChats: Bool? = nil, size: Int? = nil, sizeComparison: String? = nil
+        ) {
+            self.from = from
+            self.to = to
+            self.subject = subject
+            self.query = query
+            self.negatedQuery = negatedQuery
+            self.hasAttachment = hasAttachment
+            self.excludeChats = excludeChats
+            self.size = size
+            self.sizeComparison = sizeComparison
+        }
+
+        public var isEmpty: Bool {
+            self == Criteria()
+        }
+    }
+
+    public struct Action: Codable, Hashable, Sendable {
+        public var addLabelIds: [String]?
+        public var removeLabelIds: [String]?
+        /// Address the message is forwarded to.
+        public var forward: String?
+
+        public init(addLabelIds: [String]? = nil, removeLabelIds: [String]? = nil, forward: String? = nil) {
+            self.addLabelIds = addLabelIds
+            self.removeLabelIds = removeLabelIds
+            self.forward = forward
+        }
+
+        public var isEmpty: Bool {
+            (addLabelIds ?? []).isEmpty && (removeLabelIds ?? []).isEmpty && (forward ?? "").isEmpty
+        }
+    }
+
+    public let id: String
+    public var criteria: Criteria?
+    public var action: Action?
+
+    public init(id: String, criteria: Criteria? = nil, action: Action? = nil) {
+        self.id = id
+        self.criteria = criteria
+        self.action = action
+    }
+}

@@ -60,6 +60,11 @@ final class AccountSession: Identifiable {
         grantedScope = tokens.scope
     }
 
+    /// False for accounts signed in before MailMeG asked for the permission to change filters.
+    var canEditFilters: Bool {
+        grantedScope == nil || GmailClient.canEditFilters(scope: grantedScope)
+    }
+
     /// False for accounts signed in before MailMeG asked for Google Drive access.
     var hasDriveAccess: Bool {
         grantedScope == nil || DriveClient.isGranted(scope: grantedScope)

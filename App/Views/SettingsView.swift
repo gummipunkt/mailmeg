@@ -10,6 +10,8 @@ struct SettingsView: View {
                 .tabItem { Label(tr("Allgemein", "General"), systemImage: "gearshape") }
             ComposeSettingsView()
                 .tabItem { Label(tr("Verfassen", "Composing"), systemImage: "square.and.pencil") }
+            FilterSettingsView()
+                .tabItem { Label(tr("Filter", "Filters"), systemImage: "line.3.horizontal.decrease.circle") }
             AccountsSettingsView()
                 .tabItem { Label(tr("Konten", "Accounts"), systemImage: "person.crop.circle") }
             AboutSettingsView()
@@ -32,6 +34,9 @@ private struct GeneralSettingsView: View {
     @AppStorage(AppSettings.colorMoodKey) private var colorMood = ColorMood.aurora.rawValue
     @AppStorage(AppSettings.colorIntensityKey) private var colorIntensity = 1.0
     @AppStorage(AppSettings.sheetOpacityKey) private var sheetOpacity = 0.86
+    @AppStorage(AppSettings.backdropTransparencyKey) private var backdropTransparency = 0.0
+    @AppStorage(AppSettings.swipeLeftKey) private var swipeLeft = AppSettings.SwipeAction.archive.rawValue
+    @AppStorage(AppSettings.swipeRightKey) private var swipeRight = AppSettings.SwipeAction.trash.rawValue
     @State private var notificationStatus: UNAuthorizationStatus?
 
     private var lastRefreshText: String {
@@ -112,6 +117,23 @@ private struct GeneralSettingsView: View {
             }
 
             Section {
+                Picker(tr("Nach links wischen", "Swipe left"), selection: $swipeLeft) {
+                    ForEach(AppSettings.SwipeAction.allCases) { Text($0.title).tag($0.rawValue) }
+                }
+                .accessibilityIdentifier("settings.swipeLeft")
+                Picker(tr("Nach rechts wischen", "Swipe right"), selection: $swipeRight) {
+                    ForEach(AppSettings.SwipeAction.allCases) { Text($0.title).tag($0.rawValue) }
+                }
+                .accessibilityIdentifier("settings.swipeRight")
+            } header: {
+                Text(tr("Wischen in der Nachrichtenliste", "Swiping in the message list"))
+            } footer: {
+                Text(tr("Mit zwei Fingern auf dem Trackpad über eine E-Mail wischen. ⌘Z macht die Aktion rückgängig.", "Swipe across an email with two fingers on the trackpad. ⌘Z undoes the action."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
                 LabeledContent(tr("Farbstimmung", "Colour mood")) {
                     HStack(spacing: 10) {
                         ForEach(ColorMood.allCases) { mood in
@@ -127,6 +149,14 @@ private struct GeneralSettingsView: View {
                     Text(tr("Deckkraft der Flächen", "Opacity of the sheets"))
                 }
                 .accessibilityIdentifier("settings.sheetOpacity")
+                Picker(tr("Hintergrund durchsichtig", "See-through background"), selection: $backdropTransparency) {
+                    Text(tr("Aus", "Off")).tag(0.0)
+                    Text(tr("Leicht", "Slightly")).tag(0.25)
+                    Text(tr("Mittel", "Medium")).tag(0.5)
+                    Text(tr("Stark", "Strongly")).tag(0.75)
+                    Text(tr("Fast ganz", "Almost fully")).tag(0.92)
+                }
+                .accessibilityIdentifier("settings.transparency")
                 Toggle(tr("Avatare in der Nachrichtenliste", "Show avatars in the message list"), isOn: $showAvatars)
                 Toggle(tr("Website-Symbol der Absender-Domain als Profilbild", "Use the sender domain’s website icon as picture"), isOn: $faviconAvatars)
                     .accessibilityIdentifier("settings.favicons")

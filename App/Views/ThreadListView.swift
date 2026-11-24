@@ -5,6 +5,8 @@ struct ThreadListView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
     @Bindable var mailbox: MailboxModel
+    @AppStorage(AppSettings.swipeLeftKey) private var swipeLeft = AppSettings.SwipeAction.archive.rawValue
+    @AppStorage(AppSettings.swipeRightKey) private var swipeRight = AppSettings.SwipeAction.trash.rawValue
 
     var body: some View {
         VStack(spacing: 0) {
@@ -69,7 +71,8 @@ struct ThreadListView: View {
     }
 
     private var list: some View {
-        List(selection: Binding(get: { model.selectedThreadIDs }, set: { model.setThreadSelection($0) })) {
+        let withoutSeparator = separatorlessIDs
+        return List(selection: Binding(get: { model.selectedThreadIDs }, set: { model.setThreadSelection($0) })) {
             ForEach(mailbox.threads) { thread in
                 ThreadRow(
                     thread: thread,
@@ -88,7 +91,21 @@ struct ThreadListView: View {
                         .padding(.horizontal, 6)
                         .padding(.vertical, 1)
                 )
+                // A short line between two conversations, not across the whole width.
+                .overlay(alignment: .bottom) {
+                    if !withoutSeparator.contains(thread.id) {
+                        Rectangle()
+                            .fill(Theme.hairline)
+                            .frame(height: 1)
+                            .padding(.horizontal, 44)
+                            .offset(y: 4)
+                            .allowsHitTesting(false)
+                    }
+                }
                 .onAppear { mailbox.loadMoreIfNeeded(after: thread) }
+                // Swiping with two fingers: to the left and to the right, as set in Settings.
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) { swipeButton(swipeLeft, for: thread) }
+                .swipeActions(edge: .leading, allowsFullSwipe: true) { swipeButton(swipeRight, for: thread) }
                 // Drag onto a mailbox or label in the sidebar; a selected row takes the
                 // whole selection along.
                 .draggable(dragPayload(for: thread).text) {
@@ -124,6 +141,71 @@ struct ThreadListView: View {
         }
         .listStyle(.inset)
         .scrollContentBackground(.hidden)
+    }
+
+    /// Conversations that get no line below them: selected ones, the one above a selected
+    /// one (the selection has its own outline) and the last.
+    private var separatorlessIDs: Set<String> {
+        let selected = model.selectedThreadIDs
+        let threads = mailbox.threads
+        var hidden = selected
+        for (index, thread) in threads.enumerated() where index > 0 && selected.contains(thread.id) {
+            hidden.insert(threads[index - 1].id)
+        }
+        if let last = threads.last { hidden.insert(last.id) }
+        return hidden
+    }
+
+    // MARK: Swiping
+
+    private struct SwipeItem {
+        let action: ThreadAction
+        let title: String
+        let systemImage: String
+        let color: Color
+    }
+
+    @ViewBuilder
+    private func swipeButton(_ name: String, for thread: ThreadSummary) -> some View {
+        if let swipe = AppSettings.SwipeAction(rawValue: name), let item = swipeItem(swipe, for: thread) {
+            Button {
+                model.perform(item.action, threadID: thread.id)
+            } label: {
+                Label(item.title, systemImage: item.systemImage)
+            }
+            .tint(item.color)
+        }
+    }
+
+    /// What a swipe does to this conversation in this mailbox, or nil if it does not apply.
+    private func swipeItem(_ swipe: AppSettings.SwipeAction, for thread: ThreadSummary) -> SwipeItem? {
+        let inTrash = mailbox.labelID == SystemLabel.trash
+        let inSpam = mailbox.labelID == SystemLabel.spam
+        switch swipe {
+        case .none:
+            return nil
+        case .archive:
+            if inTrash {
+                return SwipeItem(action: .untrash, title: tr("Wiederherstellen", "Restore"), systemImage: "arrow.uturn.backward", color: Color(hex: "#2BB5A3"))
+            }
+            if inSpam {
+                return SwipeItem(action: .notSpam, title: tr("Kein Spam", "Not Spam"), systemImage: "checkmark.shield.fill", color: Color(hex: "#2BB5A3"))
+            }
+            guard thread.labelIDs.contains(SystemLabel.inbox) else { return nil }
+            return SwipeItem(action: .archive, title: tr("Archivieren", "Archive"), systemImage: "archivebox.fill", color: Color(hex: "#2BB5A3"))
+        case .trash:
+            return inTrash ? nil : SwipeItem(action: .trash, title: tr("Löschen", "Delete"), systemImage: "trash.fill", color: Color(hex: "#E5534B"))
+        case .toggleRead:
+            return thread.isUnread
+                ? SwipeItem(action: .markRead, title: tr("Gelesen", "Read"), systemImage: "envelope.open.fill", color: Color(hex: "#3B9BF5"))
+                : SwipeItem(action: .markUnread, title: tr("Ungelesen", "Unread"), systemImage: "envelope.badge.fill", color: Color(hex: "#3B9BF5"))
+        case .toggleStar:
+            return thread.isStarred
+                ? SwipeItem(action: .unstar, title: tr("Entmarkieren", "Unstar"), systemImage: "star.slash.fill", color: Color(hex: "#F2A900"))
+                : SwipeItem(action: .star, title: tr("Markieren", "Star"), systemImage: "star.fill", color: Color(hex: "#F2A900"))
+        case .spam:
+            return inSpam || inTrash ? nil : SwipeItem(action: .reportSpam, title: "Spam", systemImage: "xmark.octagon.fill", color: Color(hex: "#7B839A"))
+        }
     }
 
     private func dragPayload(for thread: ThreadSummary) -> ThreadDrag {

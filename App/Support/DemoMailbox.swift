@@ -216,6 +216,11 @@ private enum DemoData {
 private final class DemoTransport: HTTPTransport, @unchecked Sendable {
     private let lock = NSLock()
     private var threads = DemoData.threads()
+    private var filters: [[String: Any]] = [
+        ["id": "demo-filter-1", "criteria": ["from": "newsletter@runclub.example"], "action": ["removeLabelIds": ["INBOX"], "addLabelIds": ["Label_3"]]],
+        ["id": "demo-filter-2", "criteria": ["subject": "Rechnung", "hasAttachment": true], "action": ["addLabelIds": ["Label_4", "STARRED"]]],
+    ]
+    private var filterCounter = 2
     private var calendarEvents = DemoCalendar.events()
     private var eventCounter = 0
     private var draftCounter = 0
@@ -303,6 +308,17 @@ private final class DemoTransport: HTTPTransport, @unchecked Sendable {
         switch (method, parts.first ?? "", parts.count) {
         case ("GET", "profile", _):
             return (200, ["emailAddress": DemoMailbox.email, "historyId": "1000", "messagesTotal": 20, "threadsTotal": threads.count])
+        case ("GET", "settings", 2) where parts[1] == "filters":
+            return (200, ["filter": filters])
+        case ("POST", "settings", 2) where parts[1] == "filters":
+            var filter = (request.httpBody.flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: Any]) ?? [:]
+            filterCounter += 1
+            filter["id"] = "demo-filter-\(filterCounter)"
+            filters.append(filter)
+            return (200, filter)
+        case ("DELETE", "settings", 3) where parts[1] == "filters":
+            filters.removeAll { $0["id"] as? String == parts[2] }
+            return (200, [String: Any]())
         case ("GET", "settings", _):
             return (200, ["sendAs": [
                 [

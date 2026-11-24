@@ -245,7 +245,8 @@ struct VisualEffectView: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NSVisualEffectView {
         let view = NSVisualEffectView()
-        view.state = .followsWindowActiveState
+        // Also while the window is in the background: a see-through window should stay that way.
+        view.state = .active
         view.material = material
         view.blendingMode = blendingMode
         return view
@@ -391,8 +392,24 @@ struct AppBackdrop: View {
                 .offset(x: isPlaced ? -frame.minX : 0, y: isPlaced ? -frame.minY : 0)
                 .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
         }
-        .overlay(Color(light: "#FFFFFF", veil, dark: "#000000", veil * 0.6))
         .clipped()
+        .modifier(SeeThroughModifier())
+        .overlay(Color(light: "#FFFFFF", veil, dark: "#000000", veil * 0.6))
+    }
+}
+
+/// Lets the (blurred) desktop show through the backdrop, as much as chosen in Settings.
+private struct SeeThroughModifier: ViewModifier {
+    @AppStorage(AppSettings.backdropTransparencyKey) private var transparency = 0.0
+
+    func body(content: Content) -> some View {
+        if transparency > 0 {
+            content
+                .opacity(1 - min(transparency, 0.95))
+                .background(VisualEffectView(material: .underWindowBackground))
+        } else {
+            content
+        }
     }
 }
 
@@ -423,6 +440,7 @@ private struct WindowBackdrop: View {
 
     var body: some View {
         MoodCanvas(mood: ColorMood(rawValue: moodName) ?? .aurora)
+            .modifier(SeeThroughModifier())
     }
 }
 
