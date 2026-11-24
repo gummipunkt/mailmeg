@@ -56,6 +56,7 @@ struct MailBodyEditor: NSViewRepresentable {
         controller.onChange = { [weak coordinator = context.coordinator] in coordinator?.publish() }
         textView.onPaste = { [weak coordinator = context.coordinator] in coordinator?.publish() }
         textView.onDropFiles = { [weak coordinator = context.coordinator] urls in coordinator?.parent.onDropFiles(urls) }
+        textView.updateDragTypeRegistration()
 
         let cursor = min(max(initialCursor, 0), (text as NSString).length)
         DispatchQueue.main.async {
@@ -145,12 +146,12 @@ final class MailTextView: NSTextView {
         super.acceptableDragTypes + [.fileURL]
     }
 
-    private func isFileDrag(_ sender: NSDraggingInfo) -> Bool {
+    private func carriesFiles(_ sender: NSDraggingInfo) -> Bool {
         onDropFiles != nil && sender.draggingPasteboard.availableType(from: [.fileURL]) != nil
     }
 
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
-        isFileDrag = isFileDrag(sender)
+        isFileDrag = carriesFiles(sender)
         return isFileDrag ? .copy : super.draggingEntered(sender)
     }
 

@@ -52,7 +52,7 @@ enum Theme {
     /// Soft coloured shadow under small floating elements.
     static let shadow = Color(light: "#4B2FC0", dark: "#000000")
 
-    /// Prominent buttons: violet into pink.
+    /// Prominent buttons: two tones of violet.
     static let accentGradient = LinearGradient(
         colors: [Color(hex: "#8F6BFF"), Color(hex: "#6C4CF1")],
         startPoint: .topLeading,

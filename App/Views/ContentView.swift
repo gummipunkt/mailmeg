@@ -17,6 +17,7 @@ struct ContentView: View {
                     RootView()
                 }
             }
+            .frame(width: proxy.size.width, height: proxy.size.height)
             // Every column draws its part of one backdrop; for that it needs the window's size.
             .environment(\.windowSize, CGSize(
                 width: proxy.size.width + proxy.safeAreaInsets.leading + proxy.safeAreaInsets.trailing,

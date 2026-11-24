@@ -47,7 +47,8 @@ mit Beispiel-E-Mails, Kalender und Einladung.
   eigenen Fenster; dazu die **Schnellantwort** (⌘↩ sendet)
 - **Entwürfe** werden beim Schreiben automatisch in Gmail gesichert (⌘S sofort) und lassen sich in MailMeG,
   im Web oder auf dem Handy weiterbearbeiten
-- **Anhänge** per Button; Weiterleitungen übernehmen die Anhänge der Original-E-Mail
+- **Anhänge** per Button, per Drag & Drop aus dem Finder oder mit ⌘V; Weiterleitungen übernehmen die Anhänge
+  der Original-E-Mail
 
 ### Google Drive
 
@@ -84,8 +85,10 @@ mit Beispiel-E-Mails, Kalender und Einladung.
 
 ### Design und Bedienung
 
-- **Native macOS-App** (SwiftUI, AppKit, WebKit) im Stil von Airmail: Glas-Oberflächen, runde Buttons,
-  aufgeräumte Liste (Avatare optional), Hell- und Dunkelmodus
+- **Native macOS-App** (SwiftUI, AppKit, WebKit) mit System-Toolbar und Liquid Glass (macOS 26+): kräftiger
+  Farbverlauf als Fensterhintergrund, durchscheinende Flächen für Liste, Konversation und Kalender, Hell- und
+  Dunkelmodus
+- **Farbstimmungen**: Aurora, Lagune, Abendrot oder ruhiges Pastell (Einstellungen → Allgemein)
 - **Deutsch und Englisch**, je nach Systemsprache
 - **Tastaturkürzel** wie in Apple Mail (siehe unten)
 
@@ -112,7 +115,8 @@ mit Beispiel-E-Mails, Kalender und Einladung.
 | ⌘A | Alle in der Liste auswählen | ⌥⌘A | Alle Ergebnisse auswählen |
 | ⌘S | Entwurf sichern | ⌘B / ⌘I / ⌘U / ⌘K | Fett / Kursiv / Unterstrichen / Link |
 | ⌘F | Suchen (Mail und Kalender) | ⌘Z / ⇧⌘Z | Widerrufen / Wiederholen |
-| ⌫ | Auswahl in den Papierkorb | | |
+| ⌫ | Auswahl in den Papierkorb | ⌘T | Kalender: Heute |
+| ⌥⌘1 … ⌥⌘4 | Kalender: Tag / Woche / Monat / Agenda | ⌥⌘← / ⌥⌘→ | Kalender: Zurück / Weiter |
 
 ## Installation (fertige DMG, ohne Xcode)
 
@@ -241,7 +245,8 @@ and all headers · rich text editor · Gmail “Send mail as” addresses and si
 quick reply · drafts synced with Gmail · large files, ZIPs and blocked file types sent as Google Drive links ·
 Google Calendar with day, week and month view, today list, invitations with Accept/Maybe/Decline, events created
 from emails, edited, deleted and moved by drag and drop · macOS notifications with actions · unread count on the Dock
-icon · configurable fetch interval · Airmail-style glass design with light and dark mode · Apple Mail keyboard shortcuts ·
+icon · configurable fetch interval · native toolbar and Liquid Glass design with colour moods, light and dark mode · files
+attached by drag and drop · Apple Mail keyboard shortcuts ·
 OAuth sign-in, tokens in the keychain, sandboxed app, remote content blocked by default.
 
 1. Download **[MailMeG.dmg](https://github.com/gummipunkt/mailmeg/releases/latest/download/MailMeG.dmg)**
