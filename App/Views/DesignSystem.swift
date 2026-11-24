@@ -31,7 +31,7 @@ enum Theme {
     /// Fallback tones of the backdrop, for the few places that need one flat colour.
     static let backdropTop = Color(light: "#E4D9FF", dark: "#1B1638")
     static let backdropMiddle = Color(light: "#E6E4FF", dark: "#181733")
-    static let backdropBottom = Color(light: "#F6DDF0", dark: "#221735")
+    static let backdropBottom = Color(light: "#DDE3FF", dark: "#171A36")
 
     /// Cards and text fields on a sheet or on the backdrop: a lighter layer of the same frost.
     static let cardFill = Color(light: "#FFFFFF", 0.74, dark: "#FFFFFF", 0.07)
@@ -299,9 +299,10 @@ enum ColorMood: String, CaseIterable, Identifiable {
         let palette: (top: String, bottom: String, blobs: [(String, Double)])
         switch (self, dark) {
         case (.aurora, false):
-            palette = ("#DDCFFF", "#F2D6F3", [("#7B4DFF", 0.80), ("#FF5FB8", 0.64), ("#3FA7FF", 0.62), ("#FF8FD0", 0.52)])
+            // Violet and blue only: no pink.
+            palette = ("#DDD2FF", "#D9E3FF", [("#7B4DFF", 0.78), ("#5B6CFF", 0.60), ("#3FA7FF", 0.60), ("#A98BFF", 0.50)])
         case (.aurora, true):
-            palette = ("#140F2E", "#1A102C", [("#6A3FFF", 0.62), ("#C22C92", 0.44), ("#2A66FF", 0.44), ("#7A2BD0", 0.40)])
+            palette = ("#140F2E", "#10142E", [("#6A3FFF", 0.62), ("#3B4BE0", 0.46), ("#2A66FF", 0.44), ("#5A3BD0", 0.40)])
         case (.lagoon, false):
             palette = ("#CFE2FF", "#D4F3EE", [("#3B7BFF", 0.76), ("#1FCDB8", 0.62), ("#8368FF", 0.58), ("#55C8FF", 0.50)])
         case (.lagoon, true):
@@ -311,9 +312,9 @@ enum ColorMood: String, CaseIterable, Identifiable {
         case (.sunset, true):
             palette = ("#231025", "#281316", [("#C4307A", 0.56), ("#C25E1B", 0.42), ("#6B3FD0", 0.44), ("#9A3B5C", 0.38)])
         case (.pastel, false):
-            palette = ("#EDE6FF", "#F9E6F2", [("#DAD0FF", 0.55), ("#F6D3EA", 0.5), ("#DCE6FF", 0.55), ("#F3DDF2", 0.4)])
+            palette = ("#EDE6FF", "#E6ECFF", [("#DAD0FF", 0.55), ("#DCE0FF", 0.5), ("#DCE6FF", 0.55), ("#E4DCFF", 0.4)])
         case (.pastel, true):
-            palette = ("#1D1936", "#221735", [("#2B2452", 0.6), ("#32203F", 0.5), ("#1D2550", 0.55), ("#2A1D40", 0.4)])
+            palette = ("#1D1936", "#191C38", [("#2B2452", 0.6), ("#22244A", 0.5), ("#1D2550", 0.55), ("#241F48", 0.4)])
         }
         let blobs = zip(palette.blobs, places).map { blob, place in
             Blob(color: blob.0, alpha: blob.1, center: place.0, radius: place.1)
