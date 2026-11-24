@@ -1,4 +1,4 @@
-.PHONY: project xcode open test build screenshots
+.PHONY: project xcode open test build dmg screenshots
 
 project:
 	@command -v xcodegen >/dev/null || { echo "Install XcodeGen first: brew install xcodegen"; exit 1; }
@@ -20,6 +20,18 @@ test:
 build: project xcode
 	xcodebuild -project Mailmeg.xcodeproj -scheme Mailmeg -configuration Release -derivedDataPath build build
 	@echo "App: build/Build/Products/Release/MailMeG.app"
+
+# The same disk image the CI attaches to a release: a universal app (Apple silicon and Intel),
+# ad-hoc signed, next to a link to /Applications.
+dmg: project xcode
+	xcodebuild -project Mailmeg.xcodeproj -scheme Mailmeg -configuration Release \
+		-destination 'generic/platform=macOS' -derivedDataPath build ONLY_ACTIVE_ARCH=NO CODE_SIGN_IDENTITY=- build
+	rm -rf build/dmg build/MailMeG.dmg
+	mkdir -p build/dmg
+	cp -R build/Build/Products/Release/MailMeG.app build/dmg/
+	ln -s /Applications build/dmg/Applications
+	hdiutil create -volname "MailMeG" -srcfolder build/dmg -ov -format UDZO build/MailMeG.dmg
+	@echo "Disk image: build/MailMeG.dmg"
 
 # Website screenshots of the demo mailbox (DE/EN, light/dark) in Retina resolution.
 # Takes over mouse and keyboard for about two minutes.
