@@ -1,3 +1,4 @@
+import AppKit
 import MailmegKit
 import SwiftUI
 
@@ -7,6 +8,7 @@ struct ThreadListView: View {
     @Bindable var mailbox: MailboxModel
     @AppStorage(AppSettings.swipeLeftKey) private var swipeLeft = AppSettings.SwipeAction.archive.rawValue
     @AppStorage(AppSettings.swipeRightKey) private var swipeRight = AppSettings.SwipeAction.trash.rawValue
+    @State private var swiper = RowSwiper()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -85,27 +87,27 @@ struct ThreadListView: View {
                 .accessibilityIdentifier("thread.\(thread.id)")
                 .listRowSeparator(.hidden)
                 // A soft tint marks the selection instead of the table's solid highlight.
-                .listRowBackground(
-                    RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .fill(model.selectedThreadIDs.contains(thread.id) ? Theme.selection : Color.clear)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 1)
-                )
                 // A short line between two conversations, not across the whole width.
                 .overlay(alignment: .bottom) {
                     if !withoutSeparator.contains(thread.id) {
                         Rectangle()
-                            .fill(Theme.hairline)
+                            .fill(Color.primary.opacity(0.13))
                             .frame(height: 1)
                             .padding(.horizontal, 44)
-                            .offset(y: 4)
                             .allowsHitTesting(false)
                     }
                 }
+                // Swiping with two fingers moves the row; what appears behind it is the action.
+                .offset(x: swiper.threadID == thread.id ? swiper.offset : 0)
+                .onHover { inside in
+                    if inside {
+                        swiper.hoveredID = thread.id
+                    } else if swiper.hoveredID == thread.id {
+                        swiper.hoveredID = nil
+                    }
+                }
+                .listRowBackground(rowBackground(for: thread))
                 .onAppear { mailbox.loadMoreIfNeeded(after: thread) }
-                // Swiping with two fingers: to the left and to the right, as set in Settings.
-                .swipeActions(edge: .trailing, allowsFullSwipe: true) { swipeButton(swipeLeft, for: thread) }
-                .swipeActions(edge: .leading, allowsFullSwipe: true) { swipeButton(swipeRight, for: thread) }
                 // Drag onto a mailbox or label in the sidebar; a selected row takes the
                 // whole selection along.
                 .draggable(dragPayload(for: thread).text) {
@@ -141,6 +143,34 @@ struct ThreadListView: View {
         }
         .listStyle(.inset)
         .scrollContentBackground(.hidden)
+        .onAppear {
+            // The handlers ask for the mailbox that is open at that moment.
+            swiper.canSwipe = { [model] id, toLeft in
+                Self.swipeItem(toLeft: toLeft, threadID: id, mailbox: model.mailbox) != nil
+            }
+            swiper.onCommit = { [model] id, toLeft in
+                if let item = Self.swipeItem(toLeft: toLeft, threadID: id, mailbox: model.mailbox) {
+                    model.perform(item.action, threadID: id)
+                }
+            }
+            swiper.start()
+        }
+        .onDisappear { swiper.stop() }
+    }
+
+    /// The selection tint and, while a row is swiped aside, the action behind it.
+    private func rowBackground(for thread: ThreadSummary) -> some View {
+        let offset = swiper.threadID == thread.id ? swiper.offset : 0
+        let item = offset == 0 ? nil : Self.swipeItem(toLeft: offset < 0, threadID: thread.id, mailbox: mailbox)
+        return ZStack {
+            RoundedRectangle(cornerRadius: 13, style: .continuous)
+                .fill(model.selectedThreadIDs.contains(thread.id) ? Theme.selection : Color.clear)
+            if let item {
+                SwipeReveal(item: item, offset: offset)
+            }
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 1)
     }
 
     /// Conversations that get no line below them: selected ones, the one above a selected
@@ -158,27 +188,13 @@ struct ThreadListView: View {
 
     // MARK: Swiping
 
-    private struct SwipeItem {
-        let action: ThreadAction
-        let title: String
-        let systemImage: String
-        let color: Color
-    }
-
-    @ViewBuilder
-    private func swipeButton(_ name: String, for thread: ThreadSummary) -> some View {
-        if let swipe = AppSettings.SwipeAction(rawValue: name), let item = swipeItem(swipe, for: thread) {
-            Button {
-                model.perform(item.action, threadID: thread.id)
-            } label: {
-                Label(item.title, systemImage: item.systemImage)
-            }
-            .tint(item.color)
-        }
-    }
-
-    /// What a swipe does to this conversation in this mailbox, or nil if it does not apply.
-    private func swipeItem(_ swipe: AppSettings.SwipeAction, for thread: ThreadSummary) -> SwipeItem? {
+    /// What swiping a conversation to the left or right does in this mailbox (as set in
+    /// Settings), or nil if nothing applies.
+    static func swipeItem(toLeft: Bool, threadID: String, mailbox: MailboxModel?) -> SwipeItem? {
+        guard let mailbox, let thread = mailbox.thread(id: threadID) else { return nil }
+        let key = toLeft ? AppSettings.swipeLeftKey : AppSettings.swipeRightKey
+        let fallback: AppSettings.SwipeAction = toLeft ? .archive : .trash
+        let swipe = UserDefaults.standard.string(forKey: key).flatMap(AppSettings.SwipeAction.init(rawValue:)) ?? fallback
         let inTrash = mailbox.labelID == SystemLabel.trash
         let inSpam = mailbox.labelID == SystemLabel.spam
         switch swipe {
@@ -379,6 +395,147 @@ struct ThreadListView: View {
             Button(tr("Als Spam melden", "Report Spam")) { model.perform(.reportSpam, threadID: thread.id) }
             Button(tr("In den Papierkorb", "Move to Trash")) { model.perform(.trash, threadID: thread.id) }
         }
+    }
+}
+
+// MARK: - Swiping rows
+
+/// One action a swipe can trigger, with the looks of the area behind the row.
+struct SwipeItem {
+    let action: ThreadAction
+    let title: String
+    let systemImage: String
+    let color: Color
+}
+
+/// The coloured area that appears behind a row while it is swiped aside.
+private struct SwipeReveal: View {
+    let item: SwipeItem
+    let offset: CGFloat
+
+    var body: some View {
+        let width = abs(offset)
+        let isArmed = width >= RowSwiper.threshold
+        HStack(spacing: 0) {
+            if offset < 0 { Spacer(minLength: 0) }
+            RoundedRectangle(cornerRadius: 13, style: .continuous)
+                .fill(item.color.opacity(isArmed ? 1 : 0.75))
+                .overlay(alignment: offset < 0 ? .trailing : .leading) {
+                    VStack(spacing: 3) {
+                        Image(systemName: item.systemImage)
+                            .font(.system(size: 17, weight: .semibold))
+                        Text(item.title)
+                            .font(.system(size: 10.5, weight: .semibold))
+                            .lineLimit(1)
+                    }
+                    .foregroundStyle(.white)
+                    .frame(width: 84)
+                    .scaleEffect(isArmed ? 1.12 : 0.92)
+                    .opacity(min(1, Double(width) / 44))
+                    .animation(.spring(duration: 0.2), value: isArmed)
+                }
+                .frame(width: width)
+                .clipped()
+            if offset > 0 { Spacer(minLength: 0) }
+        }
+    }
+}
+
+/// Follows two-finger swipes on the trackpad (or one finger on a Magic Mouse) over the
+/// message list: a mostly horizontal gesture moves the row under the pointer, and letting
+/// go beyond the threshold triggers the action. Vertical scrolling is left to the list.
+@MainActor
+@Observable
+final class RowSwiper {
+    /// How far a row has to be moved for the action to fire when the fingers lift.
+    static let threshold: CGFloat = 96
+    private static let limit: CGFloat = 220
+
+    /// The row being moved and how far.
+    private(set) var threadID: String?
+    private(set) var offset: CGFloat = 0
+
+    /// The row under the pointer; set by the rows.
+    @ObservationIgnored var hoveredID: String?
+    /// Whether a row can be swiped to the left (true) or right (false).
+    @ObservationIgnored var canSwipe: ((String, Bool) -> Bool)?
+    @ObservationIgnored var onCommit: ((String, Bool) -> Void)?
+
+    private enum Axis { case undecided, vertical, horizontal }
+    @ObservationIgnored private var axis = Axis.undecided
+    @ObservationIgnored private var monitor: Any?
+
+    func start() {
+        guard monitor == nil else { return }
+        monitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
+            guard let self else { return event }
+            return self.handle(event) ? nil : event
+        }
+    }
+
+    func stop() {
+        if let monitor { NSEvent.removeMonitor(monitor) }
+        monitor = nil
+        reset()
+    }
+
+    private func reset() {
+        axis = .undecided
+        threadID = nil
+        offset = 0
+    }
+
+    /// Returns true if the event belonged to a swipe and must not reach the list.
+    private func handle(_ event: NSEvent) -> Bool {
+        // Only gestures with phases: trackpad and Magic Mouse. A wheel just scrolls.
+        guard event.hasPreciseScrollingDeltas, !event.phase.isEmpty else { return false }
+
+        if event.phase.contains(.began) || event.phase.contains(.mayBegin) {
+            axis = .undecided
+        }
+        if axis == .undecided {
+            let dx = abs(event.scrollingDeltaX)
+            let dy = abs(event.scrollingDeltaY)
+            if dx > 0 || dy > 0 {
+                if dx > dy * 1.4, let id = hoveredID {
+                    axis = .horizontal
+                    threadID = id
+                    offset = 0
+                } else {
+                    axis = .vertical
+                }
+            }
+        }
+        guard axis == .horizontal, let id = threadID else { return false }
+
+        if event.phase.contains(.changed) || event.phase.contains(.began) {
+            // The row follows the fingers, whatever the scroll direction setting.
+            let delta = event.isDirectionInvertedFromDevice ? event.scrollingDeltaX : -event.scrollingDeltaX
+            var next = offset + delta
+            if next != 0, canSwipe?(id, next < 0) != true {
+                next = 0
+            }
+            next = min(max(next, -Self.limit), Self.limit)
+            let wasArmed = abs(offset) >= Self.threshold
+            let isArmed = abs(next) >= Self.threshold
+            if isArmed != wasArmed {
+                NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
+            }
+            offset = next
+        }
+        if event.phase.contains(.ended) || event.phase.contains(.cancelled) {
+            let commits = event.phase.contains(.ended) && abs(offset) >= Self.threshold
+            let toLeft = offset < 0
+            axis = .undecided
+            withAnimation(.spring(duration: 0.28)) {
+                offset = 0
+            }
+            threadID = commits ? nil : threadID
+            if commits {
+                onCommit?(id, toLeft)
+            }
+        }
+        return true
     }
 }
 

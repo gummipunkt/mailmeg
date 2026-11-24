@@ -379,11 +379,15 @@ struct AppBackdrop: View {
     /// A white veil over the colours, for text that sits directly on the backdrop.
     var veil: Double = 0
     @AppStorage(AppSettings.colorMoodKey) private var moodName = ColorMood.aurora.rawValue
+    @AppStorage(AppSettings.backdropTransparencyKey) private var transparency = 0.0
     @Environment(\.windowSize) private var windowSize
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         let mood = ColorMood(rawValue: moodName) ?? .aurora
+        // Where the window itself carries the backdrop (macOS 26), a see-through window gets
+        // its colours from there alone: two translucent layers would add up.
+        let opacity = transparency > 0 && SeeThrough.windowCarriesBackdrop ? 0 : SeeThrough.opacity(transparency)
         GeometryReader { proxy in
             let frame = proxy.frame(in: .global)
             let isPlaced = windowSize.width > 0 && windowSize.height > 0
@@ -393,22 +397,58 @@ struct AppBackdrop: View {
                 .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
         }
         .clipped()
-        .modifier(SeeThroughModifier())
+        .opacity(opacity)
+        .background(WindowTransparency(isTransparent: transparency > 0).frame(width: 0, height: 0))
         .overlay(Color(light: "#FFFFFF", veil, dark: "#000000", veil * 0.6))
     }
 }
 
-/// Lets the (blurred) desktop show through the backdrop, as much as chosen in Settings.
-private struct SeeThroughModifier: ViewModifier {
-    @AppStorage(AppSettings.backdropTransparencyKey) private var transparency = 0.0
+/// A see-through window: the backdrop is drawn with less opacity and the window stops being
+/// opaque, so the desktop and the windows behind show through. How much is a setting.
+enum SeeThrough {
+    static var windowCarriesBackdrop: Bool {
+        if #available(macOS 26.0, *) { return true }
+        return false
+    }
 
-    func body(content: Content) -> some View {
-        if transparency > 0 {
-            content
-                .opacity(1 - min(transparency, 0.95))
-                .background(VisualEffectView(material: .underWindowBackground))
-        } else {
-            content
+    static func opacity(_ transparency: Double) -> Double {
+        1 - min(max(transparency, 0), 0.96)
+    }
+}
+
+/// Tells the window whether it is opaque. Sits (invisibly) in the backdrop.
+struct WindowTransparency: NSViewRepresentable {
+    let isTransparent: Bool
+
+    func makeNSView(context: Context) -> Probe {
+        let view = Probe()
+        view.isTransparent = isTransparent
+        return view
+    }
+
+    func updateNSView(_ view: Probe, context: Context) {
+        view.isTransparent = isTransparent
+        view.apply()
+    }
+
+    final class Probe: NSView {
+        var isTransparent = false
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            apply()
+        }
+
+        func apply() {
+            guard let window else { return }
+            if window.isOpaque == isTransparent {
+                window.isOpaque = !isTransparent
+            }
+            let color: NSColor = isTransparent ? .clear : .windowBackgroundColor
+            if window.backgroundColor != color {
+                window.backgroundColor = color
+            }
+            window.invalidateShadow()
         }
     }
 }
@@ -437,10 +477,12 @@ struct BackdropModifier: ViewModifier {
 /// The backdrop behind the whole window (and so behind the glass sidebar of macOS 26).
 private struct WindowBackdrop: View {
     @AppStorage(AppSettings.colorMoodKey) private var moodName = ColorMood.aurora.rawValue
+    @AppStorage(AppSettings.backdropTransparencyKey) private var transparency = 0.0
 
     var body: some View {
         MoodCanvas(mood: ColorMood(rawValue: moodName) ?? .aurora)
-            .modifier(SeeThroughModifier())
+            .opacity(SeeThrough.opacity(transparency))
+            .background(WindowTransparency(isTransparent: transparency > 0).frame(width: 0, height: 0))
     }
 }
 
