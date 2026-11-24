@@ -33,9 +33,6 @@ enum Theme {
     static let backdropMiddle = Color(light: "#E6E4FF", dark: "#181733")
     static let backdropBottom = Color(light: "#F6DDF0", dark: "#221735")
 
-    /// The floating sheets (message list, conversation, calendar): frosted, so the colours
-    /// of the backdrop shimmer through.
-    static let panel = Color(light: "#FFFFFF", 0.70, dark: "#100D26", 0.62)
     /// Cards and text fields on a sheet or on the backdrop: a lighter layer of the same frost.
     static let cardFill = Color(light: "#FFFFFF", 0.74, dark: "#FFFFFF", 0.07)
     /// Small surfaces that have to cover what is underneath: the selected segment of a
@@ -302,15 +299,15 @@ enum ColorMood: String, CaseIterable, Identifiable {
         let palette: (top: String, bottom: String, blobs: [(String, Double)])
         switch (self, dark) {
         case (.aurora, false):
-            palette = ("#E7DEFF", "#F4E3F7", [("#8A63FF", 0.62), ("#FF78C4", 0.50), ("#58B4FF", 0.46), ("#FFA8D8", 0.40)])
+            palette = ("#DDCFFF", "#F2D6F3", [("#7B4DFF", 0.80), ("#FF5FB8", 0.64), ("#3FA7FF", 0.62), ("#FF8FD0", 0.52)])
         case (.aurora, true):
             palette = ("#140F2E", "#1A102C", [("#6A3FFF", 0.62), ("#C22C92", 0.44), ("#2A66FF", 0.44), ("#7A2BD0", 0.40)])
         case (.lagoon, false):
-            palette = ("#DCEBFF", "#E1F6F2", [("#4C8DFF", 0.58), ("#2FD3C0", 0.48), ("#8E7BFF", 0.44), ("#6FD2FF", 0.40)])
+            palette = ("#CFE2FF", "#D4F3EE", [("#3B7BFF", 0.76), ("#1FCDB8", 0.62), ("#8368FF", 0.58), ("#55C8FF", 0.50)])
         case (.lagoon, true):
             palette = ("#0C1530", "#0B1E27", [("#2A62F0", 0.60), ("#11988A", 0.44), ("#5B45D6", 0.42), ("#1C7FB8", 0.38)])
         case (.sunset, false):
-            palette = ("#FFE3EC", "#FFEAD9", [("#FF5FA2", 0.52), ("#FF9A3D", 0.46), ("#A87BFF", 0.46), ("#FFB796", 0.40)])
+            palette = ("#FFD6E4", "#FFE2CC", [("#FF4F9A", 0.70), ("#FF8A2B", 0.60), ("#9A68FF", 0.60), ("#FFA57D", 0.50)])
         case (.sunset, true):
             palette = ("#231025", "#281316", [("#C4307A", 0.56), ("#C25E1B", 0.42), ("#6B3FD0", 0.44), ("#9A3B5C", 0.38)])
         case (.pastel, false):
@@ -333,6 +330,7 @@ enum ColorMood: String, CaseIterable, Identifiable {
 /// The backdrop as one picture, the size of the view it is given.
 struct MoodCanvas: View {
     let mood: ColorMood
+    @AppStorage(AppSettings.colorIntensityKey) private var intensity = 1.0
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -344,10 +342,11 @@ struct MoodCanvas: View {
                 ForEach(colors.blobs.indices, id: \.self) { index in
                     let blob = colors.blobs[index]
                     let color = Color(hex: blob.color)
+                    let alpha = min(1, blob.alpha * intensity)
                     RadialGradient(
                         stops: [
-                            .init(color: color.opacity(blob.alpha), location: 0),
-                            .init(color: color.opacity(blob.alpha * 0.5), location: 0.45),
+                            .init(color: color.opacity(alpha), location: 0),
+                            .init(color: color.opacity(alpha * 0.5), location: 0.45),
                             .init(color: color.opacity(0), location: 1),
                         ],
                         center: blob.center,
@@ -497,8 +496,20 @@ extension View {
 
     /// A floating frosted sheet with rounded corners; the backdrop shimmers through.
     func floatingPanel(radius: CGFloat = 20) -> some View {
-        self
-            .background(Theme.panel)
+        modifier(FloatingPanelModifier(radius: radius))
+    }
+}
+
+/// How opaque the sheets are is a setting: clear and crisp, or more of the backdrop showing through.
+private struct FloatingPanelModifier: ViewModifier {
+    let radius: CGFloat
+    @AppStorage(AppSettings.sheetOpacityKey) private var opacity = 0.86
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        let fill = colorScheme == .dark ? Color(hex: "#100D26").opacity(opacity * 0.76) : Color.white.opacity(opacity)
+        content
+            .background(fill)
             .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: radius, style: .continuous)

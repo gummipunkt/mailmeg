@@ -30,6 +30,8 @@ private struct GeneralSettingsView: View {
     @AppStorage(AppSettings.faviconAvatarsKey) private var faviconAvatars = true
     @AppStorage(AppSettings.newestFirstKey) private var newestFirst = true
     @AppStorage(AppSettings.colorMoodKey) private var colorMood = ColorMood.aurora.rawValue
+    @AppStorage(AppSettings.colorIntensityKey) private var colorIntensity = 1.0
+    @AppStorage(AppSettings.sheetOpacityKey) private var sheetOpacity = 0.86
     @State private var notificationStatus: UNAuthorizationStatus?
 
     private var lastRefreshText: String {
@@ -117,6 +119,14 @@ private struct GeneralSettingsView: View {
                         }
                     }
                 }
+                Slider(value: $colorIntensity, in: 0.4...1.6) {
+                    Text(tr("Farbintensität", "Colour intensity"))
+                }
+                .accessibilityIdentifier("settings.colorIntensity")
+                Slider(value: $sheetOpacity, in: 0.5...1.0) {
+                    Text(tr("Deckkraft der Flächen", "Opacity of the sheets"))
+                }
+                .accessibilityIdentifier("settings.sheetOpacity")
                 Toggle(tr("Avatare in der Nachrichtenliste", "Show avatars in the message list"), isOn: $showAvatars)
                 Toggle(tr("Website-Symbol der Absender-Domain als Profilbild", "Use the sender domain’s website icon as picture"), isOn: $faviconAvatars)
                     .accessibilityIdentifier("settings.favicons")

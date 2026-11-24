@@ -5,6 +5,10 @@ enum AppSettings {
     static let clientIDKey = "googleClientID"
     /// The colours of the window's backdrop (`ColorMood`).
     static let colorMoodKey = "colorMood"
+    /// How strong the backdrop's colours are (1 = as designed).
+    static let colorIntensityKey = "colorIntensity"
+    /// How opaque the sheets on the backdrop are (list, conversation, calendar).
+    static let sheetOpacityKey = "sheetOpacity"
     static let loadRemoteContentKey = "loadRemoteContent"
     static let notificationsKey = "notificationsEnabled"
     static let refreshIntervalKey = "refreshInterval"
