@@ -6,14 +6,19 @@ project:
 	@command -v xcodegen >/dev/null || { echo "Install XcodeGen first: brew install xcodegen"; exit 1; }
 	xcodegen generate
 
-# The command line tools alone cannot build the app: without Xcode, `open` would only show
-# the project folder in the Finder.
+# Building in the terminal needs Xcode to be the selected developer directory; the command
+# line tools alone cannot build the app. (Xcode's own window builds without that.)
 xcode:
 	@xcodebuild -version >/dev/null 2>&1 || { \
-		echo "Xcode is missing or not selected. Install Xcode (App Store or developer.apple.com), open it once,"; \
-		echo "then run: sudo xcode-select -s /Applications/Xcode.app"; exit 1; }
+		echo "xcodebuild does not work in the terminal. It says:"; \
+		xcodebuild -version 2>&1 | sed 's/^/    /'; \
+		echo "Selected developer directory: $$(xcode-select -p 2>&1)"; \
+		echo "Installed: $$(ls -d /Applications/Xcode*.app 2>/dev/null | tr '\n' ' ')"; \
+		echo "Select Xcode with its real name, e.g.: sudo xcode-select -s /Applications/Xcode.app"; \
+		echo "If it asks for the licence: sudo xcodebuild -license accept"; exit 1; }
 
-open: project xcode
+open: project
+	@ls -d /Applications/Xcode*.app >/dev/null 2>&1 || echo "No Xcode found in /Applications: the project will only open in the Finder."
 	open Mailmeg.xcodeproj
 
 test:
