@@ -192,6 +192,7 @@ make test        # Unit-Tests der MailmegKit-Bibliothek
 # UI-Tests (klicken sich im Demo-Modus durch die App): in Xcode ⌘U
 make build       # Release-Build nach build/Build/Products/Release/MailMeG.app
 make dmg         # universelle App als build/MailMeG.dmg (wie die CI sie an ein Release hängt)
+make release     # dmg bauen und als GitHub-Release v<Version> veröffentlichen (braucht die GitHub-CLI `gh`)
 ```
 
 Jeder Push baut die App außerdem per GitHub Actions auf macOS, führt Unit- und UI-Tests aus und erzeugt

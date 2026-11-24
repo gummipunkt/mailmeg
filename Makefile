@@ -1,4 +1,6 @@
-.PHONY: project xcode open test build dmg screenshots
+.PHONY: project xcode open test build dmg release screenshots
+
+VERSION := $(shell sed -n 's/^MARKETING_VERSION *= *//p' Config/Mailmeg.xcconfig)
 
 project:
 	@command -v xcodegen >/dev/null || { echo "Install XcodeGen first: brew install xcodegen"; exit 1; }
@@ -32,6 +34,18 @@ dmg: project xcode
 	ln -s /Applications build/dmg/Applications
 	hdiutil create -volname "MailMeG" -srcfolder build/dmg -ov -format UDZO build/MailMeG.dmg
 	@echo "Disk image: build/MailMeG.dmg"
+
+# Publishes build/MailMeG.dmg as GitHub release v<MARKETING_VERSION> with the notes from
+# CHANGELOG.md – what the CI does on a push to main. The commit has to be on origin/main.
+release: dmg
+	@command -v gh >/dev/null || { echo "Install the GitHub CLI first: brew install gh && gh auth login"; exit 1; }
+	@git fetch -q origin main
+	@test "$$(git rev-parse HEAD)" = "$$(git rev-parse origin/main)" || { \
+		echo "This checkout is not what is on origin/main. Bring the release onto main and push first."; exit 1; }
+	python3 Design/release_notes.py $(VERSION) > build/notes.md
+	cp build/MailMeG.dmg build/MailMeG-$(VERSION).dmg
+	gh release create v$(VERSION) build/MailMeG.dmg build/MailMeG-$(VERSION).dmg \
+		--target "$$(git rev-parse HEAD)" --title "MailMeG $(VERSION)" --notes-file build/notes.md --latest
 
 # Website screenshots of the demo mailbox (DE/EN, light/dark) in Retina resolution.
 # Takes over mouse and keyboard for about two minutes.
