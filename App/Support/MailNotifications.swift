@@ -1,7 +1,7 @@
 import AppKit
 import Foundation
 import MailmegKit
-import UserNotifications
+@preconcurrency import UserNotifications
 
 /// macOS notifications for new mail: banners (also while MailMeG is in front), a click
 /// opens the conversation, and the actions Reply, Mark as Read and Archive work right
@@ -77,7 +77,7 @@ final class MailNotifications: NSObject, UNUserNotificationCenterDelegate {
             let ids = notifications
                 .filter { $0.request.content.userInfo["thread"] as? String == threadID }
                 .map(\.request.identifier)
-            if !ids.isEmpty { center.removeDeliveredNotifications(withIdentifiers: ids) }
+            if !ids.isEmpty { UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ids) }
         }
     }
 

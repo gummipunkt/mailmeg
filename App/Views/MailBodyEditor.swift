@@ -257,7 +257,7 @@ struct FormatState: Equatable {
 @MainActor
 @Observable
 final class RichTextController {
-    static let baseSize: CGFloat = 13.5
+    nonisolated static let baseSize: CGFloat = 13.5
     static var baseFont: NSFont { .systemFont(ofSize: baseSize) }
     static var paragraphStyle: NSParagraphStyle {
         let style = NSMutableParagraphStyle()
