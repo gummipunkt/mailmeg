@@ -7,6 +7,68 @@ struct ThreadListView: View {
     @Bindable var mailbox: MailboxModel
 
     var body: some View {
+        VStack(spacing: 0) {
+            header
+            list
+                .overlay { emptyState }
+        }
+        // The list is a frosted sheet floating on the backdrop.
+        .floatingPanel()
+        .padding(.horizontal, 8)
+        .padding(.top, 2)
+        .padding(.bottom, 10)
+        .onChange(of: mailbox.searchText) { _, newValue in
+            if newValue.isEmpty, !mailbox.activeQuery.isEmpty {
+                mailbox.submitSearch()
+            }
+        }
+        .navigationTitle(mailbox.title)
+        .toolbar { toolbar }
+        .glassBackground(.list)
+    }
+
+    /// The system toolbar above the list: fetch and filter on the left, a new message on the right.
+    @ToolbarContentBuilder
+    private var toolbar: some ToolbarContent {
+        ToolbarItemGroup {
+            Button {
+                Task { await model.refreshAll() }
+            } label: {
+                Label(tr("Abrufen", "Get Mail"), systemImage: "arrow.clockwise")
+            }
+            .help(tr("Neue E-Mails abrufen (⇧⌘N)", "Get New Mail (⇧⌘N)"))
+            .accessibilityIdentifier("mailbox.refresh")
+
+            Menu {
+                Picker("Filter", selection: Binding(get: { mailbox.unreadOnly }, set: { mailbox.setUnreadOnly($0) })) {
+                    Label(tr("Alle E-Mails", "All Mail"), systemImage: "tray").tag(false)
+                    Label(tr("Nur ungelesene", "Unread Only"), systemImage: "envelope.badge").tag(true)
+                }
+                .pickerStyle(.inline)
+                Divider()
+                Button(tr("Alle auswählen", "Select All")) { model.selectAllThreads() }
+                    .disabled(mailbox.threads.isEmpty)
+            } label: {
+                Label(tr("Filter", "Filter"), systemImage: mailbox.unreadOnly ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+            }
+            .menuIndicator(.hidden)
+            .help(mailbox.unreadOnly ? tr("Filter: nur ungelesene", "Filter: unread only") : tr("Filter", "Filter"))
+            .accessibilityIdentifier("mailbox.filter")
+        }
+        ToolbarFlexibleGap()
+        ToolbarItem {
+            Button {
+                openWindow(value: model.newDraft())
+            } label: {
+                Label(tr("Neue E-Mail", "New Message"), systemImage: "square.and.pencil")
+            }
+            .buttonStyle(.borderedProminent)
+            .help(tr("Neue E-Mail (⌘N)", "New Message (⌘N)"))
+            .accessibilityIdentifier("compose")
+        }
+    }
+
+    private var list: some View {
         List(selection: Binding(get: { model.selectedThreadIDs }, set: { model.setThreadSelection($0) })) {
             ForEach(mailbox.threads) { thread in
                 ThreadRow(
@@ -62,29 +124,6 @@ struct ThreadListView: View {
         }
         .listStyle(.inset)
         .scrollContentBackground(.hidden)
-        .safeAreaInset(edge: .top, spacing: 0) { header }
-        .overlay { emptyState }
-        // The list is a white panel floating on the pastel backdrop.
-        .floatingPanel()
-        .padding(.horizontal, 8)
-        .padding(.bottom, 10)
-        .onChange(of: mailbox.searchText) { _, newValue in
-            if newValue.isEmpty, !mailbox.activeQuery.isEmpty {
-                mailbox.submitSearch()
-            }
-        }
-        .navigationTitle(mailbox.title)
-        .toolbar {
-            ToolbarItem {
-                Button {
-                    Task { await model.refreshAll() }
-                } label: {
-                    Label(tr("Aktualisieren", "Refresh"), systemImage: "arrow.clockwise")
-                }
-                .help(tr("Neue E-Mails abrufen (⇧⌘N)", "Get New Mail (⇧⌘N)"))
-            }
-        }
-        .glassBackground(.list)
     }
 
     private func dragPayload(for thread: ThreadSummary) -> ThreadDrag {
@@ -103,7 +142,7 @@ struct ThreadListView: View {
         }
     }
 
-    /// Big title with the counts, filter and compose next to it, search below.
+    /// Big title with the counts, search below.
     private var header: some View {
         VStack(spacing: 12) {
             HStack(alignment: .center, spacing: 8) {
@@ -120,37 +159,6 @@ struct ThreadListView: View {
                         .lineLimit(1)
                 }
                 Spacer(minLength: 6)
-
-                GlassCircleMenu(
-                    systemImage: mailbox.unreadOnly ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease",
-                    help: tr("Filter", "Filter"),
-                    isTinted: true
-                ) {
-                    Picker("Filter", selection: Binding(get: { mailbox.unreadOnly }, set: { mailbox.setUnreadOnly($0) })) {
-                        Label(tr("Alle E-Mails", "All Mail"), systemImage: "tray").tag(false)
-                        Label(tr("Nur ungelesene", "Unread Only"), systemImage: "envelope.badge").tag(true)
-                    }
-                    .pickerStyle(.inline)
-                    Divider()
-                    Button(tr("Alle auswählen", "Select All")) { model.selectAllThreads() }
-                        .disabled(mailbox.threads.isEmpty)
-                }
-                .accessibilityIdentifier("mailbox.filter")
-
-                Button {
-                    openWindow(value: model.newDraft())
-                } label: {
-                    Image(systemName: "square.and.pencil")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 34, height: 34)
-                        .prominentGlass(in: Circle())
-                        .contentShape(Circle())
-                }
-                .buttonStyle(.plain)
-                .help(tr("Neue E-Mail (⌘N)", "New Message (⌘N)"))
-                .accessibilityLabel(tr("Neue E-Mail (⌘N)", "New Message (⌘N)"))
-                .accessibilityIdentifier("compose")
             }
             SearchField(text: $mailbox.searchText, focusRequest: model.searchRequest) { mailbox.submitSearch() }
             if !mailbox.activeQuery.isEmpty || model.isMultipleSelection {
@@ -160,7 +168,6 @@ struct ThreadListView: View {
         .padding(.horizontal, 16)
         .padding(.top, 16)
         .padding(.bottom, 10)
-        .background(Theme.panel)
     }
 
     /// Result count and selection buttons, shown for searches and when several
@@ -377,7 +384,7 @@ struct ThreadRow: View {
                             Circle()
                                 .fill(Color.accentColor)
                                 .frame(width: 10, height: 10)
-                                .overlay(Circle().strokeBorder(Theme.panel, lineWidth: 2))
+                                .overlay(Circle().strokeBorder(Theme.solidCard, lineWidth: 2))
                                 .offset(x: -2, y: -2)
                         }
                     }
@@ -490,7 +497,7 @@ struct ThreadRow: View {
             ) { onAction(thread.isStarred ? .unstar : .star) }
         }
         .padding(.horizontal, 2)
-        .background(Theme.cardFill, in: Capsule())
+        .background(Theme.solidCard, in: Capsule())
         .shadow(color: .black.opacity(0.1), radius: 3, y: 1)
     }
 }

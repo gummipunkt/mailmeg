@@ -28,51 +28,47 @@ enum Theme {
         return Color(hue: hue, saturation: max(saturation, 0.55), brightness: min(max(brightness, 0.55), 0.82))
     }
 
-    /// The pastel backdrop behind everything: lilac at the top, sky in the middle, a blush
-    /// of pink at the bottom. It only changes from top to bottom, so the columns of the
-    /// window line up without a seam.
-    static let backdropTop = Color(light: "#EDE6FF", dark: "#1D1936")
-    static let backdropMiddle = Color(light: "#E5EAFF", dark: "#181733")
-    static let backdropBottom = Color(light: "#F9E6F2", dark: "#221735")
+    /// Fallback tones of the backdrop, for the few places that need one flat colour.
+    static let backdropTop = Color(light: "#E4D9FF", dark: "#1B1638")
+    static let backdropMiddle = Color(light: "#E6E4FF", dark: "#181733")
+    static let backdropBottom = Color(light: "#F6DDF0", dark: "#221735")
 
-    /// Sidebar, list and canvas all sit on the backdrop; these are its top tone.
-    static let sidebar = backdropTop
-    static let listBackground = backdropTop
-    static let canvas = backdropTop
-    /// The floating panels (message list, calendar): not pure white, but a milky tone that
-    /// follows the backdrop from lilac to rosé.
-    static let panel = Color(light: "#F7F3FF", dark: "#221F3D")
-    static let panelMiddle = Color(light: "#F4F5FF", dark: "#201F3E")
-    static let panelBottom = Color(light: "#FCF3F9", dark: "#261F3E")
-    /// Cards, text fields: a lilac-tinted white.
-    static let cardFill = Color(light: "#FAF7FF", dark: "#272445")
-    /// Subtle fills: chips, counters, banners.
-    static let tint = Color(light: "#EAE3FF", dark: "#342F5E")
+    /// The floating sheets (message list, conversation, calendar): frosted, so the colours
+    /// of the backdrop shimmer through.
+    static let panel = Color(light: "#FFFFFF", 0.70, dark: "#100D26", 0.62)
+    /// Cards and text fields on a sheet or on the backdrop: a lighter layer of the same frost.
+    static let cardFill = Color(light: "#FFFFFF", 0.74, dark: "#FFFFFF", 0.07)
+    /// Small surfaces that have to cover what is underneath: the selected segment of a
+    /// switch, hover buttons, event cards.
+    static let solidCard = Color(light: "#FFFFFF", dark: "#2B2749")
+    /// Subtle fills: chips, counters, banners, search fields.
+    static let tint = Color(light: "#6F4DFF", 0.10, dark: "#B3A6FF", 0.17)
     /// Lines and outlines.
-    static let hairline = Color(light: "#DCD4F8", dark: "#3D3870", lightContrast: "#8E82C9", darkContrast: "#8C84D6")
-    /// The barely visible edge of cards.
-    static let cardStroke = Color(light: "#FFFFFF", dark: "#353060", lightContrast: "#A99DE0", darkContrast: "#7069B8")
+    static let hairline = Color(light: "#D9D0F7", dark: "#3D3870", lightContrast: "#8E82C9", darkContrast: "#8C84D6")
+    /// The light edge of sheets and cards.
+    static let cardStroke = Color(light: "#FFFFFF", 0.85, dark: "#FFFFFF", 0.10)
     /// Fill of the selected row in lists.
-    static let selection = Color(light: "#E2D8FF", dark: "#3D3678", lightContrast: "#C9B8FF", darkContrast: "#564BB0")
-    /// Soft coloured shadow under floating panels and cards.
-    static let shadow = Color(light: "#7B6BD6", dark: "#000000")
+    static let selection = Color(light: "#E4DAFF", dark: "#3D3678", lightContrast: "#C9B8FF", darkContrast: "#564BB0")
+    /// Soft coloured shadow under small floating elements.
+    static let shadow = Color(light: "#4B2FC0", dark: "#000000")
 
-    /// Prominent buttons: lilac into violet.
+    /// Prominent buttons: violet into pink.
     static let accentGradient = LinearGradient(
-        colors: [Color(hex: "#A990FF"), Palette.violet],
+        colors: [Color(hex: "#8F6BFF"), Color(hex: "#6C4CF1")],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
 
-    /// Pastel avatar styles in several hues: gradient top, bottom and text colour.
-    static let avatarStyles: [(Color, Color, Color)] = [
-        (Color(hex: "#E6DDFF"), Color(hex: "#CDBFFB"), Color(hex: "#5B45C2")),
-        (Color(hex: "#FFDCCB"), Color(hex: "#FFC4AA"), Color(hex: "#B5502A")),
-        (Color(hex: "#CFF2E0"), Color(hex: "#ABE5C9"), Color(hex: "#1F7A55")),
-        (Color(hex: "#D3E6FF"), Color(hex: "#B1CBFA"), Color(hex: "#2B5FB8")),
-        (Color(hex: "#FFD6E6"), Color(hex: "#FBB8D2"), Color(hex: "#B03A6E")),
-        (Color(hex: "#FFEFC0"), Color(hex: "#FFE08F"), Color(hex: "#8A6500")),
-        (Color(hex: "#CBEFF3"), Color(hex: "#A6E1E9"), Color(hex: "#1B7480")),
+    /// Vivid avatar gradients (top, bottom); the initials are white.
+    static let avatarStyles: [(Color, Color)] = [
+        (Color(hex: "#A78BFF"), Color(hex: "#6C4CF1")),
+        (Color(hex: "#FF9CC2"), Color(hex: "#EC4F93")),
+        (Color(hex: "#6CC0FF"), Color(hex: "#2F86F6")),
+        (Color(hex: "#4FDCC4"), Color(hex: "#12A38D")),
+        (Color(hex: "#FFB877"), Color(hex: "#F47A3A")),
+        (Color(hex: "#C79BFF"), Color(hex: "#9A4DE8")),
+        (Color(hex: "#FFD166"), Color(hex: "#E89200")),
+        (Color(hex: "#7FE3A2"), Color(hex: "#22A862")),
     ]
 }
 
@@ -91,6 +87,15 @@ extension Color {
             if match == .accessibilityHighContrastAqua { return lightContrastColor }
             if match == .accessibilityHighContrastDarkAqua { return darkContrastColor }
             return lightColor
+        })
+    }
+
+    /// A translucent colour per appearance.
+    init(light: String, _ lightAlpha: Double, dark: String, _ darkAlpha: Double) {
+        let lightColor = NSColor(Color(hex: light)).withAlphaComponent(lightAlpha)
+        let darkColor = NSColor(Color(hex: dark)).withAlphaComponent(darkAlpha)
+        self.init(nsColor: NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? darkColor : lightColor
         })
     }
 
@@ -134,12 +139,12 @@ struct AvatarView: View {
     private var initialsAvatar: some View {
         let style = Theme.avatarStyles[Self.hash(name) % Theme.avatarStyles.count]
         return Circle()
-            .fill(LinearGradient(colors: [style.0, style.1], startPoint: .top, endPoint: .bottom))
+            .fill(LinearGradient(colors: [style.0, style.1], startPoint: .topLeading, endPoint: .bottomTrailing))
             .frame(width: size, height: size)
             .overlay {
                 Text(initials)
-                    .font(.system(size: size * 0.38, weight: .semibold, design: .rounded))
-                    .foregroundStyle(style.2)
+                    .font(.system(size: size * 0.38, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
             }
             .accessibilityHidden(true)
     }
@@ -195,11 +200,11 @@ struct CardModifier: ViewModifier {
         content
             .background(Theme.cardFill, in: RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous))
             .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous))
+            // A light edge instead of a shadow: a shadow would show through the frosted fill.
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous)
                     .strokeBorder(Theme.cardStroke)
             )
-            .shadow(color: Theme.shadow.opacity(0.13), radius: 16, y: 6)
     }
 }
 
@@ -255,21 +260,139 @@ struct VisualEffectView: NSViewRepresentable {
     }
 }
 
-/// The pastel backdrop of the window. Every column draws the same top-to-bottom gradient
-/// over its full height, so together they read as one surface.
-struct AppBackdrop: View {
+// MARK: - Backdrop
+
+/// The colours of the window's backdrop, chosen in Settings.
+enum ColorMood: String, CaseIterable, Identifiable {
+    case aurora, lagoon, sunset, pastel
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .aurora: return tr("Aurora", "Aurora")
+        case .lagoon: return tr("Lagune", "Lagoon")
+        case .sunset: return tr("Abendrot", "Sunset")
+        case .pastel: return tr("Pastell", "Pastel")
+        }
+    }
+
+    /// A soft patch of colour: where it sits in the window and how far it reaches.
+    struct Blob {
+        let color: String
+        let alpha: Double
+        let center: UnitPoint
+        let radius: CGFloat
+    }
+
+    struct Colors {
+        let top: String
+        let bottom: String
+        let blobs: [Blob]
+    }
+
+    func colors(dark: Bool) -> Colors {
+        // The strongest colour sits behind the sidebar (left); the reading area stays lighter.
+        let places: [(UnitPoint, CGFloat)] = [
+            (UnitPoint(x: 0.02, y: 0.08), 0.62),
+            (UnitPoint(x: 0.06, y: 1.0), 0.58),
+            (UnitPoint(x: 1.0, y: 0.0), 0.60),
+            (UnitPoint(x: 0.98, y: 1.02), 0.52),
+        ]
+        let palette: (top: String, bottom: String, blobs: [(String, Double)])
+        switch (self, dark) {
+        case (.aurora, false):
+            palette = ("#E7DEFF", "#F4E3F7", [("#8A63FF", 0.62), ("#FF78C4", 0.50), ("#58B4FF", 0.46), ("#FFA8D8", 0.40)])
+        case (.aurora, true):
+            palette = ("#140F2E", "#1A102C", [("#6A3FFF", 0.62), ("#C22C92", 0.44), ("#2A66FF", 0.44), ("#7A2BD0", 0.40)])
+        case (.lagoon, false):
+            palette = ("#DCEBFF", "#E1F6F2", [("#4C8DFF", 0.58), ("#2FD3C0", 0.48), ("#8E7BFF", 0.44), ("#6FD2FF", 0.40)])
+        case (.lagoon, true):
+            palette = ("#0C1530", "#0B1E27", [("#2A62F0", 0.60), ("#11988A", 0.44), ("#5B45D6", 0.42), ("#1C7FB8", 0.38)])
+        case (.sunset, false):
+            palette = ("#FFE3EC", "#FFEAD9", [("#FF5FA2", 0.52), ("#FF9A3D", 0.46), ("#A87BFF", 0.46), ("#FFB796", 0.40)])
+        case (.sunset, true):
+            palette = ("#231025", "#281316", [("#C4307A", 0.56), ("#C25E1B", 0.42), ("#6B3FD0", 0.44), ("#9A3B5C", 0.38)])
+        case (.pastel, false):
+            palette = ("#EDE6FF", "#F9E6F2", [("#DAD0FF", 0.55), ("#F6D3EA", 0.5), ("#DCE6FF", 0.55), ("#F3DDF2", 0.4)])
+        case (.pastel, true):
+            palette = ("#1D1936", "#221735", [("#2B2452", 0.6), ("#32203F", 0.5), ("#1D2550", 0.55), ("#2A1D40", 0.4)])
+        }
+        let blobs = zip(palette.blobs, places).map { blob, place in
+            Blob(color: blob.0, alpha: blob.1, center: place.0, radius: place.1)
+        }
+        return Colors(top: palette.top, bottom: palette.bottom, blobs: blobs)
+    }
+
+    /// The colours of the little preview in Settings.
+    var swatch: [Color] {
+        colors(dark: false).blobs.prefix(3).map { Color(hex: $0.color) }
+    }
+}
+
+/// The backdrop as one picture, the size of the view it is given.
+struct MoodCanvas: View {
+    let mood: ColorMood
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
-        LinearGradient(
-            stops: [
-                // Flat at the top, where the toolbar band has to match exactly.
-                .init(color: Theme.backdropTop, location: 0),
-                .init(color: Theme.backdropTop, location: 0.12),
-                .init(color: Theme.backdropMiddle, location: 0.55),
-                .init(color: Theme.backdropBottom, location: 1),
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
+        let colors = mood.colors(dark: colorScheme == .dark)
+        GeometryReader { proxy in
+            let reach = max(proxy.size.width, proxy.size.height)
+            ZStack {
+                LinearGradient(colors: [Color(hex: colors.top), Color(hex: colors.bottom)], startPoint: .top, endPoint: .bottom)
+                ForEach(colors.blobs.indices, id: \.self) { index in
+                    let blob = colors.blobs[index]
+                    let color = Color(hex: blob.color)
+                    RadialGradient(
+                        stops: [
+                            .init(color: color.opacity(blob.alpha), location: 0),
+                            .init(color: color.opacity(blob.alpha * 0.5), location: 0.45),
+                            .init(color: color.opacity(0), location: 1),
+                        ],
+                        center: blob.center,
+                        startRadius: 0,
+                        endRadius: reach * blob.radius
+                    )
+                }
+            }
+        }
+    }
+}
+
+private struct WindowSizeKey: EnvironmentKey {
+    static let defaultValue = CGSize.zero
+}
+
+extension EnvironmentValues {
+    /// The size of the main window's content, so every column can draw its part of one backdrop.
+    var windowSize: CGSize {
+        get { self[WindowSizeKey.self] }
+        set { self[WindowSizeKey.self] = newValue }
+    }
+}
+
+/// The colourful backdrop of the window. Every column draws the part of the same picture
+/// that lies behind it (in window coordinates), so together they read as one surface.
+struct AppBackdrop: View {
+    /// A white veil over the colours, for text that sits directly on the backdrop.
+    var veil: Double = 0
+    @AppStorage(AppSettings.colorMoodKey) private var moodName = ColorMood.aurora.rawValue
+    @Environment(\.windowSize) private var windowSize
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        let mood = ColorMood(rawValue: moodName) ?? .aurora
+        GeometryReader { proxy in
+            let frame = proxy.frame(in: .global)
+            let isPlaced = windowSize.width > 0 && windowSize.height > 0
+            MoodCanvas(mood: mood)
+                .frame(width: isPlaced ? windowSize.width : proxy.size.width, height: isPlaced ? windowSize.height : proxy.size.height)
+                .offset(x: isPlaced ? -frame.minX : 0, y: isPlaced ? -frame.minY : 0)
+                .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
+        }
+        .overlay(Color(light: "#FFFFFF", veil, dark: "#000000", veil * 0.6))
+        .clipped()
     }
 }
 
@@ -287,8 +410,19 @@ struct BackdropModifier: ViewModifier {
             // over it, the window's backdrop shows through.
             content
         } else {
-            content.modifier(ToolbarBandModifier(background: AppBackdrop(), band: Theme.backdropTop))
+            // Without system glass the sidebar's text sits directly on the colours.
+            let veil = style == .sidebar ? 0.34 : 0
+            content.modifier(ToolbarBandModifier(background: AppBackdrop(veil: veil), band: AppBackdrop(veil: veil)))
         }
+    }
+}
+
+/// The backdrop behind the whole window (and so behind the glass sidebar of macOS 26).
+private struct WindowBackdrop: View {
+    @AppStorage(AppSettings.colorMoodKey) private var moodName = ColorMood.aurora.rawValue
+
+    var body: some View {
+        MoodCanvas(mood: ColorMood(rawValue: moodName) ?? .aurora)
     }
 }
 
@@ -299,7 +433,7 @@ extension View {
     @ViewBuilder
     func windowBackdrop() -> some View {
         if #available(macOS 26.0, *) {
-            containerBackground(for: .window) { AppBackdrop() }
+            containerBackground(for: .window) { WindowBackdrop() }
         } else {
             self
         }
@@ -361,36 +495,28 @@ extension View {
         modifier(BackdropModifier(style: style))
     }
 
-    /// A floating milky panel with rounded corners and a soft coloured shadow.
-    func floatingPanel(radius: CGFloat = 18) -> some View {
+    /// A floating frosted sheet with rounded corners; the backdrop shimmers through.
+    func floatingPanel(radius: CGFloat = 20) -> some View {
         self
-            .background(
-                LinearGradient(
-                    stops: [
-                        // Flat at the top, where the pinned header has to match.
-                        .init(color: Theme.panel, location: 0),
-                        .init(color: Theme.panel, location: 0.3),
-                        .init(color: Theme.panelMiddle, location: 0.6),
-                        .init(color: Theme.panelBottom, location: 1),
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
+            .background(Theme.panel)
             .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
                     .strokeBorder(Theme.cardStroke)
             )
-            .shadow(color: Theme.shadow.opacity(0.13), radius: 16, y: 6)
     }
 }
 
 extension View {
-    /// Backing for the bar that floats above a scrolling conversation: the backdrop's own
-    /// top tone, so the bar belongs to the window instead of sitting on a grey strip.
-    func frostedBar(tint: Color) -> some View {
-        background(Theme.backdropTop)
+    /// The reading pane of the main window: a frosted sheet next to the message list.
+    func detailSheet() -> some View {
+        self
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .floatingPanel()
+            .padding(.trailing, 8)
+            .padding(.top, 2)
+            .padding(.bottom, 10)
+            .glassBackground(.canvas)
     }
 }
 
@@ -517,7 +643,7 @@ struct PillSwitch<Value: Hashable>: View {
                     .background {
                         if selected {
                             Capsule()
-                                .fill(Theme.cardFill)
+                                .fill(Theme.solidCard)
                                 .shadow(color: .black.opacity(0.12), radius: 2, y: 1)
                         }
                     }
@@ -573,6 +699,28 @@ private struct CapsuleButtonSurface: ViewModifier {
             content.prominentGlass(in: Capsule())
         } else {
             content.glassControl(in: Capsule(), isHighlighted: isHovering)
+        }
+    }
+}
+
+// MARK: - System toolbar
+
+/// Flexible space in the window toolbar: what follows moves to the trailing edge.
+struct ToolbarFlexibleGap: ToolbarContent {
+    var body: some ToolbarContent {
+        if #available(macOS 26.0, *) {
+            ToolbarSpacer(.flexible)
+        } else {
+            ToolbarItem { Spacer() }
+        }
+    }
+}
+
+/// Separates two groups of toolbar buttons; on macOS 26 each group shares one capsule of glass.
+struct ToolbarGroupGap: ToolbarContent {
+    var body: some ToolbarContent {
+        if #available(macOS 26.0, *) {
+            ToolbarSpacer(.fixed)
         }
     }
 }

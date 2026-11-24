@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 
 /// Drives the app in demo mode (no Google account needed) and records screenshots.
@@ -25,6 +26,13 @@ final class MailmegUITests: XCTestCase {
     /// view above it; a real click reaches them.
     private func click(_ element: XCUIElement) {
         element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+    }
+
+    /// Switches the calendar's view with its menu shortcut (⌥⌘1 … ⌥⌘4).
+    private func calendarMode(_ app: XCUIApplication, _ mode: String) {
+        let keys = ["day": "1", "week": "2", "month": "3", "agenda": "4"]
+        app.typeKey(keys[mode] ?? "2", modifierFlags: [.command, .option])
+        usleep(500_000)
     }
 
     private func snapshot(_ name: String, of screenshot: XCUIScreenshot) {
@@ -92,6 +100,31 @@ final class MailmegUITests: XCTestCase {
         sleep(1)
         snapshot("4-neue-email", of: XCUIScreen.main.screenshot())
         // Close the compose window so it is not restored on the next launch.
+        app.typeKey("w", modifierFlags: .command)
+    }
+
+    /// A file copied in the Finder and pasted into a message becomes an attachment (the same
+    /// path a file dragged into the text takes), instead of its path being inserted.
+    func testPastedFileBecomesAttachment() throws {
+        let name = "Notiz-\(Int(Date().timeIntervalSince1970) % 100_000).txt"
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent(name)
+        try "Hallo aus dem Finder".write(to: file, atomically: true, encoding: .utf8)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.writeObjects([file as NSURL])
+
+        let app = launch(["--demo"])
+        XCTAssertTrue(element(app, "thread.t-projektplan").waitForExistence(timeout: 20))
+        sleep(1)
+        element(app, "compose").click()
+        let body = element(app, "compose.body")
+        XCTAssertTrue(body.waitForExistence(timeout: 10))
+        body.click()
+        app.typeKey("v", modifierFlags: .command)
+        XCTAssertTrue(element(app, "compose.attachment.\(name)").waitForExistence(timeout: 10), "A pasted file is attached")
+        XCTAssertFalse((body.value as? String ?? "").contains(name), "…and its path is not typed into the text")
+        sleep(1)
+        snapshot("24-datei-angehaengt", of: XCUIScreen.main.screenshot())
+        NSPasteboard.general.clearContents()
         app.typeKey("w", modifierFlags: .command)
     }
 
@@ -255,7 +288,7 @@ final class MailmegUITests: XCTestCase {
         let reviewDay = element(app, "calendar.day.\(dayID(2))")
         XCTAssertTrue(reviewDay.waitForExistence(timeout: 10))
         reviewDay.click()
-        element(app, "calendar.mode.week").click()
+        calendarMode(app, "week")
         let review = element(app, "event.design-review")
         XCTAssertTrue(review.waitForExistence(timeout: 10), "The week should show the demo events")
         sleep(1)
@@ -270,7 +303,7 @@ final class MailmegUITests: XCTestCase {
         snapshot("13-kalender-termin", of: app.windows.firstMatch.screenshot())
         app.typeKey(.escape, modifierFlags: [])
 
-        element(app, "calendar.mode.day").click()
+        calendarMode(app, "day")
         XCTAssertTrue(element(app, "event.design-review").waitForExistence(timeout: 5))
         sleep(1)
         snapshot("14-kalender-tag", of: app.windows.firstMatch.screenshot())
@@ -280,7 +313,7 @@ final class MailmegUITests: XCTestCase {
         XCTAssertTrue(element(app, "event.detail").waitForExistence(timeout: 5), "A waiting invitation opens its details")
         app.typeKey(.escape, modifierFlags: [])
 
-        element(app, "calendar.mode.agenda").click()
+        calendarMode(app, "agenda")
         XCTAssertTrue(element(app, "agenda.quarterly").waitForExistence(timeout: 5), "The agenda lists the coming days")
         sleep(1)
         snapshot("19-kalender-agenda", of: app.windows.firstMatch.screenshot())
@@ -289,7 +322,7 @@ final class MailmegUITests: XCTestCase {
         element(app, "section.mail").click()
         XCTAssertTrue(element(app, "thread.t-projektplan").waitForExistence(timeout: 10), "The mail tab keeps the mailbox")
         element(app, "section.calendar").click()
-        element(app, "calendar.mode.week").click()
+        calendarMode(app, "week")
     }
 
     func testInlineReplyAndCollapsedQuotes() {
@@ -497,10 +530,10 @@ final class MailmegUITests: XCTestCase {
         waitForExpectations(timeout: 10)
 
         app.typeKey("2", modifierFlags: .command)
-        XCTAssertTrue(element(app, "calendar.mode.agenda").waitForExistence(timeout: 10), "⌘2 should open the calendar")
-        element(app, "calendar.mode.agenda").click()
+        XCTAssertTrue(element(app, "calendar.title").waitForExistence(timeout: 10), "⌘2 should open the calendar")
+        calendarMode(app, "agenda")
         XCTAssertTrue(element(app, "agenda.demo-new-1").waitForExistence(timeout: 10), "The new event should be in the calendar")
-        element(app, "calendar.mode.week").click()
+        calendarMode(app, "week")
     }
 
     func testEditDeleteEventAndMonthView() {
@@ -511,7 +544,7 @@ final class MailmegUITests: XCTestCase {
         let tomorrow = element(app, "calendar.day.\(dayID(1))")
         XCTAssertTrue(tomorrow.waitForExistence(timeout: 10))
         tomorrow.click()
-        element(app, "calendar.mode.day").click()
+        calendarMode(app, "day")
         let lunch = element(app, "event.lunch")
         XCTAssertTrue(lunch.waitForExistence(timeout: 10))
         lunch.click()
@@ -549,11 +582,11 @@ final class MailmegUITests: XCTestCase {
         expectation(for: gone, evaluatedWith: element(app, "event.lunch"))
         waitForExpectations(timeout: 10)
 
-        element(app, "calendar.mode.month").click()
+        calendarMode(app, "month")
         XCTAssertTrue(element(app, "calendar.month").waitForExistence(timeout: 5), "The month view should open")
         sleep(1)
         snapshot("18-kalender-monat", of: app.windows.firstMatch.screenshot())
-        element(app, "calendar.mode.week").click()
+        calendarMode(app, "week")
     }
 
     func testSendFileViaGoogleDrive() {

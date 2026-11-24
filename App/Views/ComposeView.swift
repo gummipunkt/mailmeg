@@ -20,6 +20,8 @@ struct ComposeView: View {
     @State private var isImporting = false
     /// The next file import goes to Google Drive instead of the message.
     @State private var importsToDrive = false
+    /// Files are being dragged over the message.
+    @State private var isDropTargeted = false
     @State private var uploads: [DriveUpload] = []
     @State private var drivePrompt: String?
     @State private var errorMessage: String?
@@ -201,7 +203,8 @@ struct ComposeView: View {
                     runs: $draft.richBody,
                     initialCursor: draft.cursorOffset,
                     focusOnAppear: !draft.to.isEmpty,
-                    controller: formatter
+                    controller: formatter,
+                    onDropFiles: { addFiles($0) }
                 )
                 .padding(.horizontal, 2)
 
@@ -283,6 +286,27 @@ struct ComposeView: View {
         }
         .padding(isEmbedded ? 12 : 14)
         .modifier(ComposeChrome(isEmbedded: isEmbedded, title: draft.subject.isEmpty ? tr("Neue E-Mail", "New Message") : draft.subject))
+        // Files dragged from the Finder anywhere onto the message are attached.
+        .dropDestination(for: URL.self) { urls, _ in
+            let files = urls.filter(\.isFileURL)
+            guard !files.isEmpty else { return false }
+            addFiles(files)
+            return true
+        } isTargeted: { isDropTargeted = $0 }
+        .overlay {
+            if isDropTargeted {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(Color.accentColor, style: StrokeStyle(lineWidth: 2, dash: [7, 5]))
+                    .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay {
+                        Label(tr("Dateien hier ablegen, um sie anzuhängen", "Drop files here to attach them"), systemImage: "paperclip")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Color.accentColor)
+                    }
+                    .padding(6)
+                    .allowsHitTesting(false)
+            }
+        }
         .fileImporter(isPresented: $isImporting, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
             addAttachments(result)
         }
@@ -333,6 +357,9 @@ struct ComposeView: View {
             // Files of a message that was moved here from below its conversation.
             let handedOver = ComposeHandoff.takeAttachments(for: draft.id)
             if !handedOver.isEmpty { attachments = handedOver }
+            // Files dropped on the quick reply field.
+            let dropped = ComposeHandoff.takeFiles(for: draft.id)
+            if !dropped.isEmpty { addFiles(dropped) }
             if draft.accountID.isEmpty, let first = model.accounts.first {
                 draft.accountID = first.id
             }
@@ -501,6 +528,8 @@ struct ComposeView: View {
                     chip(name: attachment.filename, size: attachment.data.count) {
                         attachments.remove(at: index)
                     }
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("compose.attachment.\(attachment.filename)")
                 }
                 ForEach(draft.forwardedAttachments) { attachment in
                     chip(name: attachment.filename, size: attachment.size) {
@@ -652,6 +681,22 @@ struct ComposeView: View {
         .background(Theme.tint, in: Capsule())
     }
 
+    /// Attaches files that were dropped or pasted (large ones go via Google Drive, as with the button).
+    private func addFiles(_ urls: [URL]) {
+        var files: [URL] = []
+        for url in urls {
+            var isDirectory: ObjCBool = false
+            if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory), isDirectory.boolValue {
+                errorMessage = tr("Ordner lassen sich nicht anhängen – bitte vorher als ZIP komprimieren.", "Folders can’t be attached – compress them as a ZIP first.")
+            } else {
+                files.append(url)
+            }
+        }
+        guard !files.isEmpty else { return }
+        importsToDrive = false
+        addAttachments(.success(files))
+    }
+
     private func addAttachments(_ result: Result<[URL], Error>) {
         switch result {
         case .success(let urls):
@@ -731,10 +776,9 @@ private struct ComposeChrome: ViewModifier {
         if isEmbedded {
             content
                 .frame(maxWidth: .infinity)
-                // The lower part of the backdrop, so the editor continues the window.
-                .background(LinearGradient(colors: [Theme.backdropMiddle, Theme.backdropBottom], startPoint: .top, endPoint: .bottom))
+                // Part of the conversation's sheet, set off by a line.
                 .clipped()
-                .overlay(alignment: .top) { Divider().opacity(0.6) }
+                .overlay(alignment: .top) { Divider().overlay(Theme.hairline.opacity(0.6)) }
         } else {
             content
                 .frame(minWidth: 520, minHeight: 400)
@@ -758,5 +802,17 @@ enum ComposeHandoff {
 
     static func takeAttachments(for draftID: UUID) -> [OutgoingAttachment] {
         attachments.removeValue(forKey: draftID) ?? []
+    }
+
+    private static var files: [UUID: [URL]] = [:]
+
+    /// Files to attach as soon as the editor for this draft opens.
+    static func keepFiles(_ urls: [URL], for draftID: UUID) {
+        guard !urls.isEmpty else { return }
+        files[draftID] = urls
+    }
+
+    static func takeFiles(for draftID: UUID) -> [URL] {
+        files.removeValue(forKey: draftID) ?? []
     }
 }

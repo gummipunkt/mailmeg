@@ -109,7 +109,7 @@ struct InvitationCard: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(width: 52, height: 56)
-        .background(Theme.cardFill)
+        .background(Theme.solidCard)
         .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
         .shadow(color: .black.opacity(0.08), radius: 3, y: 1)
     }

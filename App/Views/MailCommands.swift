@@ -41,6 +41,24 @@ struct MailCommands: Commands {
             Button(tr("Konto hinzufügen …", "Add Account…")) { Task { await model.signIn() } }
         }
 
+        CommandMenu(tr("Kalender", "Calendar")) {
+            Button(tr("Heute", "Today")) { model.calendarView?.goToToday() }
+                .keyboardShortcut("t")
+                .disabled(model.section != .calendar)
+            Divider()
+            calendarMode(.day, title: tr("Tag", "Day"), key: "1")
+            calendarMode(.week, title: tr("Woche", "Week"), key: "2")
+            calendarMode(.month, title: tr("Monat", "Month"), key: "3")
+            calendarMode(.agenda, title: tr("Agenda", "Agenda"), key: "4")
+            Divider()
+            Button(tr("Zurück", "Back")) { model.calendarView?.step(-1) }
+                .keyboardShortcut(.leftArrow, modifiers: [.command, .option])
+                .disabled(model.section != .calendar)
+            Button(tr("Weiter", "Forward")) { model.calendarView?.step(1) }
+                .keyboardShortcut(.rightArrow, modifiers: [.command, .option])
+                .disabled(model.section != .calendar)
+        }
+
         CommandMenu(tr("E-Mail", "Message")) {
             Button(tr("Antworten", "Reply")) { compose(.reply) }
                 .keyboardShortcut("r")
@@ -93,6 +111,12 @@ struct MailCommands: Commands {
                 .keyboardShortcut("u", modifiers: [.command, .option])
                 .disabled(model.threadDetail == nil)
         }
+    }
+
+    private func calendarMode(_ mode: CalendarViewState.Mode, title: String, key: KeyEquivalent) -> some View {
+        Button(title) { model.calendarView?.mode = mode }
+            .keyboardShortcut(key, modifiers: [.command, .option])
+            .disabled(model.section != .calendar)
     }
 
     private func showSource(_ mode: SourceRequest.Mode) {

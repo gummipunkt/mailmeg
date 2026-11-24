@@ -11,6 +11,8 @@ struct MailBodyEditor: NSViewRepresentable {
     var initialCursor: Int
     var focusOnAppear: Bool
     var controller: RichTextController
+    /// Files dragged from the Finder (or pasted) into the text: they become attachments.
+    var onDropFiles: ([URL]) -> Void = { _ in }
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -53,6 +55,7 @@ struct MailBodyEditor: NSViewRepresentable {
         controller.textView = textView
         controller.onChange = { [weak coordinator = context.coordinator] in coordinator?.publish() }
         textView.onPaste = { [weak coordinator = context.coordinator] in coordinator?.publish() }
+        textView.onDropFiles = { [weak coordinator = context.coordinator] urls in coordinator?.parent.onDropFiles(urls) }
 
         let cursor = min(max(initialCursor, 0), (text as NSString).length)
         DispatchQueue.main.async {
@@ -127,8 +130,69 @@ struct MailBodyEditor: NSViewRepresentable {
 /// links are kept, while fonts, sizes, colours and layout from websites or documents are not.
 final class MailTextView: NSTextView {
     var onPaste: (() -> Void)?
+    /// Called with files dropped on or pasted into the text, instead of inserting their paths.
+    var onDropFiles: (([URL]) -> Void)?
+    private var isFileDrag = false
+
+    // MARK: Files from the Finder
+
+    static func fileURLs(in pasteboard: NSPasteboard) -> [URL] {
+        let objects = pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])
+        return (objects as? [URL]) ?? []
+    }
+
+    override var acceptableDragTypes: [NSPasteboard.PasteboardType] {
+        super.acceptableDragTypes + [.fileURL]
+    }
+
+    private func isFileDrag(_ sender: NSDraggingInfo) -> Bool {
+        onDropFiles != nil && sender.draggingPasteboard.availableType(from: [.fileURL]) != nil
+    }
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        isFileDrag = isFileDrag(sender)
+        return isFileDrag ? .copy : super.draggingEntered(sender)
+    }
+
+    override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        isFileDrag ? .copy : super.draggingUpdated(sender)
+    }
+
+    override func draggingExited(_ sender: NSDraggingInfo?) {
+        if isFileDrag {
+            isFileDrag = false
+        } else {
+            super.draggingExited(sender)
+        }
+    }
+
+    override func prepareForDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        isFileDrag ? true : super.prepareForDragOperation(sender)
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        guard isFileDrag else { return super.performDragOperation(sender) }
+        let urls = Self.fileURLs(in: sender.draggingPasteboard)
+        guard !urls.isEmpty else { return false }
+        onDropFiles?(urls)
+        return true
+    }
+
+    override func concludeDragOperation(_ sender: NSDraggingInfo?) {
+        if isFileDrag {
+            isFileDrag = false
+        } else {
+            super.concludeDragOperation(sender)
+        }
+    }
 
     override func paste(_ sender: Any?) {
+        // Files copied in the Finder are attached, not pasted as a path.
+        let files = Self.fileURLs(in: .general)
+        if !files.isEmpty, let onDropFiles {
+            onDropFiles(files)
+            return
+        }
         guard let pasted = Self.normalizedPaste(from: .general) else {
             super.paste(sender)
             return

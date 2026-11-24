@@ -46,7 +46,7 @@ struct OnboardingView: View {
                         .font(.system(size: 13, design: .monospaced))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 9)
-                        .background(Theme.cardFill, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                        .background(Theme.solidCard, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: 9, style: .continuous)
                                 .strokeBorder(isValid ? Color.accentColor : Theme.hairline)

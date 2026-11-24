@@ -28,21 +28,20 @@ struct ThreadDetailView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                header
-                ForEach(orderedMessages) { item in
-                    MessageCardView(item: binding(for: item), detail: detail)
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    header
+                    ForEach(orderedMessages) { item in
+                        MessageCardView(item: binding(for: item), detail: detail)
+                    }
                 }
+                .padding(.horizontal, 24)
+                .padding(.top, 22)
+                .padding(.bottom, 22)
+                .frame(maxWidth: 900)
+                .frame(maxWidth: .infinity)
             }
-            .padding(.horizontal, 28)
-            .padding(.top, 8)
-            .padding(.bottom, 22)
-            .frame(maxWidth: 900)
-            .frame(maxWidth: .infinity)
-        }
-        .safeAreaInset(edge: .top, spacing: 0) { actionBar }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
             if let draft = detail.inlineDraft {
                 // The reply is written right below the conversation.
                 ComposeView(draft: draft, onClose: { detail.inlineDraft = nil })
@@ -72,123 +71,10 @@ struct ThreadDetailView: View {
                     .onChange(of: proxy.size.height) { _, height in paneHeight = height }
             }
         }
-        .glassBackground(.canvas)
+        .detailSheet()
     }
-
-    // MARK: Airmail-style action bar
 
     private var thread: ThreadSummary? { model.selectedThread }
-
-    /// Full bar when there is room; in a narrow column the reply actions share one menu.
-    private var actionBar: some View {
-        GlassGroup {
-            ViewThatFits(in: .horizontal) {
-                actionButtons(compact: false)
-                actionButtons(compact: true)
-            }
-        }
-        .padding(.horizontal, 18)
-        .padding(.top, 8)
-        .padding(.bottom, 8)
-        .frostedBar(tint: Theme.canvas)
-    }
-
-    private func actionButtons(compact: Bool) -> some View {
-        HStack(spacing: 8) {
-            ToolbarGroup {
-                ToolbarIconButton(systemImage: "arrowshape.turn.up.left", help: tr("Antworten (⌘R)", "Reply (⌘R)")) { compose(.reply) }
-                    .accessibilityIdentifier("detail.reply")
-                if compact {
-                    ToolbarIconMenu(systemImage: "arrowshape.turn.up.right", help: tr("Allen antworten oder weiterleiten", "Reply All or Forward")) {
-                        Button(tr("Allen antworten", "Reply All")) { compose(.replyAll) }
-                        Button(tr("Weiterleiten", "Forward")) { compose(.forward) }
-                    }
-                } else {
-                    ToolbarIconButton(systemImage: "arrowshape.turn.up.left.2", help: tr("Allen antworten (⇧⌘R)", "Reply All (⇧⌘R)")) { compose(.replyAll) }
-                    ToolbarIconButton(systemImage: "arrowshape.turn.up.right", help: tr("Weiterleiten (⇧⌘F)", "Forward (⇧⌘F)")) { compose(.forward) }
-                }
-            }
-
-            ToolbarGroup {
-                if thread?.labelIDs.contains(SystemLabel.trash) == true {
-                    ToolbarIconButton(systemImage: "arrow.uturn.backward", help: tr("Wiederherstellen", "Restore")) { model.perform(.untrash) }
-                } else {
-                    ToolbarIconButton(systemImage: "archivebox", help: tr("Archivieren (⌃⌘A)", "Archive (⌃⌘A)")) { model.perform(.archive) }
-                    ToolbarIconButton(systemImage: "trash", help: tr("In den Papierkorb (⌘⌫)", "Move to Trash (⌘⌫)")) { model.perform(.trash) }
-                }
-                labelsMenu
-                ToolbarIconButton(
-                    systemImage: thread?.isUnread == true ? "envelope.badge" : "envelope.open",
-                    help: tr("Als gelesen/ungelesen markieren (⇧⌘U)", "Mark as Read/Unread (⇧⌘U)"),
-                    isActive: thread?.isUnread == true
-                ) { model.toggleRead() }
-            }
-
-            Spacer(minLength: 6)
-
-            ToolbarGroup {
-                ToolbarIconButton(systemImage: "chevron.up", help: tr("Vorherige Konversation (⌥⌘↑)", "Previous Conversation (⌥⌘↑)")) { model.selectAdjacentThread(-1) }
-                    .disabled(!model.canSelectAdjacentThread(-1))
-                    .opacity(model.canSelectAdjacentThread(-1) ? 1 : 0.4)
-                    .accessibilityIdentifier("detail.previous")
-                ToolbarIconButton(systemImage: "chevron.down", help: tr("Nächste Konversation (⌥⌘↓)", "Next Conversation (⌥⌘↓)")) { model.selectAdjacentThread(1) }
-                    .disabled(!model.canSelectAdjacentThread(1))
-                    .opacity(model.canSelectAdjacentThread(1) ? 1 : 0.4)
-                    .accessibilityIdentifier("detail.next")
-            }
-            moreMenu
-        }
-    }
-
-    private var labelsMenu: some View {
-        let userLabels = detail.account.labels
-            .filter { !$0.isSystem && !$0.isHidden }
-            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-        let applied = thread?.labelIDs ?? []
-        return ToolbarIconMenu(systemImage: "tag", help: tr("Labels", "Labels")) {
-            if userLabels.isEmpty {
-                Text(tr("Keine eigenen Labels", "No Custom Labels"))
-            }
-            ForEach(userLabels) { label in
-                let isOn = applied.contains(label.id)
-                Toggle(label.name, isOn: Binding(
-                    get: { isOn },
-                    set: { model.perform($0 ? .addLabel(label.id) : .removeLabel(label.id)) }
-                ))
-            }
-        }
-        .accessibilityIdentifier("detail.labels")
-    }
-
-    private var moreMenu: some View {
-        GlassCircleMenu(systemImage: "ellipsis", help: tr("Weitere Aktionen", "More Actions")) {
-            Button(thread?.isStarred == true ? tr("Markierung entfernen", "Remove Star") : tr("Markieren", "Star")) { model.toggleStar() }
-            if thread?.labelIDs.contains(SystemLabel.spam) == true {
-                Button(tr("Kein Spam", "Not Spam")) { model.perform(.notSpam) }
-            } else {
-                Button(tr("Als Spam melden", "Report Spam")) { model.perform(.reportSpam) }
-            }
-            if thread?.labelIDs.contains(SystemLabel.inbox) == false {
-                Button(tr("In den Posteingang", "Move to Inbox")) { model.perform(.moveToInbox) }
-            }
-            Divider()
-            Button(tr("Termin aus E-Mail erstellen …", "Create Event from Email…")) {
-                if let draft = model.eventDraftFromSelectedMessage() { openWindow(value: draft) }
-            }
-            Divider()
-            Button(tr("Header anzeigen", "Show Headers")) { showSource(.headers) }
-            Button(tr("Quelltext anzeigen", "Show Source")) { showSource(.source) }
-        }
-        .accessibilityIdentifier("detail.more")
-    }
-
-    private func compose(_ kind: ComposeKind) {
-        if let draft = detail.draft(kind) { detail.present(draft, openWindow: openWindow) }
-    }
-
-    private func showSource(_ mode: SourceRequest.Mode) {
-        if let request = detail.sourceRequest(mode) { openWindow(value: request) }
-    }
 
     @ViewBuilder
     private var header: some View {
@@ -202,6 +88,15 @@ struct ThreadDetailView: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("detail.subject")
                     Spacer(minLength: 8)
+                    // Up and down through the list, without leaving the conversation.
+                    IconButton(systemImage: "chevron.up", help: tr("Vorherige Konversation (⌥⌘↑)", "Previous Conversation (⌥⌘↑)")) { model.selectAdjacentThread(-1) }
+                        .disabled(!model.canSelectAdjacentThread(-1))
+                        .opacity(model.canSelectAdjacentThread(-1) ? 1 : 0.35)
+                        .accessibilityIdentifier("detail.previous")
+                    IconButton(systemImage: "chevron.down", help: tr("Nächste Konversation (⌥⌘↓)", "Next Conversation (⌥⌘↓)")) { model.selectAdjacentThread(1) }
+                        .disabled(!model.canSelectAdjacentThread(1))
+                        .opacity(model.canSelectAdjacentThread(1) ? 1 : 0.35)
+                        .accessibilityIdentifier("detail.next")
                     Button {
                         model.toggleStar()
                     } label: {
@@ -699,8 +594,18 @@ private struct QuickReplyBar: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background(Theme.backdropBottom)
-        .overlay(alignment: .top) { Divider().opacity(0.25) }
+        .overlay(alignment: .top) { Divider().overlay(Theme.hairline.opacity(0.6)) }
+        // Files dropped here open the full reply with the files attached.
+        .dropDestination(for: URL.self) { urls, _ in
+            let files = urls.filter(\.isFileURL)
+            guard !files.isEmpty, var draft = detail.draft(.reply) else { return false }
+            draft.body = DraftComposer.insert(text, into: draft)
+            draft.cursorOffset += text.utf16.count
+            text = ""
+            ComposeHandoff.keepFiles(files, for: draft.id)
+            detail.present(draft, openWindow: openWindow)
+            return true
+        }
     }
 
     private var placeholder: String {

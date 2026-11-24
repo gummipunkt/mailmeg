@@ -4,25 +4,29 @@ import SwiftUI
 
 // MARK: - Calendar tab
 
-/// The calendar next to the sidebar: title and controls on top, the week, day, month or
-/// agenda below on a card.
+/// The calendar next to the sidebar: a sheet with the title on top and the week, day, month
+/// or agenda below; the controls are in the window toolbar.
 struct CalendarMainView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
     @Bindable var view: CalendarViewState
     @State private var showsSearch = false
-    @FocusState private var searchFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
             header
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .floatingPanel()
-                .padding(.horizontal, 14)
-                .padding(.bottom, 14)
         }
+        .floatingPanel()
+        .padding(.horizontal, 8)
+        .padding(.top, 2)
+        .padding(.bottom, 10)
         .navigationTitle(tr("Kalender", "Calendar"))
+        .toolbar { toolbar }
+        .searchable(text: $view.searchText, isPresented: $showsSearch, placement: .toolbar, prompt: Text(tr("Termine suchen", "Search events")))
+        // Edit > Find (⌘F) puts the cursor into the search field.
+        .onChange(of: model.searchRequest) { showsSearch = true }
         .glassBackground(.canvas)
         .task(id: view.mode) { await view.load() }
     }
@@ -53,36 +57,63 @@ struct CalendarMainView: View {
     // MARK: Header
 
     private var header: some View {
-        // One container for all the glass in the header.
-        GlassGroup {
-            HStack(spacing: 10) {
-                title
-                    .layoutPriority(-1)
-                GlassCapsuleButton(title: tr("Heute", "Today")) { view.goToToday() }
-                    .accessibilityIdentifier("calendar.today")
-                stepper
-                if view.isLoading {
-                    ProgressView().controlSize(.small)
-                }
-                Spacer(minLength: 8)
-                PillSwitch<CalendarViewState.Mode>(selection: $view.mode, options: [
-                    .init(value: .day, title: tr("Tag", "Day"), systemImage: nil, identifier: "calendar.mode.day"),
-                    .init(value: .week, title: tr("Woche", "Week"), systemImage: nil, identifier: "calendar.mode.week"),
-                    .init(value: .month, title: tr("Monat", "Month"), systemImage: nil, identifier: "calendar.mode.month"),
-                    .init(value: .agenda, title: tr("Agenda", "Agenda"), systemImage: nil, identifier: "calendar.mode.agenda"),
-                ])
-                newEventButton
-                search
+        HStack(spacing: 10) {
+            title
+            if view.isLoading {
+                ProgressView().controlSize(.small)
             }
+            Spacer(minLength: 8)
         }
-        .padding(.leading, 22)
-        .padding(.trailing, 16)
-        .padding(.top, 8)
-        .padding(.bottom, 12)
-        // Edit > Find (⌘F) opens the search.
-        .onChange(of: model.searchRequest) {
-            showsSearch = true
-            searchFocused = true
+        .padding(.horizontal, 20)
+        .padding(.top, 16)
+        .padding(.bottom, 10)
+    }
+
+    // MARK: Toolbar
+
+    @ToolbarContentBuilder
+    private var toolbar: some ToolbarContent {
+        ToolbarItem {
+            Button(tr("Heute", "Today")) { view.goToToday() }
+                .help(tr("Zum heutigen Tag (⌘T)", "Go to today (⌘T)"))
+                .accessibilityIdentifier("calendar.today")
+        }
+        ToolbarItemGroup {
+            Button { view.step(-1) } label: {
+                Label(tr("Zurück", "Back"), systemImage: "chevron.left")
+            }
+            .help(tr("Zurück", "Back"))
+            .accessibilityIdentifier("calendar.previous")
+            Button { view.step(1) } label: {
+                Label(tr("Weiter", "Forward"), systemImage: "chevron.right")
+            }
+            .help(tr("Weiter", "Forward"))
+            .accessibilityIdentifier("calendar.next")
+        }
+        ToolbarFlexibleGap()
+        ToolbarItem {
+            Picker(tr("Ansicht", "View"), selection: $view.mode) {
+                Text(tr("Tag", "Day")).tag(CalendarViewState.Mode.day)
+                Text(tr("Woche", "Week")).tag(CalendarViewState.Mode.week)
+                Text(tr("Monat", "Month")).tag(CalendarViewState.Mode.month)
+                Text(tr("Agenda", "Agenda")).tag(CalendarViewState.Mode.agenda)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .help(tr("Ansicht (⌥⌘1 bis ⌥⌘4)", "View (⌥⌘1 to ⌥⌘4)"))
+            .accessibilityIdentifier("calendar.mode")
+        }
+        ToolbarFlexibleGap()
+        ToolbarItem {
+            Button {
+                openWindow(value: model.newEventDraft())
+            } label: {
+                Label(tr("Neuer Termin", "New Event"), systemImage: "plus")
+            }
+            .buttonStyle(.borderedProminent)
+            .help(tr("Neuer Termin (⌥⌘N)", "New Event (⌥⌘N)"))
+            .disabled(view.usableAccounts.isEmpty)
+            .accessibilityIdentifier("calendar.new")
         }
     }
 
@@ -104,88 +135,6 @@ struct CalendarMainView: View {
         .minimumScaleFactor(0.6)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("calendar.title")
-    }
-
-    /// Back and forward in one capsule.
-    private var stepper: some View {
-        HStack(spacing: 0) {
-            stepButton("chevron.left", help: tr("Zurück", "Back"), identifier: "calendar.previous") { view.step(-1) }
-            Divider().frame(height: 14).opacity(0.6)
-            stepButton("chevron.right", help: tr("Weiter", "Forward"), identifier: "calendar.next") { view.step(1) }
-        }
-        .glassControl(in: Capsule())
-        .fixedSize()
-    }
-
-    private func stepButton(_ systemImage: String, help: String, identifier: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.system(size: 12.5, weight: .semibold))
-                .foregroundStyle(Color.primary.opacity(0.8))
-                .frame(width: 32, height: 32)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .help(help)
-        .accessibilityLabel(help)
-        .accessibilityIdentifier(identifier)
-    }
-
-    private var newEventButton: some View {
-        Button {
-            openWindow(value: model.newEventDraft())
-        } label: {
-            Image(systemName: "plus")
-                .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(.white)
-                .frame(width: 32, height: 32)
-                .prominentGlass(in: Circle())
-                .contentShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .help(tr("Neuer Termin (⌥⌘N)", "New Event (⌥⌘N)"))
-        .accessibilityLabel(tr("Neuer Termin", "New Event"))
-        .disabled(view.usableAccounts.isEmpty)
-        .accessibilityIdentifier("calendar.new")
-    }
-
-    @ViewBuilder
-    private var search: some View {
-        if showsSearch || view.isSearching {
-            HStack(spacing: 6) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.secondary)
-                TextField(tr("Termine suchen", "Search events"), text: $view.searchText)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 12.5))
-                    .frame(width: 140)
-                    .focused($searchFocused)
-                    .onExitCommand { closeSearch() }
-                    .accessibilityIdentifier("calendar.search")
-                Button(action: closeSearch) {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.tertiary)
-                }
-                .buttonStyle(.plain)
-                .help(tr("Suche beenden", "Close Search"))
-                .accessibilityLabel(tr("Suche beenden", "Close Search"))
-            }
-            .padding(.horizontal, 11)
-            .frame(height: 32)
-            .glassControl(in: Capsule(), isHighlighted: true)
-            .task { searchFocused = true }
-        } else {
-            GlassCircleButton(systemImage: "magnifyingglass", help: tr("Termine suchen (⌘F)", "Search Events (⌘F)")) {
-                showsSearch = true
-            }
-            .accessibilityIdentifier("calendar.searchButton")
-        }
-    }
-
-    private func closeSearch() {
-        view.searchText = ""
-        showsSearch = false
     }
 }
 
@@ -956,7 +905,7 @@ private struct EventBlock: View {
     @ViewBuilder
     private var fill: some View {
         if entry.isAwaitingAnswer {
-            Theme.cardFill.opacity(0.9)
+            Theme.solidCard.opacity(0.92)
         } else if event.isOutOfOffice {
             ZStack {
                 color.opacity(0.12)

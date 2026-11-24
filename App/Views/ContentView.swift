@@ -7,14 +7,21 @@ struct ContentView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        Group {
-            if model.isLoadingAccounts {
-                LoadingAccountsView()
-            } else if model.accounts.isEmpty {
-                OnboardingView()
-            } else {
-                RootView()
+        GeometryReader { proxy in
+            Group {
+                if model.isLoadingAccounts {
+                    LoadingAccountsView()
+                } else if model.accounts.isEmpty {
+                    OnboardingView()
+                } else {
+                    RootView()
+                }
             }
+            // Every column draws its part of one backdrop; for that it needs the window's size.
+            .environment(\.windowSize, CGSize(
+                width: proxy.size.width + proxy.safeAreaInsets.leading + proxy.safeAreaInsets.trailing,
+                height: proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom
+            ))
         }
         // Mail actions go to the window's undo stack (Edit > Undo, ⌘Z).
         .onAppear { model.undoManager = undoManager }

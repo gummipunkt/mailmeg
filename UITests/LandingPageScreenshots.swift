@@ -20,6 +20,13 @@ final class LandingPageScreenshots: XCTestCase {
         app.descendants(matching: .any)[identifier].firstMatch
     }
 
+    /// Switches the calendar's view with its menu shortcut (⌥⌘1 … ⌥⌘4).
+    private func calendarMode(_ app: XCUIApplication, _ mode: String) {
+        let keys = ["day": "1", "week": "2", "month": "3", "agenda": "4"]
+        app.typeKey(keys[mode] ?? "2", modifierFlags: [.command, .option])
+        usleep(500_000)
+    }
+
     /// The window that contains the given element (compose, source and settings windows).
     private func window(of app: XCUIApplication, containing identifier: String) -> XCUIElement {
         for index in 0..<app.windows.count {
@@ -126,15 +133,15 @@ final class LandingPageScreenshots: XCTestCase {
             let id = String(format: "calendar.day.%04d-%02d-%02d", parts.year!, parts.month!, parts.day!)
             XCTAssertTrue(element(app, id).waitForExistence(timeout: 10))
             element(app, id).click()
-            element(app, "calendar.mode.week").click()
+            calendarMode(app, "week")
             XCTAssertTrue(element(app, "event.design-review").waitForExistence(timeout: 10))
             sleep(2)
             save("\(language)-calendar-\(dark ? "dark" : "light")", app.windows.firstMatch.screenshot())
-            element(app, "calendar.mode.month").click()
+            calendarMode(app, "month")
             XCTAssertTrue(element(app, "calendar.month").waitForExistence(timeout: 5))
             sleep(1)
             save("\(language)-calendar-month-\(dark ? "dark" : "light")", app.windows.firstMatch.screenshot())
-            element(app, "calendar.mode.week").click()
+            calendarMode(app, "week")
             app.terminate()
         }
     }

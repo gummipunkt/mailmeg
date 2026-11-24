@@ -3,6 +3,8 @@ import MailmegKit
 
 enum AppSettings {
     static let clientIDKey = "googleClientID"
+    /// The colours of the window's backdrop (`ColorMood`).
+    static let colorMoodKey = "colorMood"
     static let loadRemoteContentKey = "loadRemoteContent"
     static let notificationsKey = "notificationsEnabled"
     static let refreshIntervalKey = "refreshInterval"

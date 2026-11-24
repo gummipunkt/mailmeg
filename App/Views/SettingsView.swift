@@ -29,6 +29,7 @@ private struct GeneralSettingsView: View {
     @AppStorage(AppSettings.collapseQuotesKey) private var collapseQuotes = true
     @AppStorage(AppSettings.faviconAvatarsKey) private var faviconAvatars = true
     @AppStorage(AppSettings.newestFirstKey) private var newestFirst = true
+    @AppStorage(AppSettings.colorMoodKey) private var colorMood = ColorMood.aurora.rawValue
     @State private var notificationStatus: UNAuthorizationStatus?
 
     private var lastRefreshText: String {
@@ -109,6 +110,13 @@ private struct GeneralSettingsView: View {
             }
 
             Section {
+                LabeledContent(tr("Farbstimmung", "Colour mood")) {
+                    HStack(spacing: 10) {
+                        ForEach(ColorMood.allCases) { mood in
+                            MoodSwatch(mood: mood, isSelected: colorMood == mood.rawValue) { colorMood = mood.rawValue }
+                        }
+                    }
+                }
                 Toggle(tr("Avatare in der Nachrichtenliste", "Show avatars in the message list"), isOn: $showAvatars)
                 Toggle(tr("Website-Symbol der Absender-Domain als Profilbild", "Use the sender domain’s website icon as picture"), isOn: $faviconAvatars)
                     .accessibilityIdentifier("settings.favicons")
@@ -155,6 +163,35 @@ private struct GeneralSettingsView: View {
         default:
             return tr("Von macOS erlaubt", "Allowed by macOS")
         }
+    }
+}
+
+/// One colour mood to pick: a round preview of its backdrop with the name below.
+private struct MoodSwatch: View {
+    let mood: ColorMood
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                MoodCanvas(mood: mood)
+                    .frame(width: 44, height: 30)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .strokeBorder(isSelected ? Color.accentColor : Color.primary.opacity(0.15), lineWidth: isSelected ? 2 : 1)
+                    )
+                Text(mood.title)
+                    .font(.system(size: 10.5, weight: isSelected ? .semibold : .regular))
+                    .foregroundStyle(isSelected ? Color.primary : Color.secondary)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(mood.title)
+        .accessibilityValue(isSelected ? tr("ausgewählt", "selected") : "")
+        .accessibilityIdentifier("settings.mood.\(mood.rawValue)")
     }
 }
 

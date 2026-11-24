@@ -73,12 +73,20 @@ struct SidebarView: View {
         let isDropTarget = dropTarget == entry.selection
         let color = tint(for: item)
         return HStack(spacing: 9) {
-            // Every folder has its own colour, on a pastel tile.
+            // Every folder has its own colour: a white symbol on a vivid tile.
             Image(systemName: item.systemImage)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(color)
+                .symbolVariant(.fill)
+                .font(.system(size: 10.5, weight: .semibold))
+                .foregroundStyle(.white)
                 .frame(width: 22, height: 22)
-                .background(RoundedRectangle(cornerRadius: 6.5, style: .continuous).fill(color.opacity(0.17)))
+                .background(
+                    RoundedRectangle(cornerRadius: 6.5, style: .continuous)
+                        .fill(color)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6.5, style: .continuous)
+                                .fill(LinearGradient(colors: [.white.opacity(0.3), .white.opacity(0)], startPoint: .top, endPoint: .bottom))
+                        )
+                )
             Text(item.title)
                 .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
                 .lineLimit(1)
@@ -86,10 +94,10 @@ struct SidebarView: View {
             if item.unread > 0 {
                 Text("\(item.unread)")
                     .font(.system(size: 10.5, weight: .bold).monospacedDigit())
-                    .foregroundStyle(isSelected ? Color.white : color)
+                    .foregroundStyle(isSelected ? Color.white : Color.primary.opacity(0.7))
                     .padding(.horizontal, 6)
                     .frame(minWidth: 20, minHeight: 18)
-                    .background(Capsule().fill(isSelected ? AnyShapeStyle(Theme.accentGradient) : AnyShapeStyle(color.opacity(0.15))))
+                    .background(Capsule().fill(isSelected ? AnyShapeStyle(Theme.accentGradient) : AnyShapeStyle(Color.primary.opacity(0.08))))
             }
         }
         .padding(.leading, CGFloat(item.indent) * 14)
@@ -109,12 +117,11 @@ struct SidebarView: View {
         // The selected mailbox is a white pill instead of the system's grey highlight.
         .listRowBackground(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(isDropTarget ? Palette.violet.opacity(0.22) : isSelected ? Theme.cardFill.opacity(0.92) : Color.clear)
+                .fill(isDropTarget ? Palette.violet.opacity(0.22) : isSelected ? Theme.cardFill : Color.clear)
                 .overlay(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .strokeBorder(Palette.violet.opacity(isDropTarget ? 0.9 : 0), lineWidth: 1.5)
                 )
-                .shadow(color: Theme.shadow.opacity(isSelected && !isDropTarget ? 0.12 : 0), radius: 5, y: 2)
                 .padding(.horizontal, 8)
         )
         // Conversations dragged from the list are filed here.
@@ -189,7 +196,7 @@ struct SectionSwitch: View {
             .background {
                 if selected {
                     Capsule()
-                        .fill(Theme.cardFill)
+                        .fill(Theme.solidCard)
                         .shadow(color: .black.opacity(0.12), radius: 2, y: 1)
                 }
             }

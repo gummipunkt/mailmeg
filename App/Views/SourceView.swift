@@ -191,7 +191,7 @@ private struct ModeSwitch: View {
                 .background {
                     if selected {
                         Capsule()
-                            .fill(Theme.cardFill)
+                            .fill(Theme.solidCard)
                             .shadow(color: .black.opacity(0.12), radius: 2, y: 1)
                     }
                 }
