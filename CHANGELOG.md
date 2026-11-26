@@ -3,7 +3,7 @@
 Alle nennenswerten Änderungen an MailMeG. Versionen folgen [Semantic Versioning](https://semver.org/lang/de/).
 All notable changes to MailMeG. Versions follow [Semantic Versioning](https://semver.org/).
 
-## [1.15.0] – 2026-11-24
+## [1.15.0] – 2026-11-26
 
 - **Native Fenster-Toolbar**: Abrufen, Filter und „Neue E-Mail“ stehen über der Liste, Antworten, Allen antworten, Weiterleiten, Archivieren, Löschen, Labels, Gelesen/Ungelesen und „Weitere Aktionen“ über der Konversation – als System-Toolbar mit Glas-Knöpfen auf macOS 26, mit Überlaufmenü bei schmalem Fenster. Im Kalender liegen Heute, Zurück/Weiter, die Ansichten, „Neuer Termin“ und das System-Suchfeld in der Toolbar
   · **Native window toolbar**: Get Mail, Filter and “New Message” sit above the list, Reply, Reply All, Forward, Archive, Delete, Labels, Read/Unread and “More Actions” above the conversation – as the system toolbar with glass buttons on macOS 26 and an overflow menu in narrow windows. In the calendar, Today, Back/Forward, the views, “New Event” and the system search field are in the toolbar
