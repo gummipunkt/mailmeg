@@ -19,6 +19,12 @@ All notable changes to MailMeG. Versions follow [Semantic Versioning](https://se
   · **See-through background** in five steps (Settings → General → Appearance): the desktop and the windows behind show through
 - Dünne, kurze **Trennlinien** zwischen den E-Mails der Liste
   · Thin, short **separator lines** between the emails in the list
+- **In der Konversation suchen** (⌘F oder die Lupe neben dem Betreff): E-Mails, die den Text enthalten, werden aufgeklappt und ins Bild geholt, die Fundstellen im Text markiert; ↩ springt zur nächsten. Das Postfach durchsucht jetzt ⌥⌘F
+  · **Find in the conversation** (⌘F or the magnifier next to the subject): messages containing the text unfold and scroll into view, the matches are marked in the text; ↩ goes to the next. The mailbox search is now ⌥⌘F
+- **Alle Anhänge sichern** ist deutlicher: ein Knopf neben dem Betreff sichert alle Dateien der Konversation (auch aus eingeklappten E-Mails), der Knopf in der E-Mail zählt eingebettete Bilder mit, und jede Anhang-Kachel zeigt ihren Sichern-Knopf dauerhaft
+  · **Save all attachments** is more obvious: a button next to the subject saves every file of the conversation (also from folded messages), the button inside a message counts embedded images too, and each attachment tile always shows its save button
+- **Eingebettete Bilder sichern**: Rechtsklick auf ein Bild in der E-Mail → „Bild sichern unter …“ fragt nach dem Ort und speichert es
+  · **Saving embedded images**: right-click an image in the email → “Save Image As…” asks where and saves it
 - Menü **Kalender**: Heute (⌘T), Tag/Woche/Monat/Agenda (⌥⌘1 bis ⌥⌘4), Zurück/Weiter (⌥⌘← / ⌥⌘→)
   · **Calendar** menu: Today (⌘T), Day/Week/Month/Agenda (⌥⌘1 to ⌥⌘4), Back/Forward (⌥⌘← / ⌥⌘→)
 - Vorherige/nächste Konversation: die Pfeile stehen jetzt neben dem Betreff

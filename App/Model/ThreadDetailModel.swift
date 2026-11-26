@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import UniformTypeIdentifiers
 import MailmegKit
 import Observation
 import SwiftUI
@@ -162,7 +163,7 @@ final class ThreadDetailModel {
 
     func save(_ attachment: AttachmentInfo) async {
         let panel = NSSavePanel()
-        panel.nameFieldStringValue = Self.safeFilename(attachment.filename)
+        panel.nameFieldStringValue = Self.filename(for: attachment)
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
             let data = try await data(for: attachment)
@@ -191,7 +192,7 @@ final class ThreadDetailModel {
         do {
             for attachment in attachments {
                 let data = try await data(for: attachment)
-                let url = Self.freeURL(for: Self.safeFilename(attachment.filename), in: folder, taken: saved)
+                let url = Self.freeURL(for: Self.filename(for: attachment), in: folder, taken: saved)
                 try data.write(to: url, options: .atomic)
                 saved.append(url)
             }
@@ -215,6 +216,172 @@ final class ThreadDetailModel {
             counter += 1
         }
         return candidate
+    }
+
+    /// The name a file is saved under. Embedded images often have none: "Bild.png".
+    static func filename(for attachment: AttachmentInfo) -> String {
+        if !attachment.filename.isEmpty { return safeFilename(attachment.filename) }
+        let ext = UTType(mimeType: attachment.mimeType)?.preferredFilenameExtension ?? "dat"
+        let base = attachment.mimeType.hasPrefix("image/") ? tr("Bild", "Image") : tr("Anhang", "Attachment")
+        return "\(base).\(ext)"
+    }
+
+    /// Everything a message carries as a file: its attachments and the images embedded in its text.
+    static func files(of item: MessageItem) -> [AttachmentInfo] {
+        var seen = Set<String>()
+        return (item.content.visibleAttachments + item.content.embeddedImages).filter { seen.insert($0.id).inserted }
+    }
+
+    /// The files of the whole conversation, also of messages that are folded away.
+    var allFiles: [AttachmentInfo] {
+        messages.flatMap { Self.files(of: $0) }
+    }
+
+    // MARK: - Images in the text
+
+    /// Saves an image shown in a message, asking where. `source` is what the page loaded it
+    /// from: a `data:` URL for images embedded in the mail, or a web address.
+    func saveImage(source: String, in messageID: String) async {
+        do {
+            let image = try await Self.image(from: source)
+            var name = image.name
+            // An embedded image with a file name keeps it.
+            if let item = messages.first(where: { $0.id == messageID }),
+               let part = item.content.embeddedImages.first(where: { $0.inlineData == image.data && !$0.filename.isEmpty }) {
+                name = Self.safeFilename(part.filename)
+            }
+            let panel = NSSavePanel()
+            panel.nameFieldStringValue = name
+            panel.directoryURL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
+            panel.canCreateDirectories = true
+            guard panel.runModal() == .OK, let url = panel.url else { return }
+            try image.data.write(to: url, options: .atomic)
+        } catch {
+            onError?(error)
+        }
+    }
+
+    private static func image(from source: String) async throws -> (data: Data, name: String) {
+        let unreadable = GmailAPIError(status: 0, message: tr("Das Bild konnte nicht gelesen werden.", "The image could not be read."), reason: nil)
+        if source.hasPrefix("data:") {
+            // data:image/png;base64,iVBOR…
+            guard let comma = source.firstIndex(of: ",") else { throw unreadable }
+            let header = source[source.index(source.startIndex, offsetBy: 5)..<comma]
+            let payload = String(source[source.index(after: comma)...])
+            let mimeType = header.split(separator: ";").first.map(String.init) ?? "image/png"
+            let data: Data?
+            if header.contains(";base64") {
+                data = Data(base64Encoded: payload, options: .ignoreUnknownCharacters)
+            } else {
+                data = payload.removingPercentEncoding?.data(using: .utf8)
+            }
+            guard let data, !data.isEmpty else { throw unreadable }
+            let ext = UTType(mimeType: mimeType)?.preferredFilenameExtension ?? "png"
+            return (data, "\(tr("Bild", "Image")).\(ext)")
+        }
+        guard let url = URL(string: source), let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" else {
+            throw unreadable
+        }
+        let (data, response) = try await URLSession.shared.data(from: url)
+        guard !data.isEmpty else { throw unreadable }
+        var name = safeFilename(url.lastPathComponent)
+        if (name as NSString).pathExtension.isEmpty {
+            let ext = response.mimeType.flatMap { UTType(mimeType: $0)?.preferredFilenameExtension } ?? "png"
+            name = "\(name.isEmpty || name == "attachment" ? tr("Bild", "Image") : name).\(ext)"
+        }
+        return (data, name)
+    }
+
+    // MARK: - Find in the conversation
+
+    /// The search field above the conversation is showing.
+    private(set) var isFinding = false
+    /// Changes when the field should take the focus.
+    private(set) var findFocusRequest = 0
+    var findText = "" {
+        didSet { if findText != oldValue { updateFind() } }
+    }
+    /// The messages containing the text, in the order given to `updateFind`.
+    private(set) var findMatches: [String] = []
+    private(set) var findIndex = 0
+    /// Changes when the current match should be scrolled into view.
+    private(set) var findRevealRequest = 0
+    /// How the view orders the messages (newest first or oldest first).
+    var findOrder: [String] = []
+    @ObservationIgnored private var searchTexts: [String: String] = [:]
+
+    var currentFindMatch: String? {
+        findMatches.indices.contains(findIndex) ? findMatches[findIndex] : nil
+    }
+
+    /// What the web views highlight: the text while the search is open.
+    var findHighlight: String {
+        isFinding ? findText.trimmingCharacters(in: .whitespacesAndNewlines) : ""
+    }
+
+    func beginFind() {
+        isFinding = true
+        findFocusRequest += 1
+    }
+
+    func endFind() {
+        isFinding = false
+        findText = ""
+        findMatches = []
+        findIndex = 0
+    }
+
+    /// Finds the messages containing the text, unfolds them and shows the first.
+    private func updateFind() {
+        let needle = findText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !needle.isEmpty else {
+            findMatches = []
+            findIndex = 0
+            return
+        }
+        let order = findOrder.isEmpty ? messages.map(\.id) : findOrder
+        var matches: [String] = []
+        for id in order {
+            guard let index = messages.firstIndex(where: { $0.id == id }) else { continue }
+            if searchText(for: messages[index]).localizedCaseInsensitiveContains(needle) {
+                matches.append(id)
+                if !messages[index].isExpanded { messages[index].isExpanded = true }
+            }
+        }
+        findMatches = matches
+        findIndex = 0
+        if !matches.isEmpty { findRevealRequest += 1 }
+    }
+
+    /// To the next (1) or previous (-1) message containing the text.
+    func stepFind(_ direction: Int) {
+        guard !findMatches.isEmpty else { return }
+        findIndex = (findIndex + direction + findMatches.count) % findMatches.count
+        findRevealRequest += 1
+    }
+
+    private func searchText(for item: MessageItem) -> String {
+        if let cached = searchTexts[item.id] { return cached }
+        var parts = [item.message.from?.name ?? "", item.message.from?.address ?? "", item.message.subject]
+        if let html = item.content.html, !html.isEmpty {
+            parts.append(Self.text(fromHTML: html))
+        } else {
+            parts.append(item.content.plainText ?? "")
+        }
+        let text = parts.joined(separator: "\n")
+        searchTexts[item.id] = text
+        return text
+    }
+
+    /// The readable text of a mail's HTML: tags and styles removed, the common entities resolved.
+    static func text(fromHTML html: String) -> String {
+        var text = html.replacingOccurrences(of: "<(style|script|head)[^>]*>[\\s\\S]*?</\\1>", with: " ", options: [.regularExpression, .caseInsensitive])
+        text = text.replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
+        let entities = ["&nbsp;": " ", "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": "\"", "&#39;": "'", "&auml;": "ä", "&ouml;": "ö", "&uuml;": "ü", "&Auml;": "Ä", "&Ouml;": "Ö", "&Uuml;": "Ü", "&szlig;": "ß"]
+        for (entity, character) in entities {
+            text = text.replacingOccurrences(of: entity, with: character)
+        }
+        return text.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
     }
 
     static func safeFilename(_ name: String) -> String {

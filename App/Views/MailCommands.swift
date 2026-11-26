@@ -22,9 +22,21 @@ struct MailCommands: Commands {
         // Edit > Find, where every Mac app has it.
         CommandGroup(after: .pasteboard) {
             Divider()
-            Button(tr("Suchen", "Find")) { model.requestSearch() }
-                .keyboardShortcut("f")
-                .disabled(model.accounts.isEmpty)
+            // As in Mail: ⌘F looks inside the open conversation, ⌥⌘F searches the mailbox.
+            Button(tr("Suchen", "Find")) {
+                if model.section == .mail, !model.isMultipleSelection, let detail = model.threadDetail {
+                    detail.beginFind()
+                } else {
+                    model.requestSearch()
+                }
+            }
+            .keyboardShortcut("f")
+            .disabled(model.accounts.isEmpty)
+            Button(model.section == .calendar ? tr("Termine suchen", "Search Events") : tr("Postfach durchsuchen", "Search Mailbox")) {
+                model.requestSearch()
+            }
+            .keyboardShortcut("f", modifiers: [.command, .option])
+            .disabled(model.accounts.isEmpty)
         }
 
         CommandMenu(tr("Postfach", "Mailbox")) {

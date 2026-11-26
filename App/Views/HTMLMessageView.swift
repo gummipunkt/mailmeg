@@ -12,8 +12,12 @@ struct HTMLMessageView: NSViewRepresentable {
     let allowsRemoteContent: Bool
     /// Quoted earlier messages start folded away.
     var collapsesQuotes = true
+    /// Text to mark in the message (find in conversation); empty for none.
+    var highlight = ""
     @Binding var height: CGFloat
     var onMailto: (URL) -> Void = { _ in }
+    /// "Save Image As…" from the context menu, with what the page loaded the image from.
+    var onSaveImage: (String) -> Void = { _ in }
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -41,6 +45,7 @@ struct HTMLMessageView: NSViewRepresentable {
         let webView = PassthroughWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
         webView.allowsMagnification = true
+        webView.onSaveImage = { [weak coordinator = context.coordinator] source in coordinator?.parent.onSaveImage(source) }
         context.coordinator.webView = webView
         context.coordinator.render(force: true)
         return webView
@@ -49,6 +54,7 @@ struct HTMLMessageView: NSViewRepresentable {
     func updateNSView(_ webView: PassthroughWebView, context: Context) {
         context.coordinator.parent = self
         context.coordinator.render(force: false)
+        context.coordinator.applyHighlight()
     }
 
     static func dismantleNSView(_ webView: PassthroughWebView, coordinator: Coordinator) {
@@ -109,6 +115,7 @@ struct HTMLMessageView: NSViewRepresentable {
         details.mailmeg-quote > summary:hover { background: #DFE2FE; }
         details.mailmeg-quote[open] > summary { margin-bottom: 10px; }
         .mailmeg-quoted { color: #6B6E8C; border-left: 2px solid #B1CBFA; padding-left: 10px; }
+        mark.mailmeg-find { background: #FFE066; color: #1B1B1F; border-radius: 3px; padding: 0 1px; }
         html.plain, html.plain body { background: #FAF7FF; }
         @media (prefers-color-scheme: dark) {
           html.plain, html.plain body { background: #272445; color: #E9E7FB; }
@@ -224,9 +231,56 @@ struct HTMLMessageView: NSViewRepresentable {
         })();
         """#
 
+        /// Marks every occurrence of a text (case-insensitive) and opens folded quotes that
+        /// contain one; called with an empty text it removes the marks again.
+        static let highlightScript = #"""
+        (function(term) {
+          document.querySelectorAll('mark.mailmeg-find').forEach(function(mark) {
+            var parent = mark.parentNode;
+            parent.replaceChild(document.createTextNode(mark.textContent), mark);
+            parent.normalize();
+          });
+          if (!term) return 0;
+          var root = document.getElementById('mailmeg-root') || document.body;
+          var needle = term.toLowerCase();
+          var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+          var nodes = [];
+          while (walker.nextNode()) nodes.push(walker.currentNode);
+          var count = 0;
+          nodes.forEach(function(node) {
+            var parent = node.parentNode;
+            if (!parent || /^(STYLE|SCRIPT|SUMMARY)$/.test(parent.tagName)) return;
+            var text = node.nodeValue;
+            var lower = text.toLowerCase();
+            var index = lower.indexOf(needle);
+            if (index < 0 || lower.length !== text.length) return;
+            var fragment = document.createDocumentFragment();
+            var position = 0;
+            while (index >= 0) {
+              fragment.appendChild(document.createTextNode(text.slice(position, index)));
+              var mark = document.createElement('mark');
+              mark.className = 'mailmeg-find';
+              mark.textContent = text.slice(index, index + needle.length);
+              fragment.appendChild(mark);
+              count++;
+              position = index + needle.length;
+              index = lower.indexOf(needle, position);
+            }
+            fragment.appendChild(document.createTextNode(text.slice(position)));
+            parent.replaceChild(fragment, node);
+          });
+          document.querySelectorAll('details').forEach(function(details) {
+            if (details.querySelector('mark.mailmeg-find')) details.open = true;
+          });
+          return count;
+        })
+        """#
+
         var parent: HTMLMessageView
         weak var webView: WKWebView?
         private var renderedKey: String?
+        private var appliedHighlight = ""
+        private var hasLoaded = false
 
         init(_ parent: HTMLMessageView) {
             self.parent = parent
@@ -242,6 +296,8 @@ struct HTMLMessageView: NSViewRepresentable {
             let key = "\(parent.allowsRemoteContent)|\(document.hashValue)"
             guard force || key != renderedKey, let webView else { return }
             renderedKey = key
+            hasLoaded = false
+            appliedHighlight = ""
             let allowsRemote = parent.allowsRemoteContent
             Task { @MainActor in
                 let controller = webView.configuration.userContentController
@@ -251,6 +307,23 @@ struct HTMLMessageView: NSViewRepresentable {
                 }
                 webView.loadHTMLString(document, baseURL: nil)
             }
+        }
+
+        /// Marks the text of the conversation search in the loaded page.
+        func applyHighlight() {
+            let term = parent.highlight
+            guard hasLoaded, term != appliedHighlight, let webView else { return }
+            appliedHighlight = term
+            // The text goes in as a JSON string, so quotes and backslashes cannot break out.
+            guard let data = try? JSONSerialization.data(withJSONObject: [term]),
+                  let list = String(data: data, encoding: .utf8) else { return }
+            let script = Self.highlightScript + ".apply(null, \(list));"
+            webView.evaluateJavaScript(script, in: nil, in: .defaultClient, completionHandler: nil)
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            hasLoaded = true
+            applyHighlight()
         }
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
@@ -280,10 +353,52 @@ struct HTMLMessageView: NSViewRepresentable {
     }
 }
 
-/// WKWebView that hands scroll events to the enclosing SwiftUI ScrollView.
+/// WKWebView that hands scroll events to the enclosing SwiftUI ScrollView, and whose context
+/// menu can save the image under the pointer.
 final class PassthroughWebView: WKWebView {
+    /// Called with the source of the image to save (a `data:` URL or a web address).
+    var onSaveImage: ((String) -> Void)?
+    /// Where the context menu was opened, in the view's coordinates.
+    private var menuPoint = CGPoint.zero
+
     override func scrollWheel(with event: NSEvent) {
         nextResponder?.scrollWheel(with: event)
+    }
+
+    override func willOpenMenu(_ menu: NSMenu, with event: NSEvent) {
+        super.willOpenMenu(menu, with: event)
+        menuPoint = convert(event.locationInWindow, from: nil)
+        // WebKit offers its image items only on an image. Its own "Download Image" does nothing
+        // in this view (there is no download handling), so it is replaced by one that asks where.
+        let isImage = menu.items.contains { ($0.identifier?.rawValue ?? "").contains("Image") }
+        guard isImage else { return }
+        for item in menu.items where item.identifier?.rawValue == "WKMenuItemIdentifierDownloadImage" {
+            menu.removeItem(item)
+        }
+        let save = NSMenuItem(title: tr("Bild sichern unter …", "Save Image As…"), action: #selector(saveImageFromMenu(_:)), keyEquivalent: "")
+        save.target = self
+        menu.insertItem(save, at: 0)
+        menu.insertItem(.separator(), at: 1)
+    }
+
+    @objc private func saveImageFromMenu(_ sender: Any?) {
+        // The page's coordinates start at the top left and are not magnified.
+        let scale = max(magnification, 0.01)
+        let x = menuPoint.x / scale
+        let y = (isFlipped ? menuPoint.y : bounds.height - menuPoint.y) / scale
+        let script = """
+        (function() {
+          var element = document.elementFromPoint(\(x), \(y));
+          if (!element) return null;
+          var image = element.tagName === 'IMG' ? element : (element.closest('a, picture, figure') || element).querySelector('img');
+          return image ? (image.currentSrc || image.src) : null;
+        })()
+        """
+        evaluateJavaScript(script, in: nil, in: .defaultClient) { [weak self] result in
+            if case .success(let value) = result, let source = value as? String, !source.isEmpty {
+                self?.onSaveImage?(source)
+            }
+        }
     }
 }
 

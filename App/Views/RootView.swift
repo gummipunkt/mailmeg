@@ -178,6 +178,14 @@ private struct MailDetailColumn: View {
                 if let draft = model.eventDraftFromSelectedMessage() { openWindow(value: draft) }
             }
             .disabled(!hasThread)
+            Button(tr("Alle Anhänge sichern …", "Save All Attachments…")) {
+                if let detail = model.threadDetail {
+                    Task { await detail.saveAll(detail.allFiles) }
+                }
+            }
+            .disabled(!hasThread || (model.threadDetail?.allFiles.isEmpty ?? true))
+            Button(tr("In Konversation suchen", "Find in Conversation")) { model.threadDetail?.beginFind() }
+                .disabled(!hasThread)
             Divider()
             Button(tr("Header anzeigen", "Show Headers")) { showSource(.headers) }
                 .disabled(!hasThread)

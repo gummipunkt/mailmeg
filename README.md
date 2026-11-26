@@ -32,7 +32,9 @@ mit Beispiel-E-Mails, Kalender und Einladung.
 - **Zitierte Nachrichten eingeklappt** („••• Zitat anzeigen“), neueste Nachricht zuerst – beides umstellbar
 - **Website-Symbol der Absender-Domain** als Profilbild, wenn es eines gibt
 - **Quelltext** (⌥⌘U) und **alle Header** (⇧⌘H) in einem eigenen Fenster, mit Filter, Kopieren und Sichern als `.eml`
-- **Anhänge und Inline-Bilder** öffnen oder sichern; bei mehreren Anhängen „Alle sichern …“ in einen Ordner
+- **Anhänge und eingebettete Bilder** öffnen oder sichern (Rechtsklick auf ein Bild → „Bild sichern unter …“);
+  „Alle sichern …“ für alle Dateien einer E-Mail oder der ganzen Konversation
+- **In der Konversation suchen** (⌘F): passende E-Mails klappen auf, die Fundstellen sind markiert
 - **Umlaute und Sonderzeichen** werden richtig angezeigt, auch wenn der Absender einen falschen Zeichensatz angibt
 
 ### Schreiben
@@ -117,7 +119,8 @@ mit Beispiel-E-Mails, Kalender und Einladung.
 | ⌥⌘E | Termin aus E-Mail | ⌥⌘U / ⇧⌘H | Quelltext / Header |
 | ⌘A | Alle in der Liste auswählen | ⌥⌘A | Alle Ergebnisse auswählen |
 | ⌘S | Entwurf sichern | ⌘B / ⌘I / ⌘U / ⌘K | Fett / Kursiv / Unterstrichen / Link |
-| ⌘F | Suchen (Mail und Kalender) | ⌘Z / ⇧⌘Z | Widerrufen / Wiederholen |
+| ⌘F | In der Konversation suchen | ⌥⌘F | Postfach bzw. Termine durchsuchen |
+| ⌘Z / ⇧⌘Z | Widerrufen / Wiederholen | | |
 | ⌫ | Auswahl in den Papierkorb | ⌘T | Kalender: Heute |
 | ⌥⌘1 … ⌥⌘4 | Kalender: Tag / Woche / Monat / Agenda | ⌥⌘← / ⌥⌘→ | Kalender: Zurück / Weiter |
 

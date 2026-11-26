@@ -10,6 +10,7 @@ struct ThreadDetailView: View {
     @AppStorage(AppSettings.newestFirstKey) private var newestFirst = true
     /// Height of the pane, for sizing the reply editor below the conversation.
     @State private var paneHeight: CGFloat = 640
+    @FocusState private var findFocused: Bool
 
     /// The messages in the order chosen in Settings (newest first by default).
     private var orderedMessages: [MessageItem] {
@@ -29,18 +30,32 @@ struct ThreadDetailView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    header
-                    ForEach(orderedMessages) { item in
-                        MessageCardView(item: binding(for: item), detail: detail)
+            if detail.isFinding {
+                findBar
+            }
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        header
+                        ForEach(orderedMessages) { item in
+                            MessageCardView(item: binding(for: item), detail: detail)
+                                .id(item.id)
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 22)
+                    .padding(.bottom, 22)
+                    .frame(maxWidth: 900)
+                    .frame(maxWidth: .infinity)
+                }
+                // The message with the text that was searched for comes into view.
+                .onChange(of: detail.findRevealRequest) {
+                    guard let id = detail.currentFindMatch else { return }
+                    // A moment later: the message may just be unfolding.
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                        withAnimation(.easeInOut(duration: 0.2)) { proxy.scrollTo(id, anchor: .top) }
                     }
                 }
-                .padding(.horizontal, 24)
-                .padding(.top, 22)
-                .padding(.bottom, 22)
-                .frame(maxWidth: 900)
-                .frame(maxWidth: .infinity)
             }
             if let draft = detail.inlineDraft {
                 // The reply is written right below the conversation.
@@ -71,10 +86,58 @@ struct ThreadDetailView: View {
                     .onChange(of: proxy.size.height) { _, height in paneHeight = height }
             }
         }
+        // The search walks through the messages in the order they are shown.
+        .onChange(of: orderedMessages.map(\.id), initial: true) { _, ids in
+            detail.findOrder = ids
+        }
         .detailSheet()
     }
 
     private var thread: ThreadSummary? { model.selectedThread }
+
+    // MARK: Find in the conversation
+
+    private var findBar: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+            TextField(tr("In dieser Konversation suchen", "Find in this conversation"), text: $detail.findText)
+                .textFieldStyle(.plain)
+                .font(.system(size: 13))
+                .focused($findFocused)
+                .onSubmit { detail.stepFind(1) }
+                .onExitCommand { detail.endFind() }
+                .accessibilityIdentifier("detail.findField")
+            Text(findStatus)
+                .font(.system(size: 11.5).monospacedDigit())
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .accessibilityIdentifier("detail.findStatus")
+            IconButton(systemImage: "chevron.up", help: tr("Vorheriger Treffer", "Previous Match")) { detail.stepFind(-1) }
+                .disabled(detail.findMatches.count < 2)
+            IconButton(systemImage: "chevron.down", help: tr("Nächster Treffer (↩)", "Next Match (↩)")) { detail.stepFind(1) }
+                .disabled(detail.findMatches.count < 2)
+            Button(tr("Fertig", "Done")) { detail.endFind() }
+                .buttonStyle(.link)
+                .font(.system(size: 12, weight: .medium))
+                .accessibilityIdentifier("detail.findDone")
+        }
+        .padding(.horizontal, 16)
+        .frame(height: 40)
+        .background(Theme.tint.opacity(0.7))
+        .overlay(alignment: .bottom) { Divider().overlay(Theme.hairline.opacity(0.6)) }
+        .onAppear { findFocused = true }
+        .onChange(of: detail.findFocusRequest) { findFocused = true }
+    }
+
+    private var findStatus: String {
+        guard !detail.findHighlight.isEmpty else { return "" }
+        let count = detail.findMatches.count
+        if count == 0 { return tr("Keine Treffer", "No matches") }
+        return tr("E-Mail \(detail.findIndex + 1) von \(count)", "Message \(detail.findIndex + 1) of \(count)")
+    }
 
     @ViewBuilder
     private var header: some View {
@@ -88,6 +151,10 @@ struct ThreadDetailView: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("detail.subject")
                     Spacer(minLength: 8)
+                    IconButton(systemImage: "magnifyingglass", help: tr("In dieser Konversation suchen (⌘F)", "Find in This Conversation (⌘F)")) {
+                        if detail.isFinding { detail.endFind() } else { detail.beginFind() }
+                    }
+                    .accessibilityIdentifier("detail.find")
                     // Up and down through the list, without leaving the conversation.
                     IconButton(systemImage: "chevron.up", help: tr("Vorherige Konversation (⌥⌘↑)", "Previous Conversation (⌥⌘↑)")) { model.selectAdjacentThread(-1) }
                         .disabled(!model.canSelectAdjacentThread(-1))
@@ -115,6 +182,17 @@ struct ThreadDetailView: View {
                     Text(metaLine)
                         .font(.system(size: 11.5))
                         .foregroundStyle(.secondary)
+                    // Every file of the conversation at once, also from folded messages.
+                    let files = detail.allFiles
+                    if files.count > 1 {
+                        Spacer(minLength: 8)
+                        SaveFilesButton(
+                            title: tr("Alle \(files.count) Anhänge sichern …", "Save All \(files.count) Attachments…"),
+                            files: files,
+                            detail: detail
+                        )
+                        .accessibilityIdentifier("detail.saveAllAttachments")
+                    }
                 }
             }
             .padding(.bottom, 8)
@@ -165,8 +243,12 @@ struct MessageCardView: View {
                     plainText: item.content.plainText,
                     allowsRemoteContent: item.allowsRemoteContent,
                     collapsesQuotes: collapsesQuotes,
+                    highlight: detail.findHighlight,
                     height: $bodyHeight,
-                    onMailto: openMailto
+                    onMailto: openMailto,
+                    onSaveImage: { source in
+                        Task { await detail.saveImage(source: source, in: item.id) }
+                    }
                 )
                 .frame(height: max(bodyHeight, 40))
                 // Designed mail needs its white page: it lies in the card like a sheet of paper.
@@ -176,14 +258,23 @@ struct MessageCardView: View {
                 .padding(.bottom, item.content.html != nil ? 10 : 0)
 
                 let attachments = item.content.visibleAttachments
-                if !attachments.isEmpty {
-                    AttachmentGrid(attachments: attachments, detail: detail)
+                let embedded = item.content.embeddedImages
+                if !attachments.isEmpty || !embedded.isEmpty {
+                    AttachmentGrid(attachments: attachments, embedded: embedded, detail: detail)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 12)
                 }
             }
         }
         .card()
+        // The message the conversation search is at.
+        .overlay {
+            if detail.isFinding, detail.currentFindMatch == item.id {
+                RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous)
+                    .strokeBorder(Color.accentColor.opacity(0.7), lineWidth: 1.5)
+                    .allowsHitTesting(false)
+            }
+        }
         .opacity(item.isExpanded ? 1 : 0.92)
     }
 
@@ -435,56 +526,92 @@ private struct MessageDetailsGrid: View {
 
 // MARK: - Attachments
 
+/// One prominent button that saves several files into a folder the user picks.
+struct SaveFilesButton: View {
+    let title: String
+    let files: [AttachmentInfo]
+    let detail: ThreadDetailModel
+    @State private var isSaving = false
+
+    var body: some View {
+        Button {
+            isSaving = true
+            Task {
+                if files.count == 1, let file = files.first {
+                    await detail.save(file)
+                } else {
+                    await detail.saveAll(files)
+                }
+                isSaving = false
+            }
+        } label: {
+            HStack(spacing: 5) {
+                if isSaving {
+                    ProgressView().controlSize(.mini)
+                } else {
+                    Image(systemName: "arrow.down.circle.fill")
+                }
+                Text(title)
+            }
+            .font(.system(size: 11.5, weight: .semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 11)
+            .frame(height: 24)
+            .background(Capsule().fill(Theme.accentGradient))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(isSaving)
+        .help(tr("In einen Ordner sichern, den du auswählst", "Save into a folder you choose"))
+    }
+}
+
+/// The files of one message: a line saying what there is with a button for all of it, and
+/// a tile per attachment. Images embedded in the text have no tile, but count for the button.
 struct AttachmentGrid: View {
     let attachments: [AttachmentInfo]
+    var embedded: [AttachmentInfo] = []
     let detail: ThreadDetailModel
 
-    @State private var isSavingAll = false
+    private var files: [AttachmentInfo] { attachments + embedded }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            if attachments.count > 1 {
-                // Several files: how many, how large, and one button for all of them.
+            if files.count > 1 || !embedded.isEmpty {
                 HStack(spacing: 8) {
                     Label(summary, systemImage: "paperclip")
                         .font(.system(size: 11.5, weight: .medium))
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
                     Spacer(minLength: 8)
-                    if isSavingAll {
-                        ProgressView().controlSize(.small)
-                    }
-                    Button {
-                        isSavingAll = true
-                        Task {
-                            await detail.saveAll(attachments)
-                            isSavingAll = false
-                        }
-                    } label: {
-                        Label(tr("Alle sichern …", "Save All…"), systemImage: "arrow.down.circle")
-                            .font(.system(size: 11.5, weight: .semibold))
-                            .foregroundStyle(Color.accentColor)
-                            .padding(.horizontal, 10)
-                            .frame(height: 24)
-                            .background(Capsule().fill(Theme.tint))
-                            .contentShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isSavingAll)
-                    .help(tr("Alle Anhänge in einen Ordner sichern", "Save all attachments into a folder"))
+                    SaveFilesButton(
+                        title: files.count == 1 ? tr("Sichern …", "Save…") : tr("Alle sichern …", "Save All…"),
+                        files: files,
+                        detail: detail
+                    )
                     .accessibilityIdentifier("attachments.saveAll")
                 }
             }
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 190, maximum: 260), spacing: 8)], alignment: .leading, spacing: 8) {
-                ForEach(attachments) { attachment in
-                    AttachmentTile(attachment: attachment, detail: detail)
+            if !attachments.isEmpty {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 190, maximum: 260), spacing: 8)], alignment: .leading, spacing: 8) {
+                    ForEach(attachments) { attachment in
+                        AttachmentTile(attachment: attachment, detail: detail)
+                    }
                 }
             }
         }
     }
 
     private var summary: String {
-        let size = Formatting.byteCount(attachments.reduce(0) { $0 + $1.size })
-        return tr("\(attachments.count) Anhänge · \(size)", "\(attachments.count) attachments · \(size)")
+        var parts: [String] = []
+        if !attachments.isEmpty {
+            parts.append(attachments.count == 1 ? tr("1 Anhang", "1 attachment") : tr("\(attachments.count) Anhänge", "\(attachments.count) attachments"))
+        }
+        if !embedded.isEmpty {
+            parts.append(embedded.count == 1 ? tr("1 eingebettetes Bild", "1 embedded image") : tr("\(embedded.count) eingebettete Bilder", "\(embedded.count) embedded images"))
+        }
+        parts.append(Formatting.byteCount(files.reduce(0) { $0 + $1.size }))
+        return parts.joined(separator: " · ")
     }
 }
 
@@ -511,10 +638,8 @@ private struct AttachmentTile: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
-                if isHovering {
-                    IconButton(systemImage: "arrow.down.circle", help: tr("Sichern unter …", "Save As…")) {
-                        Task { await detail.save(attachment) }
-                    }
+                IconButton(systemImage: "arrow.down.circle", help: tr("Sichern unter …", "Save As…"), tint: isHovering ? .accentColor : .secondary) {
+                    Task { await detail.save(attachment) }
                 }
             }
             .padding(8)

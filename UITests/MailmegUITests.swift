@@ -128,6 +128,30 @@ final class MailmegUITests: XCTestCase {
         app.typeKey("w", modifierFlags: .command)
     }
 
+    /// ⌘F searches inside the open conversation and unfolds the messages containing the text.
+    func testFindInConversation() {
+        let app = launch(["--demo"])
+        let thread = element(app, "thread.t-kaffee")
+        XCTAssertTrue(thread.waitForExistence(timeout: 20))
+        thread.click()
+        XCTAssertTrue(element(app, "detail.subject").waitForExistence(timeout: 10))
+        sleep(1)
+        app.typeKey("f", modifierFlags: .command)
+        let field = element(app, "detail.findField")
+        XCTAssertTrue(field.waitForExistence(timeout: 5), "⌘F opens the search of the conversation")
+        app.typeText("neuen Job")
+        // The first message says it, the second quotes it.
+        let status = element(app, "detail.findStatus")
+        XCTAssertTrue(status.waitForExistence(timeout: 5))
+        XCTAssertTrue(((status.value as? String) ?? status.label).contains("2"), "Two messages contain the text")
+        sleep(1)
+        snapshot("25-suche-in-konversation", of: app.windows.firstMatch.screenshot())
+        app.typeKey(.escape, modifierFlags: [])
+        let gone = NSPredicate(format: "exists == false")
+        expectation(for: gone, evaluatedWith: field)
+        waitForExpectations(timeout: 5)
+    }
+
     func testOnboardingAndDemo() {
         let app = launch(["--onboarding"])
         let demoButton = element(app, "onboarding.demo")
@@ -482,13 +506,13 @@ final class MailmegUITests: XCTestCase {
         app.typeKey("z", modifierFlags: .command)
         XCTAssertTrue(coffee.waitForExistence(timeout: 10), "⌘Z restores a deleted conversation")
 
-        // ⌘F puts the cursor into the search field.
-        app.typeKey("f", modifierFlags: .command)
+        // ⌥⌘F puts the cursor into the mailbox search (⌘F looks inside the open conversation).
+        app.typeKey("f", modifierFlags: [.command, .option])
         app.typeText("Fotos\r")
         expectation(for: gone, evaluatedWith: coffee)
         waitForExpectations(timeout: 10)
         let photos = element(app, "thread.t-fotos")
-        XCTAssertTrue(photos.waitForExistence(timeout: 10), "⌘F focuses the search")
+        XCTAssertTrue(photos.waitForExistence(timeout: 10), "⌥⌘F focuses the mailbox search")
         photos.click()
         XCTAssertTrue(element(app, "attachments.saveAll").waitForExistence(timeout: 10), "Several attachments offer “Save All”")
         sleep(1)

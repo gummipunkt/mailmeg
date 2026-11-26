@@ -44,6 +44,15 @@ public struct MessageContent: Sendable {
         }
     }
 
+    /// Images shown inside the HTML (`cid:` references), which are no separate attachment tiles.
+    public var embeddedImages: [AttachmentInfo] {
+        guard let html else { return [] }
+        return parts.filter { part in
+            guard part.isInline, let contentID = part.contentID else { return false }
+            return html.contains("cid:\(contentID)")
+        }
+    }
+
     public init(message: GmailMessage) {
         html = nil
         plainText = nil
