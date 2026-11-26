@@ -3,7 +3,20 @@
 Alle nennenswerten Änderungen an MailMeG. Versionen folgen [Semantic Versioning](https://semver.org/lang/de/).
 All notable changes to MailMeG. Versions follow [Semantic Versioning](https://semver.org/).
 
-## [1.15.0] – 2026-11-26
+## [1.16.0] – 2026-11-26
+
+- **In der Konversation suchen** (⌘F oder die Lupe neben dem Betreff): E-Mails, die den Text enthalten, werden aufgeklappt und ins Bild geholt, die Fundstellen im Text markiert; ↩ springt zur nächsten. Das Postfach durchsucht jetzt ⌥⌘F
+  · **Find in the conversation** (⌘F or the magnifier next to the subject): messages containing the text unfold and scroll into view, the matches are marked in the text; ↩ goes to the next. The mailbox search is now ⌥⌘F
+- **Alle Anhänge sichern** ist deutlicher: ein Knopf neben dem Betreff sichert alle Dateien der Konversation (auch aus eingeklappten E-Mails), der Knopf in der E-Mail zählt eingebettete Bilder mit, und jede Anhang-Kachel zeigt ihren Sichern-Knopf dauerhaft
+  · **Save all attachments** is more obvious: a button next to the subject saves every file of the conversation (also from folded messages), the button inside a message counts embedded images too, and each attachment tile always shows its save button
+- **Eingebettete Bilder sichern**: Rechtsklick auf ein Bild in der E-Mail → „Bild sichern unter …“ fragt nach dem Ort und speichert es
+  · **Saving embedded images**: right-click an image in the email → “Save Image As…” asks where and saves it
+- **⌘← und ⌘→** (oder ⌥ mit den Pfeilen) in der Nachrichtenliste lösen für die Auswahl dieselben Aktionen aus wie das Wischen nach links und rechts; abschaltbar unter Einstellungen → Allgemein
+  · **⌘← and ⌘→** (or ⌥ with the arrows) in the message list trigger the same actions for the selection as swiping to the left and right; can be turned off in Settings → General
+- **Durchsichtiger Hintergrund** jetzt per Regler statt in fünf Stufen, mit feinerer Abstufung im unteren Bereich: von kaum merklich bis fast ganz
+  · **See-through background** is now a slider instead of five steps, with finer gradation at the lower end: from barely noticeable to almost fully
+
+## [1.15.0] – 2026-11-24
 
 - **Native Fenster-Toolbar**: Abrufen, Filter und „Neue E-Mail“ stehen über der Liste, Antworten, Allen antworten, Weiterleiten, Archivieren, Löschen, Labels, Gelesen/Ungelesen und „Weitere Aktionen“ über der Konversation – als System-Toolbar mit Glas-Knöpfen auf macOS 26, mit Überlaufmenü bei schmalem Fenster. Im Kalender liegen Heute, Zurück/Weiter, die Ansichten, „Neuer Termin“ und das System-Suchfeld in der Toolbar
   · **Native window toolbar**: Get Mail, Filter and “New Message” sit above the list, Reply, Reply All, Forward, Archive, Delete, Labels, Read/Unread and “More Actions” above the conversation – as the system toolbar with glass buttons on macOS 26 and an overflow menu in narrow windows. In the calendar, Today, Back/Forward, the views, “New Event” and the system search field are in the toolbar
@@ -11,20 +24,14 @@ All notable changes to MailMeG. Versions follow [Semantic Versioning](https://se
   · **New design**: the window sits on a vivid gradient (Aurora: violet and blue) that runs as one picture behind all columns and the glass sidebar; the list, the conversation and the calendar are translucent frosted sheets on it. Folders have vivid icon tiles, pictures bright gradients. Settings → General → Appearance offers four **colour moods** (Aurora, Lagoon, Sunset and the calm pastel from before) and sliders for the colour intensity and the opacity of the sheets
 - **Dateien aus dem Finder in eine E-Mail ziehen**: Sie werden angehängt, statt dass ihr Pfad im Text landet – im Text, irgendwo im Verfassen-Fenster oder auf dem Schnellantwort-Feld (das dann die ausführliche Antwort öffnet). Im Finder kopierte Dateien lassen sich auch mit ⌘V anhängen; große Dateien gehen wie beim Knopf automatisch über Google Drive
   · **Drag files from the Finder into an email**: they are attached instead of their path ending up in the text – on the text, anywhere in the compose window or on the quick reply field (which then opens the full reply). Files copied in the Finder can also be attached with ⌘V; large files go via Google Drive automatically, as with the button
-- **Wischen in der Nachrichtenliste**: mit zwei Fingern nach links archivieren, nach rechts löschen – die Zeile folgt den Fingern, dahinter erscheint die farbige Aktion mit Symbol. Mit der Tastatur lösen ⌘← und ⌘→ (oder ⌥ mit den Pfeilen) dieselben Aktionen für die Auswahl aus; das lässt sich abschalten. Was links und rechts passiert, lässt sich unter Einstellungen → Allgemein wählen (Archivieren, Löschen, Gelesen/Ungelesen, Markieren, Spam, Nichts)
-  · **Swiping in the message list**: two fingers to the left archive, to the right delete – the row follows the fingers and reveals the coloured action with its icon. On the keyboard ⌘← and ⌘→ (or ⌥ with the arrows) trigger the same actions for the selection; this can be turned off. Settings → General chooses what left and right do (Archive, Delete, Read/Unread, Star, Spam, Nothing)
+- **Wischen in der Nachrichtenliste**: mit zwei Fingern nach links archivieren, nach rechts löschen – die Zeile folgt den Fingern, dahinter erscheint die farbige Aktion mit Symbol. Was links und rechts passiert, lässt sich unter Einstellungen → Allgemein wählen (Archivieren, Löschen, Gelesen/Ungelesen, Markieren, Spam, Nichts)
+  · **Swiping in the message list**: two fingers to the left archive, to the right delete – the row follows the fingers and reveals the coloured action with its icon. Settings → General chooses what left and right do (Archive, Delete, Read/Unread, Star, Spam, Nothing)
 - **Gmail-Filter** in den Einstellungen (neuer Reiter „Filter“): die Filter des Kontos ansehen, neue anlegen, bestehende ändern und löschen – nach Absender, Empfänger, Betreff, Wörtern und Anhang; mit Posteingang überspringen, als gelesen markieren, Stern, Label, wichtig, nie Spam, löschen. Zum Ändern fragt Google einmalig nach einer weiteren Berechtigung
   · **Gmail filters** in Settings (new “Filters” tab): look at the account’s filters, create new ones, change and delete existing ones – by sender, recipient, subject, words and attachment; skip the inbox, mark as read, star, label, important, never spam, delete. Changing them needs one more Google permission, asked once
-- **Durchsichtiger Hintergrund** per Regler (Einstellungen → Allgemein → Darstellung): der Schreibtisch und die Fenster dahinter scheinen durch, von kaum merklich bis fast ganz
-  · **See-through background** with a slider (Settings → General → Appearance): the desktop and the windows behind show through, from barely noticeable to almost fully
+- **Durchsichtiger Hintergrund** in fünf Stufen (Einstellungen → Allgemein → Darstellung): der Schreibtisch und die Fenster dahinter scheinen durch
+  · **See-through background** in five steps (Settings → General → Appearance): the desktop and the windows behind show through
 - Dünne, kurze **Trennlinien** zwischen den E-Mails der Liste
   · Thin, short **separator lines** between the emails in the list
-- **In der Konversation suchen** (⌘F oder die Lupe neben dem Betreff): E-Mails, die den Text enthalten, werden aufgeklappt und ins Bild geholt, die Fundstellen im Text markiert; ↩ springt zur nächsten. Das Postfach durchsucht jetzt ⌥⌘F
-  · **Find in the conversation** (⌘F or the magnifier next to the subject): messages containing the text unfold and scroll into view, the matches are marked in the text; ↩ goes to the next. The mailbox search is now ⌥⌘F
-- **Alle Anhänge sichern** ist deutlicher: ein Knopf neben dem Betreff sichert alle Dateien der Konversation (auch aus eingeklappten E-Mails), der Knopf in der E-Mail zählt eingebettete Bilder mit, und jede Anhang-Kachel zeigt ihren Sichern-Knopf dauerhaft
-  · **Save all attachments** is more obvious: a button next to the subject saves every file of the conversation (also from folded messages), the button inside a message counts embedded images too, and each attachment tile always shows its save button
-- **Eingebettete Bilder sichern**: Rechtsklick auf ein Bild in der E-Mail → „Bild sichern unter …“ fragt nach dem Ort und speichert es
-  · **Saving embedded images**: right-click an image in the email → “Save Image As…” asks where and saves it
 - Menü **Kalender**: Heute (⌘T), Tag/Woche/Monat/Agenda (⌥⌘1 bis ⌥⌘4), Zurück/Weiter (⌥⌘← / ⌥⌘→)
   · **Calendar** menu: Today (⌘T), Day/Week/Month/Agenda (⌥⌘1 to ⌥⌘4), Back/Forward (⌥⌘← / ⌥⌘→)
 - Vorherige/nächste Konversation: die Pfeile stehen jetzt neben dem Betreff
