@@ -37,6 +37,7 @@ private struct GeneralSettingsView: View {
     @AppStorage(AppSettings.backdropTransparencyKey) private var backdropTransparency = 0.0
     @AppStorage(AppSettings.swipeLeftKey) private var swipeLeft = AppSettings.SwipeAction.archive.rawValue
     @AppStorage(AppSettings.swipeRightKey) private var swipeRight = AppSettings.SwipeAction.trash.rawValue
+    @AppStorage(AppSettings.arrowKeyActionsKey) private var arrowKeyActions = true
     @State private var notificationStatus: UNAuthorizationStatus?
 
     private var lastRefreshText: String {
@@ -125,10 +126,15 @@ private struct GeneralSettingsView: View {
                     ForEach(AppSettings.SwipeAction.allCases) { Text($0.title).tag($0.rawValue) }
                 }
                 .accessibilityIdentifier("settings.swipeRight")
+                Toggle(tr("Auch mit ⌘← und ⌘→ auslösen", "Also trigger with ⌘← and ⌘→"), isOn: $arrowKeyActions)
+                    .accessibilityIdentifier("settings.arrowKeys")
             } header: {
                 Text(tr("Wischen in der Nachrichtenliste", "Swiping in the message list"))
             } footer: {
-                Text(tr("Mit zwei Fingern auf dem Trackpad über eine E-Mail wischen. ⌘Z macht die Aktion rückgängig.", "Swipe across an email with two fingers on the trackpad. ⌘Z undoes the action."))
+                Text(tr(
+                    "Mit zwei Fingern auf dem Trackpad über eine E-Mail wischen. Mit der Tastatur: E-Mail(s) auswählen und ⌘← bzw. ⌘→ drücken (⌥ geht ebenfalls). ⌘Z macht die Aktion rückgängig.",
+                    "Swipe across an email with two fingers on the trackpad. With the keyboard: select the email(s) and press ⌘← or ⌘→ (⌥ works as well). ⌘Z undoes the action."
+                ))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

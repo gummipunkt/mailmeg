@@ -24,7 +24,8 @@ mit Beispiel-E-Mails, Kalender und Einladung.
   Gelesen/Ungelesen, Markieren, Labels zuweisen; per Hover direkt in der Liste, per Rechtsklick oder Tastatur
 - **Drag & Drop**: E-Mails (auch mehrere) auf einen Ordner oder ein Label in der Seitenleiste ziehen
 - **Widerrufen** (⌘Z) für Archivieren, Löschen, Verschieben, Labels, Markieren und Gelesen/Ungelesen
-- **Wischen** in der Liste (Trackpad): standardmäßig nach links archivieren, nach rechts löschen – einstellbar
+- **Wischen** in der Liste (Trackpad) oder ⌘← / ⌘→: standardmäßig nach links archivieren, nach rechts löschen –
+  einstellbar
 - **Gmail-Filter** ansehen, anlegen, ändern und löschen (Einstellungen → Filter)
 - **Vorherige/nächste Konversation** mit ⌥⌘↑/↓ oder den Pfeil-Buttons
 - **Empfängerdetails**: die genaue Adresse, an die eine E-Mail ging (auch bei „mich“), plus Von, Antwort an,
@@ -120,7 +121,7 @@ mit Beispiel-E-Mails, Kalender und Einladung.
 | ⌘A | Alle in der Liste auswählen | ⌥⌘A | Alle Ergebnisse auswählen |
 | ⌘S | Entwurf sichern | ⌘B / ⌘I / ⌘U / ⌘K | Fett / Kursiv / Unterstrichen / Link |
 | ⌘F | In der Konversation suchen | ⌥⌘F | Postfach bzw. Termine durchsuchen |
-| ⌘Z / ⇧⌘Z | Widerrufen / Wiederholen | | |
+| ⌘Z / ⇧⌘Z | Widerrufen / Wiederholen | ⌘← / ⌘→ | Auswahl archivieren / löschen (wie Wischen) |
 | ⌫ | Auswahl in den Papierkorb | ⌘T | Kalender: Heute |
 | ⌥⌘1 … ⌥⌘4 | Kalender: Tag / Woche / Monat / Agenda | ⌥⌘← / ⌥⌘→ | Kalender: Zurück / Weiter |
 

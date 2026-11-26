@@ -8,6 +8,7 @@ struct ThreadListView: View {
     @Bindable var mailbox: MailboxModel
     @AppStorage(AppSettings.swipeLeftKey) private var swipeLeft = AppSettings.SwipeAction.archive.rawValue
     @AppStorage(AppSettings.swipeRightKey) private var swipeRight = AppSettings.SwipeAction.trash.rawValue
+    @AppStorage(AppSettings.arrowKeyActionsKey) private var arrowKeyActions = true
     @State private var swiper = RowSwiper()
 
     var body: some View {
@@ -135,6 +136,17 @@ struct ThreadListView: View {
                   thread.labelIDs.contains(SystemLabel.draft) else { return }
             openDraft(thread)
         }
+        // ⌘← / ⌘→ (or ⌥ with the arrows) do what swiping to the left or right does, for the
+        // whole selection. Only while the list has the focus, so text fields keep these keys.
+        .onKeyPress(keys: [.leftArrow, .rightArrow], phases: .down) { press in
+            guard arrowKeyActions, press.modifiers.contains(.command) || press.modifiers.contains(.option),
+                  let first = model.selectedThreads.first,
+                  let item = Self.swipeItem(toLeft: press.key == .leftArrow, threadID: first.id, mailbox: mailbox) else {
+                return .ignored
+            }
+            model.perform(item.action)
+            return .handled
+        }
         // The Delete key moves the selection to the trash (⌘Z brings it back).
         .onDeleteCommand {
             if model.hasThreadSelection, mailbox.labelID != SystemLabel.trash {
@@ -153,22 +165,9 @@ struct ThreadListView: View {
                     model.perform(item.action, threadID: id)
                 }
             }
-            swiper.dragPayload = { [model] id in
-                guard let mailbox = model.mailbox else { return nil }
-                return Self.dragPayload(for: id, in: mailbox, selected: model.selectedThreadIDs).text
-            }
             swiper.start()
         }
         .onDisappear { swiper.stop() }
-        // Where the list lies in the window, for swipes with the mouse.
-        .background {
-            GeometryReader { proxy in
-                let frame = proxy.frame(in: .global)
-                Color.clear
-                    .onAppear { swiper.listRange = frame.minX...frame.maxX }
-                    .onChange(of: frame) { _, newFrame in swiper.listRange = newFrame.minX...newFrame.maxX }
-            }
-        }
     }
 
     /// The selection tint and, while a row is swiped aside, the action behind it.
@@ -237,15 +236,12 @@ struct ThreadListView: View {
         }
     }
 
-    private func dragPayload(for thread: ThreadSummary) -> ThreadDrag {
-        Self.dragPayload(for: thread.id, in: mailbox, selected: model.selectedThreadIDs)
-    }
-
     /// What a drag of a row carries: the row, or the whole selection if the row is part of it.
-    static func dragPayload(for threadID: String, in mailbox: MailboxModel, selected: Set<String>) -> ThreadDrag {
-        let ids = selected.contains(threadID) && selected.count > 1
+    private func dragPayload(for thread: ThreadSummary) -> ThreadDrag {
+        let selected = model.selectedThreadIDs
+        let ids = selected.contains(thread.id) && selected.count > 1
             ? mailbox.threads.map(\.id).filter(selected.contains)
-            : [threadID]
+            : [thread.id]
         return ThreadDrag(accountID: mailbox.account.id, threadIDs: ids)
     }
 
@@ -458,16 +454,13 @@ private struct SwipeReveal: View {
     }
 }
 
-/// Swiping rows of the message list aside:
-/// - two fingers on the trackpad (or one on a Magic Mouse): a mostly horizontal gesture moves
-///   the row under the pointer, vertical scrolling is left to the list;
-/// - the mouse: press on a row and push it left or right. Pushed out of the list towards the
-///   sidebar it turns into a drag, so conversations can still be dropped on a label.
-/// Letting go beyond the threshold triggers the action, otherwise the row springs back.
+/// Follows two-finger swipes on the trackpad (or one finger on a Magic Mouse) over the
+/// message list: a mostly horizontal gesture moves the row under the pointer, and letting
+/// go beyond the threshold triggers the action. Vertical scrolling is left to the list.
 @MainActor
 @Observable
 final class RowSwiper {
-    /// How far a row has to be moved for the action to fire on release.
+    /// How far a row has to be moved for the action to fire when the fingers lift.
     static let threshold: CGFloat = 96
     private static let limit: CGFloat = 220
 
@@ -477,27 +470,19 @@ final class RowSwiper {
 
     /// The row under the pointer; set by the rows.
     @ObservationIgnored var hoveredID: String?
-    /// The list's horizontal extent in the window.
-    @ObservationIgnored var listRange: ClosedRange<CGFloat>?
     /// Whether a row can be swiped to the left (true) or right (false).
     @ObservationIgnored var canSwipe: ((String, Bool) -> Bool)?
     @ObservationIgnored var onCommit: ((String, Bool) -> Void)?
-    /// The text a drag of this row carries (see `ThreadDrag`).
-    @ObservationIgnored var dragPayload: ((String) -> String?)?
 
     private enum Axis { case undecided, vertical, horizontal }
     @ObservationIgnored private var axis = Axis.undecided
     @ObservationIgnored private var monitor: Any?
-    @ObservationIgnored private let dragSource = RowDragSource()
 
     func start() {
         guard monitor == nil else { return }
-        monitor = NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel, .leftMouseDown]) { [weak self] event in
+        monitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
             guard let self else { return event }
-            if event.type == .leftMouseDown {
-                return self.handleMouseDown(event)
-            }
-            return self.handleScroll(event) ? nil : event
+            return self.handle(event) ? nil : event
         }
     }
 
@@ -509,38 +494,8 @@ final class RowSwiper {
         offset = 0
     }
 
-    // MARK: Moving the row
-
-    private func move(to proposed: CGFloat, id: String) {
-        var next = proposed
-        if next != 0, canSwipe?(id, next < 0) != true {
-            next = 0
-        }
-        next = min(max(next, -Self.limit), Self.limit)
-        let wasArmed = abs(offset) >= Self.threshold
-        let isArmed = abs(next) >= Self.threshold
-        if isArmed != wasArmed {
-            NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
-        }
-        offset = next
-    }
-
-    private func finish(id: String, commits: Bool) {
-        let fires = commits && abs(offset) >= Self.threshold
-        let toLeft = offset < 0
-        withAnimation(.spring(duration: 0.28)) {
-            offset = 0
-        }
-        if fires {
-            threadID = nil
-            onCommit?(id, toLeft)
-        }
-    }
-
-    // MARK: Trackpad
-
     /// Returns true if the event belonged to a swipe and must not reach the list.
-    private func handleScroll(_ event: NSEvent) -> Bool {
+    private func handle(_ event: NSEvent) -> Bool {
         // Only gestures with phases: trackpad and Magic Mouse. A wheel just scrolls.
         guard event.hasPreciseScrollingDeltas, !event.phase.isEmpty else { return false }
 
@@ -565,100 +520,31 @@ final class RowSwiper {
         if event.phase.contains(.changed) || event.phase.contains(.began) {
             // The row follows the fingers, whatever the scroll direction setting.
             let delta = event.isDirectionInvertedFromDevice ? event.scrollingDeltaX : -event.scrollingDeltaX
-            move(to: offset + delta, id: id)
+            var next = offset + delta
+            if next != 0, canSwipe?(id, next < 0) != true {
+                next = 0
+            }
+            next = min(max(next, -Self.limit), Self.limit)
+            let wasArmed = abs(offset) >= Self.threshold
+            let isArmed = abs(next) >= Self.threshold
+            if isArmed != wasArmed {
+                NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
+            }
+            offset = next
         }
         if event.phase.contains(.ended) || event.phase.contains(.cancelled) {
+            let fires = event.phase.contains(.ended) && abs(offset) >= Self.threshold
+            let toLeft = offset < 0
             axis = .undecided
-            finish(id: id, commits: event.phase.contains(.ended))
+            withAnimation(.spring(duration: 0.28)) {
+                offset = 0
+            }
+            if fires {
+                threadID = nil
+                onCommit?(id, toLeft)
+            }
         }
         return true
-    }
-
-    // MARK: Mouse
-
-    /// A press on a row: waits for the first few points of movement. Sideways it becomes a
-    /// swipe that is tracked here; anything else (a click, a drag up or down) is handed back
-    /// to the list untouched.
-    private func handleMouseDown(_ event: NSEvent) -> NSEvent? {
-        let modifiers = event.modifierFlags.intersection([.command, .shift, .option, .control])
-        guard let id = hoveredID, let window = event.window, event.clickCount == 1, modifiers.isEmpty,
-              let listRange, listRange.contains(event.locationInWindow.x) else { return event }
-        let start = event.locationInWindow
-        var held: [NSEvent] = []
-        var isSwipe = false
-        // Not for long: a press that rests is the list's business (it selects the row).
-        let deadline = Date().addingTimeInterval(0.35)
-        while let next = window.nextEvent(matching: [.leftMouseDragged, .leftMouseUp], until: deadline, inMode: .eventTracking, dequeue: true) {
-            held.append(next)
-            if next.type == .leftMouseUp { break }
-            let dx = next.locationInWindow.x - start.x
-            let dy = next.locationInWindow.y - start.y
-            if abs(dx) < 5, abs(dy) < 5 { continue }
-            isSwipe = abs(dx) > abs(dy) * 2 && canSwipe?(id, dx < 0) == true
-            break
-        }
-        guard isSwipe else {
-            // Give the list the events that were looked at, in their order.
-            for heldEvent in held.reversed() {
-                NSApp.postEvent(heldEvent, atStart: true)
-            }
-            return event
-        }
-        trackMouseSwipe(id: id, window: window, startX: start.x)
-        return nil
-    }
-
-    private func trackMouseSwipe(id: String, window: NSWindow, startX: CGFloat) {
-        threadID = id
-        offset = 0
-        while let next = window.nextEvent(matching: [.leftMouseDragged, .leftMouseUp], until: .distantFuture, inMode: .eventTracking, dequeue: true) {
-            if next.type == .leftMouseUp {
-                finish(id: id, commits: true)
-                return
-            }
-            // Out of the list towards the sidebar: this is a drag onto a mailbox or label.
-            if let listRange, next.locationInWindow.x < listRange.lowerBound {
-                finish(id: id, commits: false)
-                beginDrag(id: id, event: next, window: window)
-                return
-            }
-            move(to: next.locationInWindow.x - startX, id: id)
-        }
-        finish(id: id, commits: false)
-    }
-
-    private func beginDrag(id: String, event: NSEvent, window: NSWindow) {
-        guard let text = dragPayload?(id), let view = window.contentView else { return }
-        let item = NSDraggingItem(pasteboardWriter: text as NSString)
-        let image = Self.dragImage
-        let point = view.convert(event.locationInWindow, from: nil)
-        item.setDraggingFrame(
-            NSRect(x: point.x - image.size.width / 2, y: point.y - image.size.height / 2, width: image.size.width, height: image.size.height),
-            contents: image
-        )
-        view.beginDraggingSession(with: [item], event: event, source: dragSource)
-    }
-
-    /// What follows the pointer in such a drag: an envelope on the accent colour.
-    private static let dragImage: NSImage = {
-        let size = NSSize(width: 44, height: 32)
-        return NSImage(size: size, flipped: false) { rect in
-            NSColor.controlAccentColor.setFill()
-            NSBezierPath(roundedRect: rect.insetBy(dx: 1, dy: 1), xRadius: 10, yRadius: 10).fill()
-            let configuration = NSImage.SymbolConfiguration(pointSize: 15, weight: .semibold)
-                .applying(NSImage.SymbolConfiguration(paletteColors: [.white]))
-            if let symbol = NSImage(systemSymbolName: "envelope.fill", accessibilityDescription: nil)?.withSymbolConfiguration(configuration) {
-                symbol.draw(at: NSPoint(x: rect.midX - symbol.size.width / 2, y: rect.midY - symbol.size.height / 2), from: .zero, operation: .sourceOver, fraction: 1)
-            }
-            return true
-        }
-    }()
-}
-
-/// The source of a drag that started as a mouse swipe.
-private final class RowDragSource: NSObject, NSDraggingSource {
-    func draggingSession(_ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation {
-        [.copy, .move, .generic]
     }
 }
 

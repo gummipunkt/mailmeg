@@ -13,6 +13,8 @@ enum AppSettings {
     static let backdropTransparencyKey = "backdropTransparency"
     static let swipeLeftKey = "swipeLeftAction"
     static let swipeRightKey = "swipeRightAction"
+    /// ⌘← and ⌘→ in the message list act like swiping to the left and right.
+    static let arrowKeyActionsKey = "arrowKeyActions"
 
     /// What swiping a conversation in the list does.
     enum SwipeAction: String, CaseIterable, Identifiable {
