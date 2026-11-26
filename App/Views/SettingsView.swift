@@ -149,12 +149,12 @@ private struct GeneralSettingsView: View {
                     Text(tr("Deckkraft der Flächen", "Opacity of the sheets"))
                 }
                 .accessibilityIdentifier("settings.sheetOpacity")
-                Picker(tr("Hintergrund durchsichtig", "See-through background"), selection: $backdropTransparency) {
-                    Text(tr("Aus", "Off")).tag(0.0)
-                    Text(tr("Leicht", "Slightly")).tag(0.25)
-                    Text(tr("Mittel", "Medium")).tag(0.5)
-                    Text(tr("Stark", "Strongly")).tag(0.75)
-                    Text(tr("Fast ganz", "Almost fully")).tag(0.92)
+                Slider(value: $backdropTransparency, in: 0...0.8) {
+                    Text(tr("Hintergrund durchsichtig", "See-through background"))
+                } minimumValueLabel: {
+                    Text(tr("Aus", "Off")).font(.caption).foregroundStyle(.secondary)
+                } maximumValueLabel: {
+                    Text("\(Int((min(backdropTransparency, 0.8) / 0.8 * 100).rounded())) %").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                 }
                 .accessibilityIdentifier("settings.transparency")
                 Toggle(tr("Avatare in der Nachrichtenliste", "Show avatars in the message list"), isOn: $showAvatars)

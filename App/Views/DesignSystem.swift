@@ -411,8 +411,11 @@ enum SeeThrough {
         return false
     }
 
+    /// The slider runs evenly, the eye does not: a backdrop at 70 % already looks half gone
+    /// over a dark desktop. So the lower half of the slider only takes away a little.
     static func opacity(_ transparency: Double) -> Double {
-        1 - min(max(transparency, 0), 0.96)
+        let share = min(max(transparency, 0), 0.8) / 0.8
+        return 1 - 0.92 * pow(share, 1.8)
     }
 }
 
